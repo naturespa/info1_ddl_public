@@ -386,6 +386,16 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
   const [testSampleN, setTestSampleN] = useState(25);
   const [timeseriesNext, setTimeseriesNext] = useState(48);
   const [aiPrompt, setAiPrompt] = useState("この表を分析して結論を出して。");
+  const [floatA, setFloatA] = useState(0.1);
+  const [floatB, setFloatB] = useState(0.2);
+  const [cpuStep, setCpuStep] = useState(0);
+  const [saveEncoding, setSaveEncoding] = useState("UTF-8");
+  const [readEncoding, setReadEncoding] = useState("UTF-8");
+  const [dataTypeChoice, setDataTypeChoice] = useState("身長 168.5cm");
+  const [relationCause, setRelationCause] = useState("気温");
+  const [queueService, setQueueService] = useState(4);
+  const [testQuestion, setTestQuestion] = useState("2クラスの平均点に差があるか");
+  const [seasonEvent, setSeasonEvent] = useState(0);
 
   const calculated = useMemo(() => stats(dataRaw), [dataRaw]);
   const combinations = 1n << BigInt(bits);
@@ -434,6 +444,26 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
   const testPowerHint = testSampleN >= 30 ? "大標本としてZ検定も検討しやすい" : "母分散未知ならt検定を優先";
   const nextMoving = [...timeSeries.slice(-(windowSize - 1)), timeseriesNext].reduce((a, b) => a + b, 0) / windowSize;
   const promptScore = ["目的", "列", "手順", "根拠", "禁止"].filter((word) => aiPrompt.includes(word)).length;
+  const cpuStages = [
+    ["取出し", "主記憶から命令とデータをCPUへ読み込みます。"],
+    ["解読", "制御装置が命令の種類と必要なデータを判断します。"],
+    ["実行", "演算装置が計算し、結果を主記憶や出力装置へ渡します。"]
+  ];
+  const dataTypeInfo: Record<string, [string, string]> = {
+    "身長 168.5cm": ["量的・比例尺度", "差と比に意味があるので平均や標準偏差を計算できます。"],
+    "満足度 1から5": ["質的・順序尺度", "順序はありますが、1と2の差が4と5の差と同じとは限りません。"],
+    "出席番号 12": ["質的・名義尺度", "識別番号なので足し算や平均には意味がありません。"],
+    "気温 20度": ["量的・間隔尺度", "差には意味がありますが、0度が量のゼロではありません。"]
+  };
+  const mojibakePreview = saveEncoding === readEncoding ? textSample : "譁・ｭ怜喧縺代・CSV";
+  const relationCauseText: Record<string, string> = {
+    "気温": "気温が上がると、アイス売上も熱中症患者も増える。2つの量が直接の原因とは限りません。",
+    "部活動時間": "練習時間が長い生徒ほど睡眠時間と学習時間の両方が変わる可能性があります。",
+    "学習習慣": "スマホ時間と成績の背後に、家庭学習時間や睡眠など別の要因があるかもしれません。"
+  };
+  const queueLevel = simulationArrival >= queueService ? "待ち行列は伸びにくい" : "待ち行列が伸びやすい";
+  const testChoice = testQuestion.includes("平均") ? "t検定" : testQuestion.includes("割合") ? "カイ二乗検定" : "Z検定";
+  const seasonalSeries = timeSeries.map((value, index) => index === timeSeries.length - 1 ? value + seasonEvent : value);
   const missions: Record<string, [string, string, string[]]> = {
     base: ["128ビットIDを説明する", "学校の全端末へ重複しないIDを付けるなら、8ビットと128ビットのどちらが適切か。", ["必要数を見積もる", "2のn乗で比較", "将来の増加も考える"]],
     number: ["安全な金額計算を選ぶ", "購買部の会計で小数誤差を出さないため、金額を円単位の整数で扱う理由を説明しよう。", ["浮動小数点誤差", "最小単位へ変換", "範囲も確認"]],
@@ -570,8 +600,9 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
 
   if (lessonId === "base") return <div className="experiments">
     <Card no={1} title="同じ値を3つの基数で見る" goal="表記が変わっても値は同じであることを確かめます。">
-      <label className="control">10進数: <b>{decimal}</b><input type="range" min="0" max="255" value={decimal} onChange={(e) => setDecimal(+e.target.value)} /></label>
+      <div className="three-controls"><label>10進数を直接入力<input type="number" min="0" max="255" value={decimal} onChange={(e) => setDecimal(clampNumber(+e.target.value, 0, 255))} /></label><label>スライダーでも変更<input type="range" min="0" max="255" value={decimal} onChange={(e) => setDecimal(+e.target.value)} /></label></div>
       <div className="number-grid"><div><span>2進数</span><b>{decimal.toString(2).padStart(8, "0")}</b></div><div><span>10進数</span><b>{decimal}</b></div><div><span>16進数</span><b>{decimal.toString(16).toUpperCase().padStart(2, "0")}</b></div></div>
+      <div className="bit-strip">{decimal.toString(2).padStart(8, "0").split("").map((bit, index) => <span className={bit === "1" ? "on" : ""} key={index}>{bit}<small>{2 ** (7 - index)}</small></span>)}</div>
     </Card>
     <Card no={2} title="1から128ビットの世界" goal="ビットが1増えるたび、組合せが2倍になることを確認します。">
       <label className="control">ビット数: <b>{bits}</b><input type="range" min="1" max="128" value={bits} onChange={(e) => setBits(+e.target.value)} /></label>
@@ -585,15 +616,16 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       <div className="number-grid"><div><span>最小値</span><b>-{(2 ** (signedBits - 1)).toLocaleString()}</b></div><div><span>最大値</span><b>{(2 ** (signedBits - 1) - 1).toLocaleString()}</b></div></div>
     </Card>
     <Card no={2} title="0.1 + 0.2 の誤差" goal="10進小数を2進数で近似するために生じる誤差を確認します。">
-      <div className="code-result"><code>0.1 + 0.2</code><strong>{0.1 + 0.2}</strong></div>
-      <div className="compare-row"><span>そのまま比較</span><b>{String(0.1 + 0.2 === 0.3)}</b><span>丸めて比較</span><b>{String(Math.round((0.1 + 0.2) * 10) / 10 === 0.3)}</b></div>
+      <div className="three-controls"><label>小数A<input type="number" step="0.01" value={floatA} onChange={(e) => setFloatA(+e.target.value)} /></label><label>小数B<input type="number" step="0.01" value={floatB} onChange={(e) => setFloatB(+e.target.value)} /></label><label>期待値<input readOnly value={(Math.round((floatA + floatB) * 100) / 100).toString()} /></label></div>
+      <div className="code-result"><code>{floatA} + {floatB}</code><strong>{floatA + floatB}</strong></div>
+      <div className="compare-row"><span>そのまま小数比較</span><b>{String(floatA + floatB === Math.round((floatA + floatB) * 100) / 100)}</b><span>100倍して整数化</span><b>{String((Math.round(floatA * 100) + Math.round(floatB * 100)) / 100)}</b></div>
     </Card>
   </div>;
 
   if (lessonId === "logic") return <div className="experiments">
     <Card no={1} title="7種類のゲートを操作" goal="入力を切り替え、各ゲートの出力を真理値表と照合します。">
       <div className="gate-tabs">{(["NOT", "AND", "OR", "NAND", "NOR", "XOR", "XNOR"] as Gate[]).map((item) => <button className={gate === item ? "active" : ""} onClick={() => setGate(item)} key={item}>{item}</button>)}</div>
-      <div className="logic-stage"><div className="switches"><button onClick={() => setSwitches({ ...switches, a: !switches.a })}>入力A <b>{+switches.a}</b></button>{gate !== "NOT" && <button onClick={() => setSwitches({ ...switches, b: !switches.b })}>入力B <b>{+switches.b}</b></button>}</div><div className={gateOutput(gate, switches.a, switches.b) ? "lamp lit" : "lamp"}><span>出力</span><b>{+gateOutput(gate, switches.a, switches.b)}</b></div></div>
+      <div className="logic-stage"><div className="switches"><button onClick={() => setSwitches({ ...switches, a: !switches.a })}>入力A <b>{+switches.a}</b></button>{gate !== "NOT" && <button onClick={() => setSwitches({ ...switches, b: !switches.b })}>入力B <b>{+switches.b}</b></button>}</div><div className={gateOutput(gate, switches.a, switches.b) ? "lamp on" : "lamp"}><span>出力</span><b>{+gateOutput(gate, switches.a, switches.b)}</b></div></div>
     </Card>
     <Card no={2} title="真理値表を完成させる" goal="4つの入力パターンを一度に比較します。">
       <div className="truth-table"><div>A</div><div>B</div><div>{gate}</div>{[[false, false], [false, true], [true, false], [true, true]].map(([a, b]) => <span key={`${a}${b}`} className="truth-row"><i>{+a}</i><i>{gate === "NOT" ? "-" : +b}</i><b>{+gateOutput(gate, a, b)}</b></span>)}</div>
@@ -607,17 +639,20 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       <div className="recommend">{cpu >= 4 && ram >= 16 ? "動画編集・3D制作にも対応しやすい" : ram >= 8 ? "文書作成・Web・基礎プログラミング向け" : "同時に多数のアプリを開くと不足しやすい"}</div>
     </Card>
     <Card no={2} title="命令が実行される順序" goal="CPUが命令を取出し、解読し、実行する循環を確認します。">
-      <div className="cycle"><span>1 主記憶から命令を取出す</span><i>→</i><span>2 命令を解読する</span><i>→</i><span>3 演算・制御して実行</span></div>
+      <div className="gate-tabs">{cpuStages.map((stage, index) => <button className={cpuStep === index ? "active" : ""} onClick={() => setCpuStep(index)} key={stage[0]}>{index + 1} {stage[0]}</button>)}</div>
+      <div className="cycle-lab"><b>{cpuStages[cpuStep][0]}</b><p>{cpuStages[cpuStep][1]}</p><div className="registers"><span>命令レジスタ</span><span className={cpuStep === 0 ? "active" : ""}>LOAD A</span><span>演算装置</span><span className={cpuStep === 2 ? "active" : ""}>A+1</span></div></div>
     </Card>
   </div>;
 
   if (lessonId === "text") return <div className="experiments">
     <Card no={1} title="符号化方式とバイト数" goal="同じ文字列でも、符号化方式でデータ量が変わることを確かめます。">
       <div className="gate-tabs">{Object.keys(bytesByEncoding).map((item) => <button className={encoding === item ? "active" : ""} onClick={() => setEncoding(item)} key={item}>{item}</button>)}</div>
-      <div className="focus-result"><span>「情報AI」の概算</span><b>{bytesByEncoding[encoding]} bytes</b><small>{encoding}</small></div>
+      <label className="control">文字列を入力<input value={textSample} onChange={(e) => setTextSample(e.target.value)} /></label>
+      <div className="focus-result"><span>入力文字列の概算</span><b>{encoding === "UTF-8" ? new TextEncoder().encode(textSample).length : encoding === "UTF-16" ? textSample.length * 2 : Math.max(1, textSample.length) * 2} bytes</b><small>{encoding}</small></div>
     </Card>
     <Card no={2} title="文字化けの原因を追う" goal="保存時と読込時の符号化方式の違いを理解します。">
-      <div className="encoding-flow"><span>文字</span><i>UTF-8で保存</i><span>数値列</span><i>別方式で読込</i><strong>文字化け</strong></div>
+      <div className="three-controls"><label>保存方式<select value={saveEncoding} onChange={(e) => setSaveEncoding(e.target.value)}><option>UTF-8</option><option>Shift_JIS</option></select></label><label>読込方式<select value={readEncoding} onChange={(e) => setReadEncoding(e.target.value)}><option>UTF-8</option><option>Shift_JIS</option></select></label></div>
+      <div className="encoding-flow"><span>元の文字</span><i>{saveEncoding}で保存</i><span>バイト列</span><i>{readEncoding}で読込</i><strong>{mojibakePreview}</strong></div>
     </Card>
   </div>;
 
@@ -640,7 +675,8 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       <div className="focus-result"><span>非圧縮容量</span><b>{fmt(imageMb, 2)} MB</b><small>{width.toLocaleString()}x{height.toLocaleString()}画素</small></div>
     </Card>
     <Card no={2} title="用途から形式を選ぶ" goal="写真・ロゴ・透過の有無に応じて、圧縮形式を使い分けます。">
-      <div className="format-grid"><div><b>JPEG</b><span>写真・小容量</span></div><div><b>PNG</b><span>ロゴ・透過</span></div><div><b>WebP</b><span>Web・写真/透過</span></div></div>
+      <div className="gate-tabs"><button className={imageUseCase === "photo" ? "active" : ""} onClick={() => setImageUseCase("photo")}>行事写真</button><button className={imageUseCase === "logo" ? "active" : ""} onClick={() => setImageUseCase("logo")}>透過ロゴ</button><button className={imageUseCase === "chart" ? "active" : ""} onClick={() => setImageUseCase("chart")}>図表</button></div>
+      <div className="format-grid"><div className={imageRecommended.includes("JPEG") ? "active" : ""}><b>JPEG/WebP</b><span>写真を小さく表示</span></div><div className={imageRecommended.includes("PNG") ? "active" : ""}><b>PNG</b><span>文字・図表・透過</span></div><div className={imageRecommended.includes("SVG") ? "active" : ""}><b>SVG</b><span>拡大しても荒れない図形</span></div></div>
     </Card>
   </div>;
 
@@ -659,10 +695,12 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
 
   if (lessonId === "clean") return <div className="experiments">
     <Card no={1} title="データの種類を見分ける" goal="数値に見えても、計算に意味があるとは限りません。">
-      <div className="type-grid"><div><b>身長 168.5cm</b><span>量的・比例尺度</span></div><div><b>満足度 1から5</b><span>質的・順序尺度</span></div><div><b>出席番号 12</b><span>質的・名義尺度</span></div><div><b>気温 20度</b><span>量的・間隔尺度</span></div></div>
+      <div className="gate-tabs">{Object.keys(dataTypeInfo).map((item) => <button className={dataTypeChoice === item ? "active" : ""} onClick={() => setDataTypeChoice(item)} key={item}>{item}</button>)}</div>
+      <div className="focus-result"><span>{dataTypeChoice}</span><b>{dataTypeInfo[dataTypeChoice][0]}</b><small>{dataTypeInfo[dataTypeChoice][1]}</small></div>
     </Card>
     <Card no={2} title="汚れたデータを点検" goal="欠損・重複・入力誤り・外れ値を、削除前に見つけます。">
-      <table className="data-table"><thead><tr><th>ID</th><th>睡眠</th><th>集中度</th><th>判定</th></tr></thead><tbody><tr><td>01</td><td>7.0</td><td>4</td><td>正常</td></tr><tr><td>02</td><td>-</td><td>3</td><td className="warn">欠損</td></tr><tr><td>02</td><td>6.0</td><td>3</td><td className="warn">ID重複</td></tr><tr><td>04</td><td>70</td><td>5</td><td className="warn">入力誤り?</td></tr></tbody></table>
+      <label className="control">睡眠時間データを入力<textarea value={cleanSleepData} onChange={(e) => setCleanSleepData(e.target.value)} /></label>
+      <table className="data-table"><thead><tr><th>値</th><th>判定</th><th>処理方針</th></tr></thead><tbody>{cleanValues.map((value, index) => { const duplicated = cleanValues.indexOf(value) !== index; const bad = value === "" || value === "-" || Number(value) > 24 || Number(value) < 0 || duplicated; return <tr key={`${value}-${index}`}><td>{value || "(空欄)"}</td><td className={bad ? "warn" : ""}>{value === "" || value === "-" ? "欠損" : duplicated ? "重複" : Number(value) > 24 || Number(value) < 0 ? "範囲外" : "正常"}</td><td>{bad ? "原本確認・理由を記録" : "分析に使用"}</td></tr>; })}</tbody></table>
     </Card>
   </div>;
 
@@ -672,7 +710,9 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       {calculated && <div className="stats-grid"><div><span>平均</span><b>{fmt(calculated.mean)}</b></div><div><span>中央値</span><b>{fmt(calculated.median)}</b></div><div><span>標準偏差</span><b>{fmt(calculated.sd)}</b></div><div><span>範囲</span><b>{calculated.min}-{calculated.max}</b></div></div>}
     </Card>
     <Card no={2} title="箱ひげ図の読み取り" goal="中央値と広がりを視覚的に捉えます。">
-      <div className="boxplot"><i style={{ left: "7%" }} /><span style={{ left: "7%", width: "86%" }} /><b style={{ left: "26%", width: "46%" }} /><em style={{ left: "49%" }} /></div>
+      <textarea className="data-input" value={centerCompareData} onChange={(e) => setCenterCompareData(e.target.value)} />
+      <div className="boxplot"><i style={{ left: "7%" }} /><span style={{ left: "7%", width: "86%" }} /><b style={{ left: "26%", width: "46%" }} /><em style={{ left: `${centerMission ? Math.max(8, Math.min(88, ((centerMission.median - centerMission.min) / Math.max(1, centerMission.max - centerMission.min)) * 80 + 8)) : 49}%` }} /></div>
+      {centerMission && <div className="number-grid"><div><span>平均</span><b>{fmt(centerMission.mean)}</b></div><div><span>中央値</span><b>{fmt(centerMission.median)}</b></div><div><span>最大</span><b>{centerMission.max}</b></div></div>}
       <p className="observe">平均だけでなく、中央値・範囲・ばらつきも比較します。</p>
     </Card>
   </div>;
@@ -693,7 +733,9 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       <div className="scatter">{relationValues.map((y, index) => <i key={index} style={{ left: `${10 + index * 13}%`, bottom: `${y}%` }} />)}</div>
     </Card>
     <Card no={2} title="相関から原因へ飛ばない" goal="第三の要因と、調査設計の限界を確認します。">
-      <div className="cause-map"><strong>気温</strong><i>↙</i><i>↘</i><span>アイス売上</span><span>熱中症患者</span></div>
+      <div className="gate-tabs">{Object.keys(relationCauseText).map((item) => <button className={relationCause === item ? "active" : ""} onClick={() => setRelationCause(item)} key={item}>{item}</button>)}</div>
+      <div className="cause-map"><strong>{relationCause}</strong><i>↙</i><i>↘</i><span>{relationCause === "気温" ? "アイス売上" : relationCause === "部活動時間" ? "睡眠時間" : "スマホ時間"}</span><span>{relationCause === "気温" ? "熱中症患者" : relationCause === "部活動時間" ? "学習時間" : "成績"}</span></div>
+      <div className="mission-box"><b>読み取り</b><p>{relationCauseText[relationCause]}</p></div>
     </Card>
   </div>;
 
@@ -704,7 +746,8 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       <div className="number-grid"><div><span>表</span><b>{heads}回</b></div><div><span>表の相対度数</span><b>{heads ? fmt(heads / trials, 3) : "-"}</b></div></div>
     </Card>
     <Card no={2} title="モデルの条件を点検" goal="結果は、置いた仮定の範囲でのみ意味を持ちます。">
-      <div className="assumptions"><span>コインは公平か</span><span>各試行は独立か</span><span>乱数に偏りはないか</span><span>現実とモデルの差は何か</span></div>
+      <div className="three-controls"><label>到着間隔<input type="range" min="1" max="8" value={simulationArrival} onChange={(e) => setSimulationArrival(+e.target.value)} /></label><label>処理時間<input type="range" min="1" max="8" value={queueService} onChange={(e) => setQueueService(+e.target.value)} /></label></div>
+      <div className="focus-result"><span>受付モデル</span><b>{queueLevel}</b><small>到着 {simulationArrival}分ごと / 処理 {queueService}分</small></div>
     </Card>
   </div>;
 
@@ -715,13 +758,15 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       <div className={`decision ${pValue < alpha ? "reject" : ""}`}>{pValue < alpha ? "p < 有意水準: 帰無仮説を棄却" : "p >= 有意水準: 帰無仮説を棄却できない"}</div>
     </Card>
     <Card no={2} title="問いから検定を選ぶ" goal="平均・割合・カテゴリのどれを比べるかで手法を選びます。">
-      <div className="test-grid"><div><b>平均の差</b><span>t検定</span></div><div><b>カテゴリの関連</b><span>カイ二乗検定</span></div><div><b>大標本の比率・平均</b><span>Z検定</span></div></div>
+      <label className="control">調べたい問い<select value={testQuestion} onChange={(e) => setTestQuestion(e.target.value)}><option>2クラスの平均点に差があるか</option><option>男女で選択割合に差があるか</option><option>母標準偏差が既知の大標本平均を比べる</option></select></label>
+      <div className="test-grid"><div className={testChoice === "t検定" ? "active" : ""}><b>平均の差</b><span>t検定</span></div><div className={testChoice === "カイ二乗検定" ? "active" : ""}><b>カテゴリの関連</b><span>カイ二乗検定</span></div><div className={testChoice === "Z検定" ? "active" : ""}><b>大標本・母分散既知</b><span>Z検定</span></div></div>
     </Card>
   </div>;
 
   if (lessonId === "timeseries") return <div className="experiments">
     <Card no={1} title="時間順に変化を読む" goal="単発の増減ではなく、トレンドと周期性を区別します。">
-      <div className="bar-series">{timeSeries.map((value, index) => <i key={index} style={{ height: `${value * 2}px` }}><small>{value}</small></i>)}</div>
+      <label className="control">最後の月に行事効果を加える: <b>{seasonEvent}</b><input type="range" min="-20" max="30" value={seasonEvent} onChange={(e) => setSeasonEvent(+e.target.value)} /></label>
+      <div className="bar-series">{seasonalSeries.map((value, index) => <i key={index} style={{ height: `${Math.max(4, value * 2)}px` }}><small>{value}</small></i>)}</div>
     </Card>
     <Card no={2} title="移動平均でならす" goal="窓幅を変え、滑らかさと変化への反応の違いを見ます。">
       <label className="control">窓幅: <b>{windowSize}期間</b><input type="range" min="2" max="5" value={windowSize} onChange={(e) => setWindowSize(+e.target.value)} /></label>
@@ -735,7 +780,8 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
       <div className="audit"><span>元データを確認</span><span>別手段で検算</span><span className={aiClaim.includes("原因") ? "warn-text" : ""}>相関を因果と断定していないか</span><span>標本数と限界を明記</span></div>
     </Card>
     <Card no={2} title="再現できる依頼へ改善" goal="目的、列、方法、出力、禁止事項を具体的に指定します。">
-      <div className="prompt-box"><b>よい依頼の型</b><p>このCSVについて、列の意味を確認した後、欠損値を報告し、平均・中央値・標準偏差を計算してください。使用した式と根拠を表で示し、因果関係は断定しないでください。</p></div>
+      <textarea className="data-input" value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} />
+      <div className="number-grid"><div><span>目的・列・手順など</span><b>{promptScore}/5</b></div><div><span>検証しやすさ</span><b>{promptScore >= 4 ? "高い" : "低い"}</b></div><div><span>改善</span><b>{promptScore < 4 ? "条件を追加" : "実行可能"}</b></div></div>
     </Card>
   </div>;
 }

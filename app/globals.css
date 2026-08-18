@@ -26,6 +26,10 @@ textarea {
   font: inherit;
 }
 
+select {
+  font: inherit;
+}
+
 button {
   cursor: pointer;
 }
@@ -308,6 +312,7 @@ textarea {
 
 .control input,
 .control textarea,
+.control select,
 .data-input,
 .prompt-box {
   width: 100%;
@@ -353,6 +358,14 @@ textarea {
   padding: 12px;
 }
 
+.format-grid div.active,
+.test-grid div.active,
+.registers .active {
+  border-color: var(--green);
+  background: var(--mint);
+  color: var(--green);
+}
+
 .theory-box {
   border-left: 5px solid var(--green);
   background: #f2f8f4;
@@ -375,6 +388,34 @@ textarea {
   display: block;
   color: var(--green);
   font-size: 22px;
+}
+
+.bit-strip {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.bit-strip span {
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 4px;
+  font-weight: 900;
+}
+
+.bit-strip span.on {
+  border-color: var(--green);
+  background: var(--mint);
+  color: var(--green);
+}
+
+.bit-strip small {
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .focus-result,
@@ -475,6 +516,36 @@ textarea {
   background: #fff;
   border: 1px solid var(--line);
   padding: 7px 10px;
+  font-weight: 800;
+}
+
+.cycle-lab {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f9fbf6;
+  padding: 14px;
+}
+
+.cycle-lab p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.registers {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.registers span {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  text-align: center;
   font-weight: 800;
 }
 
