@@ -125,11 +125,11 @@ const lessons: Lesson[] = [
   },
   {
     id: "computer",
-    no: "D8",
+    no: "D4",
     area: "デジタル",
-    title: "コンピュータの仕組み",
-    subtitle: "五大装置、CPU、主記憶、補助記憶、性能指標を用途から判断する。",
-    concepts: ["五大装置", "CPU", "RAM", "キャッシュ", "SSD"],
+    title: "コンピュータの構成",
+    subtitle: "五大装置、CPU、主記憶、補助記憶の役割と性能を判断する。",
+    concepts: ["五大装置", "CPU", "RAM", "SSD"],
     questions: [
       q("computer-1", "五大装置に含まれないものは？", ["入力装置", "演算装置", "通信装置", "記憶装置"], 2, "五大装置は入力・出力・記憶・演算・制御です。"),
       q("computer-2", "実行中のデータを一時的に置く装置は？", ["RAM", "SSD", "キーボード", "ディスプレイ"], 0, "RAMは主記憶装置です。"),
@@ -140,11 +140,11 @@ const lessons: Lesson[] = [
   },
   {
     id: "text",
-    no: "D4",
+    no: "D5",
     area: "デジタル",
-    title: "文字コードと圧縮",
-    subtitle: "ASCII、JIS、Unicode、UTF-8、可逆・非可逆圧縮をつなげる。",
-    concepts: ["文字コード", "Unicode", "UTF-8", "可逆圧縮"],
+    title: "文字のデジタル化",
+    subtitle: "文字コード、Unicode、UTF-8と文字化けの原因を確かめる。",
+    concepts: ["文字コード", "Unicode", "UTF-8", "文字化け"],
     questions: [
       q("text-1", "文字と数値の対応を定めたものは？", ["文字コード", "標本化", "画素", "論理回路"], 0, "文字コードは文字と数値の対応です。"),
       q("text-2", "世界中の文字を統一的に扱う文字集合は？", ["ASCIIだけ", "Unicode", "JPEG", "WAV"], 1, "Unicodeは多言語を扱えます。"),
@@ -155,7 +155,7 @@ const lessons: Lesson[] = [
   },
   {
     id: "audio",
-    no: "D5",
+    no: "D6",
     area: "デジタル",
     title: "音声のデジタル化",
     subtitle: "標本化・量子化・符号化と、音質・容量の関係を計算する。",
@@ -170,7 +170,7 @@ const lessons: Lesson[] = [
   },
   {
     id: "image",
-    no: "D6",
+    no: "D7",
     area: "デジタル",
     title: "画像のデジタル化",
     subtitle: "画素、解像度、階調、RGB、可逆・非可逆圧縮を使い分ける。",
@@ -185,7 +185,7 @@ const lessons: Lesson[] = [
   },
   {
     id: "video",
-    no: "D7",
+    no: "D8",
     area: "デジタル",
     title: "動画・圧縮・通信",
     subtitle: "動画の容量を見積もり、通信速度から転送時間を求める。",
@@ -199,42 +199,12 @@ const lessons: Lesson[] = [
     ]
   },
   {
-    id: "system",
-    no: "D9",
-    area: "デジタル",
-    title: "情報システムとデータベース",
-    subtitle: "情報システム、ネットワーク、DBの選択・射影・結合を具体例で扱う。",
-    concepts: ["情報システム", "DB", "選択", "射影", "結合"],
-    questions: [
-      q("system-1", "情報システムの説明として適切なものは？", ["人・手順・機器・データで目的を実現する仕組み", "CPUだけの名称", "画像圧縮の方式", "2進数の別名"], 0, "機器だけでなく、人や手順、データを含む仕組みです。"),
-      q("system-2", "条件に合う行を取り出すDB操作は？", ["選択", "射影", "結合", "符号化"], 0, "選択は条件で行を絞ります。"),
-      q("system-3", "必要な列だけを取り出すDB操作は？", ["射影", "選択", "結合", "圧縮"], 0, "射影は列を取り出します。"),
-      q("system-4", "複数の表を共通キーで関連付ける操作は？", ["結合", "標本化", "量子化", "排他的論理和"], 0, "結合は共通するキーで表をつなぎます。"),
-      q("system-5", "外部キーの役割として近いものは？", ["別表の主キーを参照して関係を表す", "画像の色数を増やす", "音声を標本化する", "p値を求める"], 0, "外部キーは表どうしの関係を保ちます。")
-    ]
-  },
-  {
-    id: "security",
-    no: "D10",
-    area: "デジタル",
-    title: "セキュリティと暗号",
-    subtitle: "共通鍵、公開鍵、ハイブリッド暗号、電子署名、不正アクセス対策を整理する。",
-    concepts: ["共通鍵", "公開鍵", "電子署名", "認証", "不正アクセス"],
-    questions: [
-      q("security-1", "共通鍵暗号方式の特徴は？", ["暗号化と復号に同じ鍵を使う", "鍵が不要", "必ず手書きで行う", "画像だけに使う"], 0, "同じ鍵を安全に共有する必要があります。"),
-      q("security-2", "公開鍵暗号方式の説明として適切なものは？", ["公開鍵と秘密鍵の組を使う", "全員が秘密鍵を共有する", "圧縮方式の一種", "音声の量子化方式"], 0, "公開鍵と秘密鍵の対応を利用します。"),
-      q("security-3", "ハイブリッド暗号方式の利点は？", ["速度と鍵配送の安全性を両立しやすい", "復号できない", "鍵管理が不要になる", "必ず容量が増えない"], 0, "共通鍵の速さと公開鍵の鍵共有のしやすさを組み合わせます。"),
-      q("security-4", "電子署名で主に確認できることは？", ["改ざんされていないことや本人性", "ファイル容量の減少", "通信速度の最大化", "画像の解像度"], 0, "電子署名は完全性や本人性の確認に使われます。"),
-      q("security-5", "フィッシング対策として適切なものは？", ["URLや送信元を確認し、安易にIDを入力しない", "同じパスワードを全サイトで使う", "警告を無視する", "添付ファイルを必ず開く"], 0, "偽サイトへの誘導を疑って確認します。")
-    ]
-  },
-  {
     id: "clean",
     no: "A1",
     area: "データ活用",
-    title: "問題解決とデータ設計",
-    subtitle: "問いを立て、量的・質的データ、尺度、欠損、重複を整理する。",
-    concepts: ["問題解決", "尺度", "欠損値", "外れ値", "重複"],
+    title: "データの種類と整理",
+    subtitle: "量的・質的データ、欠損値、外れ値、重複を正しく扱う。",
+    concepts: ["尺度", "欠損値", "外れ値", "重複"],
     questions: [
       q("clean-1", "身長cmはどの種類のデータ？", ["量的データ", "質的データ", "文字コード", "論理値だけ"], 0, "数値の差や比に意味があります。"),
       q("clean-2", "血液型はどの尺度？", ["比率尺度", "名義尺度", "間隔尺度", "連続量"], 1, "順序のない分類です。"),
@@ -292,9 +262,9 @@ const lessons: Lesson[] = [
     id: "simulation",
     no: "A5",
     area: "データ活用",
-    title: "モデル化とシミュレーション",
-    subtitle: "乱数実験、待ち行列、確率モデルを動かし、仮定と現実の差を確かめる。",
-    concepts: ["モデル化", "乱数", "試行", "待ち行列"],
+    title: "確率とシミュレーション",
+    subtitle: "乱数実験を繰り返し、理論値と実験値の違いを確かめる。",
+    concepts: ["乱数", "試行", "相対度数", "モデル"],
     questions: [
       q("simulation-1", "公平なコインで表が出る理論上の確率は？", ["0", "0.25", "0.5", "1"], 2, "表と裏が同様に確からしいため1/2です。"),
       q("simulation-2", "試行回数を増やすと相対度数は一般にどうなる？", ["理論値に近づく", "必ず0になる", "必ず1になる", "毎回同じ"], 0, "大数の法則によります。"),
@@ -345,7 +315,7 @@ const lessons: Lesson[] = [
       q("ai-2", "AIが出した平均値の扱いは？", ["表計算などで再計算", "そのまま確定", "根拠を削除", "データを公開"], 0, "別手段で検算します。"),
       q("ai-3", "相関からAIが原因と断定したら？", ["第三の要因や設計を確認", "必ず正しい", "相関係数を隠す", "データ件数を減らす"], 0, "因果を断定しない確認が必要です。"),
       q("ai-4", "事実と異なるもっともらしい回答を生成する現象は？", ["ハルシネーション", "オプトイン", "署名", "スワッピング"], 0, "生成AIの誤回答の一種です。"),
-      q("ai-5", "AIへデータを入れる前の適切な対応は？", ["規程を確認し不要な個人情報を除く", "不要な個人情報を追加する", "検証を省く", "無条件に公開する"], 0, "データを最小化し、取扱条件を確認します。")
+      q("ai-5", "AIへデータを入れる前の適切な対応は？", ["規程を確認し不要な個人情報を除く", "氏名住所を追加する", "検証を省く", "無条件に公開する"], 0, "データを最小化し、取扱条件を確認します。")
     ]
   }
 ];
@@ -425,8 +395,6 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
     audio: ["校内放送の音質を決める", "5分の校内放送を保存する。音質と容量を考え、標本化・量子化・チャネルを選ぼう。", ["必要な音質", "容量計算", "用途との釣合い"]],
     image: ["学校Web用画像を書き出す", "行事写真と透過ロゴをWebへ掲載する。それぞれに合う形式と解像度を選ぼう。", ["写真の形式", "透過の形式", "元画像を保存"]],
     video: ["提出時間を見積もる", "授業動画を締切までに送る。MBをMbitへ直し、実効速度から時間と余裕を見積もろう。", ["byteからbit", "容量÷速度", "理論値との差"]],
-    system: ["DBから必要な生徒一覧を作る", "委員会表と得点表を組み合わせ、条件に合う人だけを取り出す手順を選択・射影・結合で説明しよう。", ["行を選択", "列を射影", "キーで結合"]],
-    security: ["安全な提出システムを設計する", "成績JSONを提出する仕組みで、暗号化・認証・改ざん検知のどれが必要か判断しよう。", ["本人確認", "通信の暗号化", "改ざん検知"]],
     clean: ["アンケートを点検する", "空欄、同一ID、70時間という値がある睡眠調査を、根拠なく削除せず処理しよう。", ["原因確認", "原本照合", "処理を記録"]],
     center: ["2クラスを比較する", "平均が同じ2クラスを、中央値・四分位範囲・箱ひげ図も使って比較しよう。", ["中心", "ばらつき", "外れ値"]],
     spread: ["異なるテストを比べる", "平均と標準偏差が異なる2科目の得点を標準化し、相対的に高い方を判断しよう。", ["平均との差", "標準偏差", "同じ尺度"]],
@@ -482,7 +450,7 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
   if (lessonId === "logic") return <div className="experiments">
     <Card no={1} title="7種類のゲートを操作" goal="入力を切り替え、各ゲートの出力を真理値表と照合します。">
       <div className="gate-tabs">{(["NOT", "AND", "OR", "NAND", "NOR", "XOR", "XNOR"] as Gate[]).map((item) => <button className={gate === item ? "active" : ""} onClick={() => setGate(item)} key={item}>{item}</button>)}</div>
-      <div className="logic-stage"><div className="switches"><button onClick={() => setSwitches({ ...switches, a: !switches.a })}>入力A <b>{+switches.a}</b></button>{gate !== "NOT" && <button onClick={() => setSwitches({ ...switches, b: !switches.b })}>入力B <b>{+switches.b}</b></button>}</div><div className={gateOutput(gate, switches.a, switches.b) ? "lamp on" : "lamp"}><span>出力</span><b>{+gateOutput(gate, switches.a, switches.b)}</b></div></div>
+      <div className="logic-stage"><div className="switches"><button onClick={() => setSwitches({ ...switches, a: !switches.a })}>入力A <b>{+switches.a}</b></button>{gate !== "NOT" && <button onClick={() => setSwitches({ ...switches, b: !switches.b })}>入力B <b>{+switches.b}</b></button>}</div><div className={gateOutput(gate, switches.a, switches.b) ? "lamp lit" : "lamp"}><span>出力</span><b>{+gateOutput(gate, switches.a, switches.b)}</b></div></div>
     </Card>
     <Card no={2} title="真理値表を完成させる" goal="4つの入力パターンを一度に比較します。">
       <div className="truth-table"><div>A</div><div>B</div><div>{gate}</div>{[[false, false], [false, true], [true, false], [true, true]].map(([a, b]) => <span key={`${a}${b}`} className="truth-row"><i>{+a}</i><i>{gate === "NOT" ? "-" : +b}</i><b>{+gateOutput(gate, a, b)}</b></span>)}</div>
@@ -543,27 +511,6 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
     <Card no={2} title="データ量から転送時間へ" goal="単位変換を一段ずつ確認します。">
       <div className="step-calc"><span>{fmt(videoMb)} MB</span><i>x8</i><span>{fmt(videoMb * 8)} Mbit</span><i>÷{speed}Mbps</i><strong>{fmt(transferSeconds)}秒</strong></div>
       <label className="control">実効速度: <b>{speed}Mbps</b><input type="range" min="5" max="100" step="5" value={speed} onChange={(e) => setSpeed(+e.target.value)} /></label>
-    </Card>
-  </div>;
-
-  if (lessonId === "system") return <div className="experiments">
-    <Card no={1} title="DB操作を見分ける" goal="行を絞る、列を選ぶ、表をつなぐ、という3操作を具体例で確認します。">
-      <div className="format-grid"><div><b>選択</b><span>英語80点以上の行だけ</span></div><div><b>射影</b><span>学籍番号・学年・組だけ</span></div><div><b>結合</b><span>基本情報と得点表をキーで接続</span></div></div>
-      <table className="data-table"><thead><tr><th>操作</th><th>入力</th><th>出力</th></tr></thead><tbody><tr><td>選択</td><td>全生徒の得点</td><td>条件に合う行</td></tr><tr><td>射影</td><td>多くの列</td><td>必要な列</td></tr><tr><td>結合</td><td>2つの表</td><td>関連付いた1つの表</td></tr></tbody></table>
-    </Card>
-    <Card no={2} title="情報システムを分解する" goal="システムを機器だけでなく、人・手順・データ・ネットワークを含めて捉えます。">
-      <div className="cycle"><span>入力</span><i>→</i><span>処理</span><i>→</i><span>保存</span><i>→</i><span>出力</span><i>→</i><span>改善</span></div>
-      <div className="type-grid"><div><b>人</b><span>利用者・管理者</span></div><div><b>手順</b><span>登録・確認・承認</span></div><div><b>データ</b><span>主キー・外部キー</span></div><div><b>通信</b><span>権限・ログ</span></div></div>
-    </Card>
-  </div>;
-
-  if (lessonId === "security") return <div className="experiments">
-    <Card no={1} title="暗号方式を選ぶ" goal="共通鍵・公開鍵・ハイブリッド暗号の役割を用途で判断します。">
-      <div className="format-grid"><div><b>共通鍵</b><span>高速。鍵共有が課題</span></div><div><b>公開鍵</b><span>鍵共有に強い。処理は重め</span></div><div><b>ハイブリッド</b><span>公開鍵で共通鍵を安全に渡す</span></div></div>
-      <div className="encoding-flow"><span>公開鍵で共通鍵を送る</span><i>→</i><span>共通鍵で本文を暗号化</span><i>→</i><strong>速度と安全性を両立</strong></div>
-    </Card>
-    <Card no={2} title="電子署名と認証を切り分ける" goal="暗号化、本人確認、改ざん検知は別の目的で使うことを確認します。">
-      <table className="data-table"><thead><tr><th>目的</th><th>代表例</th><th>確認すること</th></tr></thead><tbody><tr><td>暗号化</td><td>HTTPS</td><td>通信内容を読まれにくくする</td></tr><tr><td>認証</td><td>パスワード・MFA</td><td>本人かどうか</td></tr><tr><td>電子署名</td><td>署名付き文書</td><td>改ざんと作成者</td></tr></tbody></table>
     </Card>
   </div>;
 
@@ -792,7 +739,7 @@ export default function Home() {
             <section className="hero">
               <div>
                 <h1>操作して、判断できる情報Iへ。</h1>
-                <p>全{lessons.length}単元。各単元は実験3つと確認問題5問で進みます。結果はこのブラウザに保存され、最後にJSONで出力できます。</p>
+                <p>全16単元。各単元は実験3つと確認問題5問で進みます。結果はこのブラウザに保存され、最後にJSONで出力できます。</p>
                 <div className="lookup">
                   <label>
                     4桁番号
@@ -807,30 +754,25 @@ export default function Home() {
               </div>
             </section>
 
-            {(["デジタル", "データ活用"] as const).map((area) => {
-              const areaLessons = lessons
-                .filter((lesson) => lesson.area === area)
-                .sort((a, b) => a.no.localeCompare(b.no, "ja-JP", { numeric: true }));
-              return (
-                <section key={area}>
-                  <div className="section-heading">
-                    <h2>{area}</h2>
-                    <span className="muted">{areaLessons.filter((lesson) => submissions[lesson.id]).length} / {areaLessons.length} テスト送信済み</span>
-                  </div>
-                  <div className="lesson-grid">
-                    {areaLessons.map((lesson) => (
-                      <button className={`lesson-card ${submissions[lesson.id] ? "done" : ""}`} key={lesson.id} onClick={() => setActive(lesson.id)}>
-                        <b>{lesson.no}</b>
-                        <h3>{lesson.title}</h3>
-                        <p>{lesson.subtitle}</p>
-                        <div className="tags">{lesson.concepts.slice(0, 4).map((concept) => <span key={concept}>{concept}</span>)}</div>
-                        <strong>{submissions[lesson.id] ? `${submissions[lesson.id].correct}/5点` : `${lessonProgress(lesson)}/3実験`}</strong>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+            {(["デジタル", "データ活用"] as const).map((area) => (
+              <section key={area}>
+                <div className="section-heading">
+                  <h2>{area}</h2>
+                  <span className="muted">{lessons.filter((lesson) => lesson.area === area && submissions[lesson.id]).length} / 8 テスト送信済み</span>
+                </div>
+                <div className="lesson-grid">
+                  {lessons.filter((lesson) => lesson.area === area).map((lesson) => (
+                    <button className={`lesson-card ${submissions[lesson.id] ? "done" : ""}`} key={lesson.id} onClick={() => setActive(lesson.id)}>
+                      <b>{lesson.no}</b>
+                      <h3>{lesson.title}</h3>
+                      <p>{lesson.subtitle}</p>
+                      <div className="tags">{lesson.concepts.slice(0, 4).map((concept) => <span key={concept}>{concept}</span>)}</div>
+                      <strong>{submissions[lesson.id] ? `${submissions[lesson.id].correct}/5点` : `${lessonProgress(lesson)}/3実験`}</strong>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
           </>
         )}
 

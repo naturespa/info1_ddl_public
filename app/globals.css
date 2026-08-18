@@ -295,8 +295,7 @@ textarea {
   white-space: nowrap;
 }
 
-.record-experiment.done,
-.record-experiment.recorded {
+.record-experiment.done {
   background: var(--mint);
   color: var(--green);
 }
