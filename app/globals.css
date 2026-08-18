@@ -344,12 +344,28 @@ textarea {
 .encoding-flow,
 .application-card,
 .mission-box,
+.theory-box,
 .assumptions,
 .audit {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #f9fbf6;
   padding: 12px;
+}
+
+.theory-box {
+  border-left: 5px solid var(--green);
+  background: #f2f8f4;
+}
+
+.theory-box b {
+  color: var(--green);
+}
+
+.theory-box p {
+  margin: 6px 0 0;
+  color: var(--ink);
+  line-height: 1.7;
 }
 
 .number-grid b,

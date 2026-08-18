@@ -77,6 +77,9 @@ const gateOutput = (gate: Gate, a: boolean, b: boolean) => {
   return a === b;
 };
 
+const clampNumber = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+
 const lessons: Lesson[] = [
   {
     id: "base",
@@ -364,6 +367,25 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
   const [alpha, setAlpha] = useState(0.05);
   const [windowSize, setWindowSize] = useState(3);
   const [aiClaim, setAiClaim] = useState("相関が0.82なので、スマホ利用が成績低下の原因である。");
+  const [baseDevices, setBaseDevices] = useState(480);
+  const [numberAmount, setNumberAmount] = useState("120.8,80.1,35.1");
+  const [logicNeedPin, setLogicNeedPin] = useState(true);
+  const [logicNeedCard, setLogicNeedCard] = useState(true);
+  const [computerTask, setComputerTask] = useState("動画編集");
+  const [computerBudget, setComputerBudget] = useState(12);
+  const [textSample, setTextSample] = useState("情報AI,表計算");
+  const [audioMinutes, setAudioMinutes] = useState(5);
+  const [imageUseCase, setImageUseCase] = useState("photo");
+  const [imageTargetKb, setImageTargetKb] = useState(500);
+  const [videoUploadMb, setVideoUploadMb] = useState(800);
+  const [cleanSleepData, setCleanSleepData] = useState("7,6.5,,8,70,6.5");
+  const [centerCompareData, setCenterCompareData] = useState("58,62,65,67,70,95");
+  const [spreadScore, setSpreadScore] = useState(82);
+  const [relationText, setRelationText] = useState("スマホ時間と成績に負の相関があるので、スマホが原因である。");
+  const [simulationArrival, setSimulationArrival] = useState(3);
+  const [testSampleN, setTestSampleN] = useState(25);
+  const [timeseriesNext, setTimeseriesNext] = useState(48);
+  const [aiPrompt, setAiPrompt] = useState("この表を分析して結論を出して。");
 
   const calculated = useMemo(() => stats(dataRaw), [dataRaw]);
   const combinations = 1n << BigInt(bits);
@@ -386,6 +408,32 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
   const moving = timeSeries.map((_, index) =>
     index < windowSize - 1 ? null : timeSeries.slice(index - windowSize + 1, index + 1).reduce((a, b) => a + b, 0) / windowSize
   );
+  const requiredBits = Math.ceil(Math.log2(Math.max(1, baseDevices)));
+  const amountValues = numberAmount.split(/[\s,、]+/).map(Number).filter(Number.isFinite);
+  const floatSum = amountValues.reduce((sum, value) => sum + value, 0);
+  const integerYenSum = amountValues.reduce((sum, value) => sum + Math.round(value * 10), 0) / 10;
+  const logicAccess = logicNeedPin && logicNeedCard;
+  const computerChoice =
+    computerTask === "動画編集"
+      ? computerBudget >= 16 ? "RAM 16GB以上とGPUを優先" : "予算不足。画質や作業量を下げる"
+      : computerTask === "AI推論"
+        ? computerBudget >= 20 ? "GPU/NPU搭載機を優先" : "クラウド利用も検討"
+        : computerBudget >= 8 ? "CPUとSSD重視で十分" : "中古・校内端末利用を検討";
+  const textUtf8Bytes = new TextEncoder().encode(textSample).length;
+  const textRows = Math.max(1, textSample.split(/\n|,/).filter(Boolean).length);
+  const audioMissionMb = (44100 * 16 * 2 * audioMinutes * 60) / 8 / 1_000_000;
+  const imageRecommended = imageUseCase === "photo" ? "JPEG/WebP" : imageUseCase === "logo" ? "PNG/SVG" : "PNG";
+  const imageFits = imageTargetKb >= (imageUseCase === "photo" ? 350 : imageUseCase === "logo" ? 80 : 120);
+  const uploadSeconds = (videoUploadMb * 8) / Math.max(1, speed);
+  const cleanValues = cleanSleepData.split(/[\s,、]+/);
+  const cleanIssues = cleanValues.filter((value, index, values) => value === "" || value === "-" || Number(value) > 24 || values.indexOf(value) !== index).length;
+  const centerMission = stats(centerCompareData);
+  const spreadMissionZ = (spreadScore - zMean) / Math.max(1, zSd);
+  const relationWarning = relationText.includes("原因") || relationText.includes("必ず");
+  const queueWait = Math.max(0, 5 - simulationArrival) * 4;
+  const testPowerHint = testSampleN >= 30 ? "大標本としてZ検定も検討しやすい" : "母分散未知ならt検定を優先";
+  const nextMoving = [...timeSeries.slice(-(windowSize - 1)), timeseriesNext].reduce((a, b) => a + b, 0) / windowSize;
+  const promptScore = ["目的", "列", "手順", "根拠", "禁止"].filter((word) => aiPrompt.includes(word)).length;
   const missions: Record<string, [string, string, string[]]> = {
     base: ["128ビットIDを説明する", "学校の全端末へ重複しないIDを付けるなら、8ビットと128ビットのどちらが適切か。", ["必要数を見積もる", "2のn乗で比較", "将来の増加も考える"]],
     number: ["安全な金額計算を選ぶ", "購買部の会計で小数誤差を出さないため、金額を円単位の整数で扱う理由を説明しよう。", ["浮動小数点誤差", "最小単位へ変換", "範囲も確認"]],
@@ -404,26 +452,121 @@ function Experiment({ lessonId, completed, mark }: { lessonId: string; completed
     timeseries: ["翌月の売上を予測する", "月別売上から翌月を見積もり、移動平均の窓幅と季節行事の影響を説明しよう。", ["時間順", "窓幅", "季節性と限界"]],
     ai: ["AI分析を公開前に監査する", "AIのアンケート分析を共有する前に、再計算・匿名化・根拠・限界を確認しよう。", ["別手段で検算", "個人情報を除く", "根拠と限界"]]
   };
+  const theory: Record<string, [string, string, string]> = {
+    base: ["nビットは0/1の選択がn回続くので、組合せは2のn乗になります。2進数4桁は16通りなので16進数1桁に対応します。", "ビット数が1増えると、既存の全パターンに0を付けた群と1を付けた群ができるため、表現できる数は2倍になります。", "必要なID数より大きい最小の2のn乗を選ぶと、重複しない番号を作れます。"],
+    number: ["符号付き整数は先頭ビットを符号の意味に使うため、正の最大値は2^(n-1)-1、負の最小値は-2^(n-1)になります。", "10進小数の一部は2進数で有限桁にならないため、コンピュータ内部では近似値として保存されます。", "金額など正確さが必要な値は、最小単位の整数に直すと小数の丸め誤差を避けやすくなります。"],
+    logic: ["論理ゲートは入力0/1と出力0/1の対応表で決まります。ANDは両方1、ORはどちらか1、XORは異なるとき1です。", "真理値表はすべての入力パターンを列挙するため、回路の動作を漏れなく確認できます。", "条件を日常語からAND/OR/NOTに置き換えると、システムの判定ルールとして設計できます。"],
+    computer: ["CPUは命令を取り出し、解読し、実行します。RAMは作業中のデータを一時保存し、SSDは電源を切っても残す保存場所です。", "命令実行は取出し、解読、実行のサイクルで進みます。処理速度はCPUだけでなくメモリや記憶装置にも左右されます。", "用途によって負荷の場所が違うため、文書作成、動画編集、AI処理では優先すべき部品が変わります。"],
+    text: ["文字は文字コードにより数値へ対応付けられ、符号化方式により実際のバイト列へ変換されます。", "保存時と読込時の符号化方式がずれると、同じバイト列を別の文字として解釈して文字化けします。", "CSVのようなテキストデータでは、区切り文字、行数、文字コードをそろえると機械処理しやすくなります。"],
+    audio: ["音は連続波なので、一定間隔で測る標本化、段階値に丸める量子化、2進数にする符号化でデジタル化します。", "非圧縮音声の容量は、標本化周波数×量子化ビット数×チャネル数×時間で決まります。", "時間が長いほど容量は比例して増えます。音質を上げる設定も、保存容量と通信量を増やします。"],
+    image: ["画像は画素の集まりで、1画素あたりのビット数が増えるほど表現できる色数が増えます。", "写真は多少の損失が目立ちにくくJPEG/WebPに向き、ロゴや透過は可逆・透過対応のPNG/SVGに向きます。", "用途に対して解像度や容量を決めると、見やすさと読み込みやすさのバランスを取れます。"],
+    video: ["動画は静止画像を時間方向に連続表示するため、画素数、fps、時間が増えると容量が大きくなります。", "通信時間はデータ量をbitへ直し、通信速度bpsで割ると見積もれます。", "提出時は理論速度どおりには出ないため、容量と回線速度から余裕時間を考える必要があります。"],
+    clean: ["データには量的・質的、名義・順序・間隔・比例などの違いがあり、使える計算やグラフが変わります。", "欠損、重複、外れ値は即削除せず、原因と影響を確認してから処理を記録します。", "データ整理は分析結果を左右するため、計算前の点検が重要です。"],
+    center: ["平均は全値を使うため外れ値の影響を受けます。中央値は順序の中央なので外れ値に比較的強いです。", "箱ひげ図は最小、四分位、中央値、最大を使い、中心とばらつきを同時に比較できます。", "同じ平均でも分布が違うことがあるため、中央値や範囲も合わせて判断します。"],
+    spread: ["分散は平均からのずれの2乗平均、標準偏差はその平方根です。値の散らばりを元の単位に近い形で見られます。", "z得点は平均との差を標準偏差で割った値で、偏差値は平均50、標準偏差10に変換したものです。", "平均や標準偏差が違う集団を比べるときは、標準化すると位置関係を比較しやすくなります。"],
+    relation: ["散布図は2つの量的変数の対応を点で示します。相関係数は直線的な関係の方向と強さを-1から1で表します。", "相関が強くても、第三の要因や偶然の可能性があるため、原因とは断定できません。", "分析文では、関係があることと原因であることを分けて表現する必要があります。"],
+    simulation: ["乱数を使うと、現実で何度も試しにくい現象を仮想的に繰り返して傾向を見られます。", "シミュレーションは仮定に基づくモデルなので、入力条件を変えると結果も変わります。", "到着間隔が処理時間より短い状態が続くと、待ち行列は伸びやすくなります。"],
+    test: ["仮説検定は、差がないという帰無仮説のもとで、観測結果がどれくらい珍しいかを調べます。", "p値が有意水準より小さいと、帰無仮説のもとでは起こりにくい結果として棄却します。", "標本数や母分散が分かるかどうかで、Z検定、t検定、カイ二乗検定などを選び分けます。"],
+    timeseries: ["時系列データは時間順に並ぶため、長期的なトレンド、周期的な季節性、短期的な揺れを分けて読みます。", "移動平均は近い期間の平均を取り、短期的な上下をならして傾向を見やすくします。", "窓幅を変えると、なめらかさと変化への反応速度が変わります。"],
+    ai: ["AIの出力は確率的に生成されるため、もっともらしくても誤りを含む場合があります。", "分析では、元データ、計算式、結論の言い過ぎ、個人情報の有無を人が確認する必要があります。", "依頼文に目的、列、手順、根拠、禁止事項を入れると、再現性と検証可能性が上がります。"]
+  };
 
   const Card = ({ no, title, goal, children }: { no: 1 | 2 | 3; title: string; goal: string; children: React.ReactNode }) => (
     <>
       <article className="experiment-card">
         <div className="experiment-heading"><span>実験 {no}</span><div><h2>{title}</h2><p>{goal}</p></div></div>
+        <div className="theory-box"><b>理論</b><p>{theory[lessonId][no - 1]}</p></div>
         {children}
         <button className={`record-experiment ${completed[`${lessonId}-${no}`] ? "recorded" : ""}`} onClick={() => mark(no)} disabled={!!completed[`${lessonId}-${no}`]}>
           {completed[`${lessonId}-${no}`] ? `実験${no} 記録済み` : `実験${no}を記録する`}
         </button>
       </article>
-      {no === 2 && <article className="experiment-card application-card">
-        <div className="experiment-heading"><span>実験 3・応用</span><div><h2>{missions[lessonId][0]}</h2><p>基礎実験で確かめた仕組みを、現実の判断へつなげます。</p></div></div>
-        <div className="mission-box"><b>応用ミッション</b><p>{missions[lessonId][1]}</p></div>
-        <div className="mission-checks">{missions[lessonId][2].map((item, index) => <span key={item}><i>{index + 1}</i>{item}</span>)}</div>
-        <button className={`record-experiment ${completed[`${lessonId}-3`] ? "recorded" : ""}`} onClick={() => mark(3)} disabled={!!completed[`${lessonId}-3`]}>
-          {completed[`${lessonId}-3`] ? "実験3 記録済み" : "実験3を記録する"}
-        </button>
-      </article>}
+      {no === 2 && <MissionCard />}
     </>
   );
+
+  const MissionCard = () => {
+    const title = missions[lessonId][0];
+    const mission = missions[lessonId][1];
+    const checks = missions[lessonId][2];
+    let body: React.ReactNode = null;
+
+    if (lessonId === "base") body = <>
+      <label className="control">学校で識別したい端末数<input type="number" min="1" max="1000000" value={baseDevices} onChange={(e) => setBaseDevices(clampNumber(+e.target.value, 1, 1000000))} /></label>
+      <div className="number-grid"><div><span>必要な最小ビット数</span><b>{requiredBits}</b></div><div><span>8ビットで足りるか</span><b>{baseDevices <= 256 ? "足りる" : "不足"}</b></div><div><span>128ビット</span><b>十分</b></div></div>
+    </>;
+    else if (lessonId === "number") body = <>
+      <label className="control">小数の金額を入力<input value={numberAmount} onChange={(e) => setNumberAmount(e.target.value)} /></label>
+      <div className="number-grid"><div><span>そのまま合計</span><b>{floatSum}</b></div><div><span>10倍整数で計算</span><b>{integerYenSum}</b></div><div><span>差</span><b>{Math.abs(floatSum - integerYenSum).toExponential(1)}</b></div></div>
+    </>;
+    else if (lessonId === "logic") body = <>
+      <div className="switches"><button className={logicNeedCard ? "active" : ""} onClick={() => setLogicNeedCard(!logicNeedCard)}>社員証 {logicNeedCard ? "あり" : "なし"}</button><button className={logicNeedPin ? "active" : ""} onClick={() => setLogicNeedPin(!logicNeedPin)}>暗証番号 {logicNeedPin ? "一致" : "不一致"}</button></div>
+      <div className={`decision ${logicAccess ? "reject" : ""}`}>{logicAccess ? "AND条件を満たす: 入室可" : "どちらか不足: 入室不可"}</div>
+    </>;
+    else if (lessonId === "computer") body = <>
+      <div className="three-controls"><label>用途<select value={computerTask} onChange={(e) => setComputerTask(e.target.value)}><option>文書作成</option><option>動画編集</option><option>AI推論</option></select></label><label>予算目安<input type="number" min="4" max="40" value={computerBudget} onChange={(e) => setComputerBudget(clampNumber(+e.target.value, 4, 40))} /></label></div>
+      <div className="focus-result"><span>優先判断</span><b>{computerChoice}</b></div>
+    </>;
+    else if (lessonId === "text") body = <>
+      <label className="control">CSV風の文字列<textarea value={textSample} onChange={(e) => setTextSample(e.target.value)} /></label>
+      <div className="number-grid"><div><span>UTF-8バイト数</span><b>{textUtf8Bytes}</b></div><div><span>行・項目数の目安</span><b>{textRows}</b></div><div><span>文字化け対策</span><b>UTF-8指定</b></div></div>
+    </>;
+    else if (lessonId === "audio") body = <>
+      <label className="control">録音時間<input type="range" min="1" max="30" value={audioMinutes} onChange={(e) => setAudioMinutes(+e.target.value)} /><b>{audioMinutes}分</b></label>
+      <div className="focus-result"><span>CD相当ステレオの概算</span><b>{fmt(audioMissionMb)} MB</b><small>44.1kHz・16bit・2ch</small></div>
+    </>;
+    else if (lessonId === "image") body = <>
+      <div className="three-controls"><label>用途<select value={imageUseCase} onChange={(e) => setImageUseCase(e.target.value)}><option value="photo">写真</option><option value="logo">透過ロゴ</option><option value="chart">図表</option></select></label><label>目標KB<input type="number" min="10" max="5000" value={imageTargetKb} onChange={(e) => setImageTargetKb(clampNumber(+e.target.value, 10, 5000))} /></label></div>
+      <div className="number-grid"><div><span>推奨形式</span><b>{imageRecommended}</b></div><div><span>目標容量</span><b>{imageFits ? "現実的" : "厳しい"}</b></div></div>
+    </>;
+    else if (lessonId === "video") body = <>
+      <label className="control">提出動画の容量<input type="number" min="1" max="10000" value={videoUploadMb} onChange={(e) => setVideoUploadMb(clampNumber(+e.target.value, 1, 10000))} /></label>
+      <div className="focus-result"><span>{speed}Mbpsでの送信時間</span><b>{fmt(uploadSeconds)} 秒</b><small>MBをMbitへ直して速度で割る</small></div>
+    </>;
+    else if (lessonId === "clean") body = <>
+      <label className="control">睡眠時間データ<textarea value={cleanSleepData} onChange={(e) => setCleanSleepData(e.target.value)} /></label>
+      <div className="focus-result"><span>点検が必要な値</span><b>{cleanIssues} 個</b><small>空欄・24超・重複を検出</small></div>
+    </>;
+    else if (lessonId === "center") body = <>
+      <label className="control">比較データ<textarea value={centerCompareData} onChange={(e) => setCenterCompareData(e.target.value)} /></label>
+      {centerMission && <div className="number-grid"><div><span>平均</span><b>{fmt(centerMission.mean)}</b></div><div><span>中央値</span><b>{fmt(centerMission.median)}</b></div><div><span>最大値</span><b>{centerMission.max}</b></div></div>}
+    </>;
+    else if (lessonId === "spread") body = <>
+      <div className="three-controls"><label>得点<input type="number" value={spreadScore} onChange={(e) => setSpreadScore(+e.target.value)} /></label><label>平均<input type="number" value={zMean} onChange={(e) => setZMean(+e.target.value)} /></label><label>標準偏差<input type="number" min="1" value={zSd} onChange={(e) => setZSd(+e.target.value)} /></label></div>
+      <div className="number-grid"><div><span>z得点</span><b>{fmt(spreadMissionZ, 2)}</b></div><div><span>偏差値</span><b>{fmt(50 + 10 * spreadMissionZ)}</b></div></div>
+    </>;
+    else if (lessonId === "relation") body = <>
+      <label className="control">分析文<textarea value={relationText} onChange={(e) => setRelationText(e.target.value)} /></label>
+      <div className={`decision ${relationWarning ? "" : "reject"}`}>{relationWarning ? "因果の断定を疑う必要あり" : "相関の範囲で表現できています"}</div>
+    </>;
+    else if (lessonId === "simulation") body = <>
+      <label className="control">平均到着間隔<input type="range" min="1" max="8" value={simulationArrival} onChange={(e) => setSimulationArrival(+e.target.value)} /><b>{simulationArrival}分ごと</b></label>
+      <div className="focus-result"><span>待ち時間の増えやすさ</span><b>{queueWait} 分相当</b><small>処理5分より短い間隔だと行列が伸びる</small></div>
+    </>;
+    else if (lessonId === "test") body = <>
+      <label className="control">標本数<input type="range" min="5" max="100" value={testSampleN} onChange={(e) => setTestSampleN(+e.target.value)} /><b>{testSampleN}</b></label>
+      <div className="focus-result"><span>検定選択の目安</span><b>{testPowerHint}</b></div>
+    </>;
+    else if (lessonId === "timeseries") body = <>
+      <label className="control">次月の実測候補<input type="number" value={timeseriesNext} onChange={(e) => setTimeseriesNext(+e.target.value)} /></label>
+      <div className="focus-result"><span>次を含めた移動平均</span><b>{fmt(nextMoving)}</b><small>窓幅 {windowSize} 期間</small></div>
+    </>;
+    else body = <>
+      <label className="control">AIへの依頼文<textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} /></label>
+      <div className="number-grid"><div><span>具体化スコア</span><b>{promptScore}/5</b></div><div><span>不足しやすい指定</span><b>{promptScore >= 4 ? "少ない" : "あり"}</b></div></div>
+    </>;
+
+    return <article className="experiment-card application-card">
+      <div className="experiment-heading"><span>実験 3・応用</span><div><h2>{title}</h2><p>入力を変えて、結果や判断がどう変わるかを確かめます。</p></div></div>
+      <div className="theory-box"><b>理論</b><p>{theory[lessonId][2]}</p></div>
+      <div className="mission-box"><b>応用ミッション</b><p>{mission}</p></div>
+      {body}
+      <div className="mission-checks">{checks.map((item, index) => <span key={item}><i>{index + 1}</i>{item}</span>)}</div>
+      <button className={`record-experiment ${completed[`${lessonId}-3`] ? "recorded" : ""}`} onClick={() => mark(3)} disabled={!!completed[`${lessonId}-3`]}>
+        {completed[`${lessonId}-3`] ? "実験3 記録済み" : "実験3を記録する"}
+      </button>
+    </article>;
+  };
 
   if (lessonId === "base") return <div className="experiments">
     <Card no={1} title="同じ値を3つの基数で見る" goal="表記が変わっても値は同じであることを確かめます。">
