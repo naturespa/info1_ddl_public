@@ -259,16 +259,16 @@ export function BaseLab({ card }: LabProps) {
         "10進数を入力するか、ビットを直接押して、表記が変わっても値は同じことを確かめます。",
         <>
           <Row>
-            <NumberField label="10進数を入力" value={decimal} onChange={(v) => { setDecimal(clamp(v, 0, 255)); setBitInput(padBits(clamp(v, 0, 255).toString(2), 8)); }} min={0} max={255} />
-            <TextField label="2進数を直接入力" value={bitInput} onChange={(v) => { setBitInput(v); const parsed = parseInt(parseBits(v) || "0", 2); setDecimal(parsed); }} mono hint="0と1だけ・8けた" />
+            <NumberField label="10進数(10)を入力" value={decimal} onChange={(v) => { setDecimal(clamp(v, 0, 255)); setBitInput(padBits(clamp(v, 0, 255).toString(2), 8)); }} min={0} max={255} />
+            <TextField label="2進数(2)を直接入力" value={bitInput} onChange={(v) => { setBitInput(v); const parsed = parseInt(parseBits(v) || "0", 2); setDecimal(parsed); }} mono hint="0と1だけ・8けた" />
           </Row>
           <BitStrip bits={bits} onToggle={toggleBit} />
           <Results
             items={[
-              { label: "2進数", value: bits },
-              { label: "10進数", value: bitValue },
-              { label: "16進数", value: bitValue.toString(16).toUpperCase().padStart(2, "0") },
-              { label: "8進数", value: bitValue.toString(8) }
+              { label: "2進数(2)", value: bits },
+              { label: "10進数(10)", value: bitValue },
+              { label: "16進数(16)", value: bitValue.toString(16).toUpperCase().padStart(2, "0") },
+              { label: "8進数(8)", value: bitValue.toString(8) }
             ]}
           />
           <Hint>ビットのボタンを押すと0と1が入れかわります。1が立っているけたの重みを足すと10進数になります。</Hint>
@@ -280,16 +280,16 @@ export function BaseLab({ card }: LabProps) {
         "2進数4けたを16進数1けたにまとめる",
         "16進数を入力して、4けた区切りの対応を確かめます。",
         <>
-          <TextField label="16進数を入力" value={hexInput} onChange={setHexInput} mono hint="0〜9とA〜F" />
+          <TextField label="16進数(16)を入力" value={hexInput} onChange={setHexInput} mono hint="0〜9とA〜F" />
           {hexValue === null ? (
             <Verdict ok={false}>16進数として読めません。0〜9とA〜Fだけで入力してください。</Verdict>
           ) : (
             <>
               <Steps
                 items={[
-                  { label: "16進数", value: hexInput.toUpperCase() },
-                  { label: "1けたずつ2進4けたに", value: hexInput.toUpperCase().replace(/[^0-9A-Fa-f]/g, "").split("").map((c) => parseInt(c, 16).toString(2).padStart(4, "0")).join(" ") },
-                  { label: "10進数", value: fmt(hexValue, 4) }
+                  { label: "16進数(16)", value: hexInput.toUpperCase() },
+                  { label: "1けたずつ2進数(2)4けたに", value: hexInput.toUpperCase().replace(/[^0-9A-Fa-f]/g, "").split("").map((c) => parseInt(c, 16).toString(2).padStart(4, "0")).join(" ") },
+                  { label: "10進数(10)", value: fmt(hexValue, 4) }
                 ]}
               />
               <Hint>2進数4けたは0000〜1111の16通り。16進数1けたとちょうど同じ数なので、機械的に置き換えられます。</Hint>
@@ -303,12 +303,12 @@ export function BaseLab({ card }: LabProps) {
         "小数を2進数にする",
         "10進の小数を2進数に直し、有限けたで表せるかを確かめます。",
         <>
-          <NumberField label="10進の小数を入力" value={fraction} onChange={setFraction} step={0.05} min={0} max={100} hint="0.1 や 0.375 を試そう" />
+          <NumberField label="10進数(10)の小数を入力" value={fraction} onChange={setFraction} step={0.05} min={0} max={100} hint="0.1 や 0.375 を試そう" />
           <Results
             items={[
-              { label: "2進数（20けたまで）", value: <span className="mono">{fracBinary}</span> },
-              { label: "戻した値", value: fmt(fracBack, 12) },
-              { label: "誤差", value: fmt(Math.abs(fraction - fracBack), 12), warn: Math.abs(fraction - fracBack) > 1e-9 },
+              { label: "2進数(2)（20けたまで）", value: <span className="mono">{fracBinary}</span> },
+              { label: "10進数(10)へ戻した値", value: fmt(fracBack, 12) },
+              { label: "10進数(10)での誤差", value: fmt(Math.abs(fraction - fracBack), 12), warn: Math.abs(fraction - fracBack) > 1e-9 },
               { label: "有限けたで表せるか", value: Math.abs(fraction - fracBack) < 1e-12 ? "表せる" : "表せない（循環する）" }
             ]}
           />
@@ -322,20 +322,20 @@ export function BaseLab({ card }: LabProps) {
         "8けたの2進数を2つ入力し、けたごとの繰り上がりを追います。",
         <>
           <Row>
-            <TextField label="元の値" value={addA} onChange={setAddA} mono />
-            <TextField label="加える値" value={addB} onChange={setAddB} mono />
+            <TextField label="元の値(2)" value={addA} onChange={setAddA} mono />
+            <TextField label="加える値(2)" value={addB} onChange={setAddB} mono />
           </Row>
           <div className="calc-sheet">
             <div><span>繰り上がり</span><b className="mono">{add.carries}</b></div>
-            <div><span>元の値</span><b className="mono">{add.a}</b></div>
-            <div><span>加える値</span><b className="mono">{add.b}</b></div>
-            <div className="sum"><span>結果</span><b className="mono">{add.sum}</b></div>
+            <div><span>元の値(2)</span><b className="mono">{add.a}</b></div>
+            <div><span>加える値(2)</span><b className="mono">{add.b}</b></div>
+            <div className="sum"><span>結果(2)</span><b className="mono">{add.sum}</b></div>
           </div>
           <Results
             items={[
-              { label: "10進での確認", value: `${add.decimalA} + ${add.decimalB} = ${add.decimalSum}` },
+              { label: "10進数(10)での確認", value: `${add.decimalA} + ${add.decimalB} = ${add.decimalSum}` },
               { label: "8けたに収まるか", value: add.overflow ? "オーバーフロー" : "収まる", warn: add.overflow },
-              { label: "けたあふれを含む結果", value: <span className="mono">{add.full}</span> }
+              { label: "けたあふれを含む結果(2)", value: <span className="mono">{add.full}</span> }
             ]}
           />
           <Hint>1 + 1 は 10（イチゼロ）。決めたけた数からあふれた1は捨てられます。これがオーバーフローです。</Hint>
@@ -357,8 +357,8 @@ export function BaseLab({ card }: LabProps) {
           <BitStrip bits={logical.after} />
           <Results
             items={[
-              { label: "シフト前（10進）", value: logical.beforeValue },
-              { label: "シフト後（10進）", value: logical.afterValue },
+              { label: "シフト前（10進数(10)）", value: logical.beforeValue },
+              { label: "シフト後（10進数(10)）", value: logical.afterValue },
               { label: "理論上の倍率", value: shiftDir === "left" ? `×${2 ** shiftCount}` : `÷${2 ** shiftCount}` },
               { label: "実際の倍率", value: logical.beforeValue ? fmt(logical.afterValue / logical.beforeValue, 3) : "-", warn: shiftDir === "left" && logical.afterValue < logical.beforeValue }
             ]}
@@ -385,7 +385,7 @@ export function BaseLab({ card }: LabProps) {
               { label: "シフト前（符号付き）", value: arithmetic.beforeValue },
               { label: "シフト後（符号付き）", value: arithmetic.afterValue },
               { label: "符号は保たれたか", value: arithmetic.before[0] === arithmetic.after[0] ? "保たれた" : "変わった", warn: arithmetic.before[0] !== arithmetic.after[0] },
-              { label: "論理シフトなら", value: shiftBits(arithSource, 8, arithDir as "left" | "right", arithCount, "logical").after }
+              { label: "論理シフトなら(2)", value: shiftBits(arithSource, 8, arithDir as "left" | "right", arithCount, "logical").after }
             ]}
           />
           <Hint>負の数を論理シフトすると符号が消えて正の数になってしまいます。だから符号ありには算術シフトを使います。</Hint>
@@ -487,11 +487,11 @@ export function NegativeLab({ card }: LabProps) {
         "1の補数をつくる",
         "0と1をすべて反転させます。機械にとって最も簡単な操作です。",
         <>
-          <TextField label="元のビット列（8けた）" value={source} onChange={setSource} mono />
+          <TextField label="元のビット列(2)（8けた）" value={source} onChange={setSource} mono />
           <BitStrip bits={bits} />
           <div className="shift-arrow">すべて反転（NOT）</div>
           <BitStrip bits={ones} />
-          <Results items={[{ label: "元の値（符号なし）", value: parseInt(bits, 2) }, { label: "1の補数", value: <span className="mono">{ones}</span> }]} />
+          <Results items={[{ label: "元の値（符号なし10進数(10)）", value: parseInt(bits, 2) }, { label: "1の補数(2)", value: <span className="mono">{ones}</span> }]} />
         </>
       )}
 
@@ -502,18 +502,18 @@ export function NegativeLab({ card }: LabProps) {
         <>
           <Steps
             items={[
-              { label: "元の値", value: <span className="mono">{bits}</span> },
-              { label: "反転（1の補数）", value: <span className="mono">{twos.flipped}</span> },
-              { label: "1を足す（2の補数）", value: <span className="mono">{twos.result}</span> },
-              { label: "10進で読むと", value: signedValue(twos.result) }
+              { label: "元の値(2)", value: <span className="mono">{bits}</span> },
+              { label: "反転（1の補数(2)）", value: <span className="mono">{twos.flipped}</span> },
+              { label: "1を足す（2の補数(2)）", value: <span className="mono">{twos.result}</span> },
+              { label: "10進数(10)で読むと", value: signedValue(twos.result) }
             ]}
           />
           <Formula>
-            {bits} + {twos.result} = {check.full}（8けたからあふれた1を捨てると {check.sum}）
+            {bits}(2) + {twos.result}(2) = {check.full}(2)（8けたからあふれた1を捨てると {check.sum}(2)）
           </Formula>
           <Verdict ok={check.sum === "00000000"}>
             {check.sum === "00000000"
-              ? `${parseInt(bits, 2)} + (${signedValue(twos.result)}) = 0 が成り立ちました。`
+              ? `${parseInt(bits, 2)}(10) + (${signedValue(twos.result)})(10) = 0(10) が成り立ちました。`
               : "0になりません。元の値が0のときは補数も0になります。"}
           </Verdict>
         </>
@@ -525,7 +525,7 @@ export function NegativeLab({ card }: LabProps) {
         "負の数を入力して、表現できる範囲の外に出るとどうなるかを見ます。",
         <>
           <Row>
-            <NumberField label="10進数（負でも可）" value={target} onChange={setTarget} min={-100000} max={100000} />
+            <NumberField label="10進数(10)（負でも可）" value={target} onChange={setTarget} min={-100000} max={100000} />
             <SelectField label="ビット幅" value={String(width)} onChange={(v) => setWidth(Number(v))} options={[4, 8, 16, 32].map((n) => ({ value: String(n), label: `${n} bit` }))} />
           </Row>
           {signedBits ? (
@@ -533,9 +533,9 @@ export function NegativeLab({ card }: LabProps) {
               <BitStrip bits={signedBits.length > 16 ? signedBits.slice(-16) : signedBits} signed weights={width <= 16} />
               <Results
                 items={[
-                  { label: "2の補数表現", value: <span className="mono">{signedBits}</span> },
+                  { label: "2の補数表現(2)", value: <span className="mono">{signedBits}</span> },
                   { label: "符号ビット", value: signedBits[0] === "1" ? "1（負）" : "0（正）" },
-                  { label: "16進数", value: parseInt(signedBits, 2).toString(16).toUpperCase() }
+                  { label: "16進数(16)", value: parseInt(signedBits, 2).toString(16).toUpperCase() }
                 ]}
               />
             </>
@@ -555,8 +555,8 @@ export function NegativeLab({ card }: LabProps) {
           <SliderField label="ビット幅" value={width} onChange={setWidth} min={4} max={32} unit=" bit" />
           <Results
             items={[
-              { label: "符号なし", value: `0 〜 ${fmt(unsignedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
-              { label: "符号あり", value: `${fmt(signedMin, 0)} 〜 ${fmt(signedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
+              { label: "符号なし10進数(10)", value: `0 〜 ${fmt(unsignedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
+              { label: "符号あり10進数(10)", value: `${fmt(signedMin, 0)} 〜 ${fmt(signedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
               { label: "正の側", value: `${fmt(signedMax + 1, 0)} 個`, note: "0を含む" },
               { label: "負の側", value: `${fmt(-signedMin, 0)} 個`, note: "負が1つ多い" }
             ]}
@@ -603,6 +603,13 @@ export function RealLab({ card }: LabProps) {
   const [decision, setDecision] = useState("");
 
   const normalized = normalizeBinary(value);
+  const integerPart = Math.trunc(value);
+  const fractionalPart = Math.abs(value - integerPart);
+  const signedIntegerBits = toSignedBits(integerPart, 8);
+  const fractionalBits = toBase(fractionalPart, 2, 16).replace(/^0/, "");
+  const realBinary = `${signedIntegerBits ?? "8ビット範囲外"}${fractionalPart > 0 ? fractionalBits : ""}`;
+  const fractionalHex = toBase(fractionalPart, 16, 8).replace(/^0/, "");
+  const realHex = signedIntegerBits ? `${parseInt(signedIntegerBits, 2).toString(16).toUpperCase().padStart(2, "0")}${fractionalPart > 0 ? fractionalHex : ""}` : "8ビット範囲外";
   const float32 = toFloat32(value);
   const sum = floatA + floatB;
   const expected = Math.round(sum * 1e10) / 1e10;
@@ -615,17 +622,19 @@ export function RealLab({ card }: LabProps) {
       {card(
         0,
         "10進数を2進数に直す",
-        "小数点より右のけたが 1/2, 1/4, 1/8 …になることを確かめます。",
+        "整数部は原則8ビットで表示し、負の数はマイナス記号を付けず2の補数で表します。",
         <>
-          <NumberField label="10進数（小数可・負も可）" value={value} onChange={setValue} step={0.25} />
+          <NumberField label="10進数(10)（小数可・負も可）" value={value} onChange={setValue} step={0.25} />
           <Results
             items={[
-              { label: "2進数", value: <span className="mono">{toBase(value, 2, 16)}</span> },
-              { label: "16進数", value: <span className="mono">{toBase(value, 16, 8)}</span> },
-              { label: "整数部", value: Math.trunc(Math.abs(value)) },
-              { label: "小数部", value: fmt(Math.abs(value) - Math.trunc(Math.abs(value)), 6) }
+              { label: "2進数(2)（8ビット・負数は2の補数）", value: <span className="mono">{realBinary}</span>, warn: signedIntegerBits === null },
+              { label: "16進数(16)（整数部は2の補数）", value: <span className="mono">{realHex}</span>, warn: signedIntegerBits === null },
+              { label: "整数部(10)", value: integerPart },
+              { label: "整数部の解釈", value: signedIntegerBits ? <span className="mono">{signedIntegerBits}(2) = {integerPart}(10)</span> : "8ビット符号付き整数の範囲外" },
+              { label: "小数部(10)", value: fmt(fractionalPart, 6) }
             ]}
           />
+          <Hint>例: -10.25(10) は整数部 -10(10) を8ビット2の補数で 11110110(2)、小数部 0.25(10) を .01(2) として、11110110.01(2) のように表します。</Hint>
         </>
       )}
 
@@ -636,14 +645,14 @@ export function RealLab({ card }: LabProps) {
         <>
           <Steps
             items={[
-              { label: "2進数", value: <span className="mono">{normalized.binary}</span> },
+              { label: "2進数(2)", value: <span className="mono">{normalized.binary}</span> },
               { label: "符号", value: normalized.negative ? "− (1)" : "＋ (0)" },
               { label: "仮数（正規化後）", value: <span className="mono">{normalized.mantissa}</span> },
-              { label: "指数", value: `2 の ${normalized.exponent} 乗` }
+              { label: "指数(10)", value: `2 の ${normalized.exponent} 乗` }
             ]}
           />
           <Formula>
-            {value} ＝ {normalized.negative ? "−" : "＋"} {normalized.mantissa} × 2<sup>{normalized.exponent}</sup>
+            {value}(10) ＝ {normalized.negative ? "−" : "＋"} {normalized.mantissa}(2) × 2<sup>{normalized.exponent}</sup>
           </Formula>
           <Hint>小数点が左に動けば指数は正、右に動けば負になります。指数は「小数点を何けた動かしたか」そのものです。</Hint>
         </>
@@ -661,13 +670,13 @@ export function RealLab({ card }: LabProps) {
           </div>
           <Results
             items={[
-              { label: "指数部の格納値", value: float32.exponentValue, note: "実際の指数＋127" },
-              { label: "実際の指数", value: float32.realExponent },
-              { label: "格納された値", value: fmt(float32.stored, 10) },
-              { label: "元の値との差", value: fmt(float32.error, 12), warn: float32.error !== 0 }
+              { label: "指数部の格納値(10)", value: float32.exponentValue, note: "実際の指数＋127" },
+              { label: "実際の指数(10)", value: float32.realExponent },
+              { label: "格納された値(10)", value: fmt(float32.stored, 10) },
+              { label: "元の値との差(10)", value: fmt(float32.error, 12), warn: float32.error !== 0 }
             ]}
           />
-          <Hint>指数部にはバイアス127を足した値が入ります。指数3なら 3 + 127 = 130 を2進数で格納します。</Hint>
+          <Hint>指数部にはバイアス127を足した値が入ります。指数3(10)なら 3 + 127 = 130(10) を2進数(2)で格納します。</Hint>
         </>
       )}
 
@@ -687,10 +696,10 @@ export function RealLab({ card }: LabProps) {
           </div>
           <Results
             items={[
-              { label: "期待した値", value: expected },
-              { label: "実際の値", value: String(sum) },
+              { label: "期待した値(10)", value: expected },
+              { label: "実際の値(10)", value: String(sum) },
               { label: "ぴったり一致するか", value: sum === expected ? "一致" : "一致しない", warn: sum !== expected },
-              { label: "100倍して整数化", value: (Math.round(floatA * 100) + Math.round(floatB * 100)) / 100 }
+              { label: "100倍して整数化した値(10)", value: (Math.round(floatA * 100) + Math.round(floatB * 100)) / 100 }
             ]}
           />
         </>
@@ -704,9 +713,9 @@ export function RealLab({ card }: LabProps) {
           <TextField label="金額を並べて入力" value={amounts} onChange={setAmounts} hint="カンマまたはスペース区切り" />
           <Results
             items={[
-              { label: "そのまま合計", value: String(naive) },
-              { label: "10倍の整数で合計", value: String(integerSum) },
-              { label: "差", value: Math.abs(naive - integerSum).toExponential(2), warn: naive !== integerSum },
+              { label: "そのまま合計(10)", value: String(naive) },
+              { label: "10倍の整数で合計(10)", value: String(integerSum) },
+              { label: "差(10)", value: Math.abs(naive - integerSum).toExponential(2), warn: naive !== integerSum },
               { label: "件数", value: `${values.length} 件` }
             ]}
           />
@@ -866,7 +875,7 @@ export function LogicLab({ card }: LabProps) {
             <div><small>AND → 桁上がり C</small><b>{Number(half.c)}</b></div>
           </div>
           <Formula>
-            {Number(hx)} + {Number(hy)} = {Number(half.c)}{Number(half.s)} （2進数）＝ {Number(hx) + Number(hy)}（10進数）
+            {Number(hx)}(2) + {Number(hy)}(2) = {Number(half.c)}{Number(half.s)}(2) ＝ {Number(hx) + Number(hy)}(10)
           </Formula>
           <DataTable
             head={["X", "Y", "S（和）", "C（桁上がり）"]}
@@ -895,7 +904,7 @@ export function LogicLab({ card }: LabProps) {
             <div><small>2つのCをOR → Co</small><b>{Number(full.co)}</b></div>
           </div>
           <Formula>
-            {Number(fx)} + {Number(fy)} + {Number(fc)} = {Number(full.co)}{Number(full.s)}（2進数）＝ {Number(fx) + Number(fy) + Number(fc)}
+            {Number(fx)}(2) + {Number(fy)}(2) + {Number(fc)}(2) = {Number(full.co)}{Number(full.s)}(2) ＝ {Number(fx) + Number(fy) + Number(fc)}(10)
           </Formula>
         </>
       )}
@@ -915,8 +924,8 @@ export function LogicLab({ card }: LabProps) {
           />
           <Results
             items={[
-              { label: "計算結果", value: <span className="mono">{ripple.sum}</span> },
-              { label: "10進で確認", value: `${parseInt(ripple.x, 2)} + ${parseInt(ripple.y, 2)} = ${parseInt(ripple.x, 2) + parseInt(ripple.y, 2)}` },
+              { label: "計算結果(2)", value: <span className="mono">{ripple.sum}</span> },
+              { label: "10進数(10)で確認", value: `${parseInt(ripple.x, 2)} + ${parseInt(ripple.y, 2)} = ${parseInt(ripple.x, 2) + parseInt(ripple.y, 2)}` },
               { label: "最上位の桁上がり", value: ripple.carryOut ? "あり（オーバーフロー）" : "なし", warn: ripple.carryOut }
             ]}
           />
@@ -1145,12 +1154,12 @@ export function TextLab({ card }: LabProps) {
           <Results
             items={[
               { label: "文字", value: info.char },
-              { label: "10進数", value: info.dec },
-              { label: "16進数", value: info.hex },
-              { label: "2進数", value: <span className="mono">{info.bin}</span> }
+              { label: "10進数(10)", value: info.dec },
+              { label: "16進数(16)", value: info.hex },
+              { label: "2進数(2)", value: <span className="mono">{info.bin}</span> }
             ]}
           />
-          <Hint>A は65、a は97。大文字と小文字は32（2進数で1けた分）だけ離れています。</Hint>
+          <Hint>A は65(10)、a は97(10)。大文字と小文字は32(10)（2進数(2)で1けた分）だけ離れています。</Hint>
         </>
       )}
 
@@ -1499,9 +1508,9 @@ export function ImageLab({ card }: LabProps) {
           </div>
           <Results
             items={[
-              { label: "10進カラーコード", value: `${r}, ${g}, ${b}` },
-              { label: "16進カラーコード", value: rgbHex },
-              { label: "2進数（Rのみ）", value: <span className="mono">{r.toString(2).padStart(8, "0")}</span> },
+              { label: "10進カラーコード(10)", value: `${r}, ${g}, ${b}` },
+              { label: "16進カラーコード(16)", value: rgbHex },
+              { label: "2進数(2)（Rのみ）", value: <span className="mono">{r.toString(2).padStart(8, "0")}</span> },
               { label: "表せる色数", value: "16,777,216 色", note: "各8bit＝24bit" }
             ]}
           />
@@ -1527,7 +1536,7 @@ export function ImageLab({ card }: LabProps) {
           </div>
           <Results
             items={[
-              { label: "画面での見え方（RGB換算）", value: `${cmyToRgb.r}, ${cmyToRgb.g}, ${cmyToRgb.b}` },
+              { label: "画面での見え方（RGB換算・10進数(10)）", value: `${cmyToRgb.r}, ${cmyToRgb.g}, ${cmyToRgb.b}` },
               { label: "CMYすべて100%", value: "理論上は黒", note: "実際は濁るのでKを足す" },
               { label: "CMYすべて0%", value: "紙の白" }
             ]}
