@@ -24,8 +24,6 @@ export default function Home() {
   const [drafts, setDrafts] = useState<Record<string, number[]>>({});
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [experiments, setExperiments] = useState<Record<string, boolean>>({});
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [reflection, setReflection] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
 
@@ -35,38 +33,35 @@ export default function Home() {
     const quizCorrect = Object.values(submissions).reduce((sum, submission) => sum + submission.correct, 0);
     const quizMax = totalQuestions;
     const experimentDone = Object.values(experiments).filter(Boolean).length;
-    const noteCount = lessons.filter((lesson) => (notes[lesson.id] ?? "").trim().length >= 20).length;
     const completedLessons = lessons.filter((lesson) => {
       const done = Array.from({ length: experimentCount(lesson) }, (_, i) => experiments[`${lesson.id}-${i}`]).every(Boolean);
       return !!submissions[lesson.id] && done;
     }).length;
     const knowledge = Math.round((quizCorrect / quizMax) * 100);
     const thinking = Math.round((experimentDone / totalExperiments) * 100);
-    const attitude = Math.round(((noteCount + (reflection.trim().length >= 50 ? 2 : 0)) / (lessons.length + 2)) * 100);
     return {
-      totalScore: Math.round(knowledge * 0.5 + thinking * 0.35 + attitude * 0.15),
-      perspective: { knowledge, thinking, attitude },
+      totalScore: Math.round(knowledge * 0.6 + thinking * 0.4),
+      perspective: { knowledge, thinking },
       quizCorrect,
       quizMax,
       experimentDone,
       experimentMax: totalExperiments,
-      noteCount,
       completedLessons,
       lessonCount: lessons.length
     };
-  }, [submissions, experiments, notes, reflection]);
+  }, [submissions, experiments]);
 
   useEffect(() => setLoaded(true), []);
 
   useEffect(() => {
     if (!loaded || studentCode.length !== 4) return;
-    const record: StudentRecord = { version: 2, studentCode, drafts, submissions, experiments, notes, reflection, summary };
+    const record: StudentRecord = { version: 2, studentCode, drafts, submissions, experiments, summary };
     try {
       localStorage.setItem(`${STORAGE_PREFIX}${studentCode}`, JSON.stringify(record));
     } catch {
       /* 保存できない環境では黙って続行する */
     }
-  }, [loaded, studentCode, drafts, submissions, experiments, notes, reflection, summary]);
+  }, [loaded, studentCode, drafts, submissions, experiments, summary]);
 
   const updateStudentCode = (value: string) => {
     const code = normalizeStudentCode(value);
@@ -75,8 +70,6 @@ export default function Home() {
       setDrafts({});
       setSubmissions({});
       setExperiments({});
-      setNotes({});
-      setReflection("");
     };
     if (code.length !== 4) {
       reset();
@@ -87,8 +80,6 @@ export default function Home() {
       setDrafts(saved.drafts ?? {});
       setSubmissions(saved.submissions ?? {});
       setExperiments(saved.experiments ?? {});
-      setNotes(saved.notes ?? {});
-      setReflection(saved.reflection ?? "");
     } catch {
       reset();
     }
@@ -125,8 +116,6 @@ export default function Home() {
       drafts,
       submissions,
       experiments,
-      notes,
-      reflection,
       summary
     };
     const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json;charset=utf-8" });
@@ -142,8 +131,6 @@ export default function Home() {
     setDrafts({});
     setSubmissions({});
     setExperiments({});
-    setNotes({});
-    setReflection("");
     setActive("home");
   };
 
@@ -241,10 +228,6 @@ export default function Home() {
                   <li>
                     <span>思考・判断・表現</span>
                     <b>{summary.perspective.thinking}</b>
-                  </li>
-                  <li>
-                    <span>主体性</span>
-                    <b>{summary.perspective.attitude}</b>
                   </li>
                 </ul>
               </div>
@@ -393,18 +376,6 @@ export default function Home() {
               )}
             </section>
 
-            <section className="field notice">
-              <label>
-                この単元の振り返り（20字以上で主体性の評価に反映されます）
-                <textarea
-                  value={notes[current.id] ?? ""}
-                  onChange={(e) => setNotes((prev) => ({ ...prev, [current.id]: e.target.value }))}
-                  placeholder="わかったこと、まだ説明しにくいこと、次に試したいことを書きましょう。"
-                  rows={4}
-                />
-              </label>
-              <span className="muted small">{(notes[current.id] ?? "").trim().length} 字</span>
-            </section>
           </section>
         )}
 
@@ -415,7 +386,7 @@ export default function Home() {
             </button>
             <h1>成績・JSON出力</h1>
             <p className="muted">
-              知識・技能（確認問題）50％、思考・判断・表現（実験）35％、主体性（振り返り）15％で総合点を計算します。教員用の保存機能はありません。
+              知識・技能（確認問題）60％、思考・判断・表現（実験）40％で総合点を計算します。教員用の保存機能はありません。
             </p>
             <div className="result-grid">
               <div className="metric">
@@ -437,11 +408,6 @@ export default function Home() {
                   {summary.experimentDone}/{summary.experimentMax}実験
                 </small>
               </div>
-              <div className="metric">
-                <span>主体性</span>
-                <b>{summary.perspective.attitude}</b>
-                <small>振り返り {summary.noteCount}単元</small>
-              </div>
             </div>
             <p className="muted small">
               完了した単元（全実験＋確認問題送信）: {summary.completedLessons} / {summary.lessonCount}
@@ -457,17 +423,6 @@ export default function Home() {
                   <em>{submissions[lesson.id] ? `${submissions[lesson.id].correct}/${lesson.questions.length}` : "未送信"}</em>
                 </div>
               ))}
-            </div>
-            <div className="field notice">
-              <label>
-                学習全体の振り返り（50字以上で主体性の評価に反映されます）
-                <textarea
-                  value={reflection}
-                  onChange={(e) => setReflection(e.target.value)}
-                  placeholder="理解できたこと、まだ説明しにくいこと、次に試したいことを書きましょう。"
-                  rows={5}
-                />
-              </label>
             </div>
             <div className="actions">
               <button className="primary" disabled={studentCode.length !== 4} onClick={exportJson}>

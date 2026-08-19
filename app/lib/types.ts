@@ -62,8 +62,6 @@ export type Perspective = {
   knowledge: number;
   /** 思考・判断・表現：実験の実施率 */
   thinking: number;
-  /** 主体的に学習に取り組む態度：振り返りの記述 */
-  attitude: number;
 };
 
 export type StudentRecord = {
@@ -73,10 +71,6 @@ export type StudentRecord = {
   drafts: Record<string, number[]>;
   submissions: Record<string, Submission>;
   experiments: Record<string, boolean>;
-  /** 単元ごとの振り返り */
-  notes: Record<string, string>;
-  /** 全体の振り返り */
-  reflection: string;
   summary: {
     totalScore: number;
     perspective: Perspective;
@@ -84,7 +78,6 @@ export type StudentRecord = {
     quizMax: number;
     experimentDone: number;
     experimentMax: number;
-    noteCount: number;
     completedLessons: number;
     lessonCount: number;
   };

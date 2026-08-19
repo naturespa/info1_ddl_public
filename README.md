@@ -66,15 +66,14 @@ Excelシートの演習データをそのまま初期値として使っていま
 
 過去問題の著作権はIPA（情報処理推進機構）に帰属します。出典は各問題に明記しています。
 
-## 観点別評価への対応
+## 得点集計
 
-学習結果を、学習指導要領の3観点に対応させて集計します。
+学習結果を、確認問題と実験の実施状況から集計します。
 
-| 観点 | 集計対象 | 重み |
+| 項目 | 集計対象 | 重み |
 |---|---|---|
-| 知識・技能 | 確認問題144問の正答率 | 50% |
-| 思考・判断・表現 | 実験120個の実施率 | 35% |
-| 主体的に学習に取り組む態度 | 単元ごとの振り返り（20字以上）＋全体の振り返り（50字以上） | 15% |
+| 確認問題 | 確認問題144問の正答率 | 60% |
+| 実験 | 実験120個の実施率 | 40% |
 
 ## 公開版の方針
 
@@ -94,20 +93,18 @@ Excelシートの演習データをそのまま初期値として使っていま
   "drafts":      { "base": [1, 2, 1, 0, 1, 1, 1, 2] },
   "submissions": { "base": { "answers": [...], "correct": 7, "submittedAt": "..." } },
   "experiments": { "base-0": true, "base-1": true },
-  "notes":       { "base": "16進数が4ビット区切りなのが分かった" },
-  "reflection":  "全体の振り返り",
   "summary": {
     "totalScore": 82,
-    "perspective": { "knowledge": 85, "thinking": 80, "attitude": 75 },
+    "perspective": { "knowledge": 85, "thinking": 80 },
     "quizCorrect": 122, "quizMax": 144,
     "experimentDone": 96, "experimentMax": 120,
-    "noteCount": 14, "completedLessons": 12, "lessonCount": 18
+    "completedLessons": 12, "lessonCount": 18
   }
 }
 ```
 
 v1（旧版）のJSONとは互換性がありません。`experiments` のキーが `base-1`〜`base-3`（1始まり）から
-`base-0`〜`base-7`（0始まり）へ変わり、`notes` と `perspective` が追加されています。
+`base-0`〜`base-7`（0始まり）へ変わり、`perspective` が追加されています。
 
 ## ファイル構成
 
