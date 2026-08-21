@@ -237,14 +237,71 @@ export const gateOutput = (gate: Gate, a: boolean, b: boolean): boolean => {
   }
 };
 
+/** 教科書の表記。論理積は「・」、論理和は「＋」、否定は上線（ここでは NOT で示す） */
 export const gateFormula: Record<Gate, string> = {
-  NOT: "Z = NOT X",
-  AND: "Z = X AND Y",
-  OR: "Z = X OR Y",
-  NAND: "Z = NOT(X AND Y)",
-  NOR: "Z = NOT(X OR Y)",
-  XOR: "Z = X XOR Y",
-  XNOR: "Z = NOT(X XOR Y)"
+  NOT: "F ＝ NOT A",
+  AND: "F ＝ A・B",
+  OR: "F ＝ A＋B",
+  NAND: "F ＝ NOT(A・B)",
+  NOR: "F ＝ NOT(A＋B)",
+  XOR: "F ＝ A・NOT(B) ＋ NOT(A)・B",
+  XNOR: "F ＝ NOT( A・NOT(B) ＋ NOT(A)・B )"
+};
+
+/** NANDゲートだけで他のゲートを作る組み立て方 */
+export const nandRecipe: Record<Gate, { steps: string[]; count: number }> = {
+  NOT: { steps: ["A と A を NAND に入れる"], count: 1 },
+  AND: { steps: ["A・B を NAND に入れる", "その出力を NOT（NAND）に通す"], count: 2 },
+  OR: { steps: ["A を NOT（NAND）にする", "B を NOT（NAND）にする", "2つの出力を NAND に入れる"], count: 3 },
+  NAND: { steps: ["そのまま NAND を1つ使う"], count: 1 },
+  NOR: { steps: ["OR を NAND 3つで作る", "その出力を NOT（NAND）に通す"], count: 4 },
+  XOR: { steps: ["A・B の NAND を求める（これを C とする）", "A と C の NAND を求める", "B と C の NAND を求める", "2つの出力を NAND に入れる"], count: 4 },
+  XNOR: { steps: ["XOR を NAND 4つで作る", "その出力を NOT（NAND）に通す"], count: 5 }
+};
+
+/** NANDゲートだけで組んだ回路の出力（正しく等価になっているかの検算用） */
+export const nandOnly = (gate: Gate, a: boolean, b: boolean): boolean => {
+  const nand = (x: boolean, y: boolean) => !(x && y);
+  switch (gate) {
+    case "NOT":
+      return nand(a, a);
+    case "AND":
+      return nand(nand(a, b), nand(a, b));
+    case "OR":
+      return nand(nand(a, a), nand(b, b));
+    case "NAND":
+      return nand(a, b);
+    case "NOR": {
+      const or = nand(nand(a, a), nand(b, b));
+      return nand(or, or);
+    }
+    case "XOR": {
+      const c = nand(a, b);
+      return nand(nand(a, c), nand(b, c));
+    }
+    default: {
+      const c = nand(a, b);
+      const xor = nand(nand(a, c), nand(b, c));
+      return nand(xor, xor);
+    }
+  }
+};
+
+/** 10進数を2で割り続けて余りを並べる、教科書の変換手順 */
+export const divisionLadder = (value: number, base = 2) => {
+  const rows: { dividend: number; quotient: number; remainder: number }[] = [];
+  let n = Math.max(0, Math.floor(value));
+  if (n === 0) return { rows: [{ dividend: 0, quotient: 0, remainder: 0 }], digits: "0" };
+  while (n > 0) {
+    const quotient = Math.floor(n / base);
+    rows.push({ dividend: n, quotient, remainder: n % base });
+    n = quotient;
+  }
+  const digits = rows
+    .map((r) => r.remainder.toString(base).toUpperCase())
+    .reverse()
+    .join("");
+  return { rows, digits };
 };
 
 /** 半加算器：XORで和、ANDで桁上がり */
@@ -839,4 +896,107 @@ export const movingAverage = (values: number[], window: number, centered = true)
 export const trendLine = (values: number[]) => {
   const xs = values.map((_, index) => index);
   return regression(xs, values);
+};
+
+/* ============================================================
+ * D10 データの圧縮
+ * ========================================================== */
+
+/** 圧縮率(%) ＝ 圧縮後のデータ量 ÷ 圧縮前のデータ量 × 100 */
+export const compressionRate = (after: number, before: number) =>
+  before === 0 ? NaN : (after / before) * 100;
+
+/** 同じ文字が連続する部分をまとめる（ランレングス法） */
+export const runLength = (text: string) => {
+  const chars = Array.from(text);
+  const runs: { char: string; count: number }[] = [];
+  for (const char of chars) {
+    const last = runs[runs.length - 1];
+    if (last && last.char === char) last.count += 1;
+    else runs.push({ char, count: 1 });
+  }
+  const kinds = new Set(chars).size;
+  const symbolBits = Math.max(1, Math.ceil(Math.log2(Math.max(2, kinds))));
+  const maxCount = runs.length ? Math.max(...runs.map((r) => r.count)) : 0;
+  const countBits = Math.max(1, Math.ceil(Math.log2(maxCount + 1)));
+  const before = symbolBits * chars.length;
+  /** 記号と個数の両方を記録する方式 */
+  const afterWithSymbol = (symbolBits + countBits) * runs.length;
+  /** 2種類が交互に現れると決めておき、個数だけを記録する方式 */
+  const afterCountOnly = countBits * runs.length;
+  const alternating = kinds <= 2 && runs.every((run, index) => index === 0 || run.char !== runs[index - 1].char);
+  return {
+    runs,
+    chars: chars.length,
+    kinds,
+    symbolBits,
+    countBits,
+    maxCount,
+    before,
+    afterWithSymbol,
+    afterCountOnly,
+    alternating,
+    rateWithSymbol: compressionRate(afterWithSymbol, before),
+    rateCountOnly: compressionRate(afterCountOnly, before)
+  };
+};
+
+type HuffNode = {
+  weight: number;
+  char?: string;
+  left?: HuffNode;
+  right?: HuffNode;
+};
+
+/** ハフマン符号化。出現頻度の高い文字ほど短い符号になる */
+export const huffman = (text: string) => {
+  const chars = Array.from(text).filter((c) => c.trim() !== "");
+  if (!chars.length) return null;
+  const freq = new Map<string, number>();
+  chars.forEach((c) => freq.set(c, (freq.get(c) ?? 0) + 1));
+  const kinds = freq.size;
+  const fixedBits = Math.max(1, Math.ceil(Math.log2(Math.max(2, kinds))));
+  const before = fixedBits * chars.length;
+
+  if (kinds === 1) {
+    const only = [...freq.keys()][0];
+    return {
+      table: [{ char: only, count: chars.length, code: "0", bits: 1, total: chars.length }],
+      kinds,
+      fixedBits,
+      before,
+      after: chars.length,
+      rate: compressionRate(chars.length, before)
+    };
+  }
+
+  // 重みの小さい2つを繰り返し結合してハフマン木を作る
+  let nodes: HuffNode[] = [...freq.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([char, weight]) => ({ char, weight }));
+  while (nodes.length > 1) {
+    nodes.sort((a, b) => a.weight - b.weight);
+    const left = nodes.shift()!;
+    const right = nodes.shift()!;
+    nodes.push({ weight: left.weight + right.weight, left, right });
+  }
+  const codes = new Map<string, string>();
+  const walk = (node: HuffNode, prefix: string) => {
+    if (node.char !== undefined) {
+      codes.set(node.char, prefix || "0");
+      return;
+    }
+    if (node.left) walk(node.left, prefix + "0");
+    if (node.right) walk(node.right, prefix + "1");
+  };
+  walk(nodes[0], "");
+
+  const table = [...freq.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .map(([char, count]) => {
+      const code = codes.get(char) ?? "";
+      return { char, count, code, bits: code.length, total: code.length * count };
+    });
+  const after = table.reduce((sum, row) => sum + row.total, 0);
+  return { table, kinds, fixedBits, before, after, rate: compressionRate(after, before) };
 };

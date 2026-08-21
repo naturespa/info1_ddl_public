@@ -51,6 +51,76 @@ export default function Home() {
     };
   }, [submissions, experiments]);
 
+  /** 成績ページのダッシュボード用に、単元別・難易度別の理解度を集計する */
+  const analysis = useMemo(() => {
+    const perLesson = lessons.map((lesson) => {
+      const submission = submissions[lesson.id];
+      const total = lesson.questions.length;
+      const correct = submission?.correct ?? 0;
+      const rate = submission ? Math.round((correct / total) * 100) : null;
+      const wrong = submission
+        ? lesson.questions
+            .map((question, index) => ({ question, index, picked: submission.answers[index] }))
+            .filter((row) => row.picked !== row.question.answer)
+        : [];
+      const expTotal = experimentCount(lesson);
+      const expDone = Array.from({ length: expTotal }, (_, i) => experiments[`${lesson.id}-${i}`]).filter(Boolean).length;
+      const state: "none" | "good" | "warn" | "bad" =
+        rate === null ? "none" : rate >= 80 ? "good" : rate >= 60 ? "warn" : "bad";
+      return { lesson, submitted: !!submission, total, correct, rate, wrong, expDone, expTotal, state };
+    });
+
+    const levels = ["基礎", "共通テスト", "ITパスポート", "基本情報"] as const;
+    const byLevel = levels.map((level) => {
+      let correct = 0;
+      let total = 0;
+      perLesson.forEach((row) => {
+        if (!row.submitted) return;
+        row.lesson.questions.forEach((question, index) => {
+          if (question.level !== level) return;
+          total += 1;
+          if (submissions[row.lesson.id]!.answers[index] === question.answer) correct += 1;
+        });
+      });
+      return { level, correct, total, rate: total ? Math.round((correct / total) * 100) : null };
+    });
+
+    const answered = perLesson.filter((row) => row.submitted);
+    const weak = answered.filter((row) => (row.rate ?? 100) < 80).sort((a, b) => (a.rate ?? 0) - (b.rate ?? 0)).slice(0, 3);
+    const strong = answered.filter((row) => (row.rate ?? 0) >= 80);
+    const basic = byLevel[0];
+    const applied = byLevel.slice(1).reduce(
+      (acc, row) => ({ correct: acc.correct + row.correct, total: acc.total + row.total }),
+      { correct: 0, total: 0 }
+    );
+    const appliedRate = applied.total ? Math.round((applied.correct / applied.total) * 100) : null;
+    const untouched = perLesson.filter((row) => row.expDone === 0 && !row.submitted).length;
+
+    /** 集計結果から、事実だけを根拠にした短い講評を組み立てる */
+    const verdicts: string[] = [];
+    if (!answered.length) {
+      verdicts.push("まだ確認問題が1つも送信されていません。どの単元でもよいので1つ送信すると、ここに得意と弱点が表示されます。");
+    } else {
+      const totalCorrect = answered.reduce((a, b) => a + b.correct, 0);
+      const totalAsked = answered.reduce((a, b) => a + b.total, 0);
+      verdicts.push(`送信した${answered.length}単元で、${totalAsked}問中${totalCorrect}問（${Math.round((totalCorrect / totalAsked) * 100)}%）正解しています。`);
+      if (basic.rate !== null && appliedRate !== null && basic.rate - appliedRate >= 20) {
+        verdicts.push(`用語や定義（基礎${basic.rate}%）は入っていますが、計算や判断を求める問題（${appliedRate}%）で落としています。手順を実験でたどり直すのが近道です。`);
+      } else if (basic.rate !== null && appliedRate !== null && appliedRate - basic.rate >= 20) {
+        verdicts.push(`計算問題（${appliedRate}%）は解けていますが、用語の問題（基礎${basic.rate}%）で落としています。各単元の重要語句を開いて確認しましょう。`);
+      }
+      const weakLowExp = weak.filter((row) => row.expDone < row.expTotal / 2);
+      if (weakLowExp.length) {
+        verdicts.push(`弱点の単元のうち${weakLowExp.length}つは、実験もまだ半分以下しか触れていません。読むより先に、手を動かすほうが効きます。`);
+      }
+      if (strong.length) {
+        verdicts.push(`${strong.length}単元が8割を超えています。ここは自信を持って先へ進んで大丈夫です。`);
+      }
+    }
+
+    return { perLesson, byLevel, weak, strong, answered, untouched, verdicts };
+  }, [submissions, experiments]);
+
   useEffect(() => setLoaded(true), []);
 
   useEffect(() => {
@@ -155,12 +225,13 @@ export default function Home() {
             <div className="mission-box">
               <b>応用ミッション</b>
               <p>{lesson.mission.body}</p>
-              <div className="mission-checks">
-                {lesson.mission.checks.map((item, i) => (
-                  <span key={item}>
-                    <i>{i + 1}</i>
-                    {item}
-                  </span>
+              <div className="mission-steps">
+                {lesson.mission.steps.map((item, i) => (
+                  <div className="mission-step" key={item.label}>
+                    <span>手順 {i + 1}</span>
+                    <b>{item.label}</b>
+                    <p>{item.detail}</p>
+                  </div>
                 ))}
               </div>
             </div>
@@ -202,10 +273,10 @@ export default function Home() {
           <>
             <section className="hero">
               <div>
-                <h1>操作して、判断できる情報Iへ。</h1>
+                <h1>さあ、どの単元から攻略する？</h1>
                 <p>
-                  全{lessons.length}単元・実験{totalExperiments}個・確認問題{totalQuestions}問。すべての実験は数値や文字を自分で入力して動かせます。
-                  学習結果はこのブラウザに保存され、最後にJSONで出力できます。
+                  全{lessons.length}単元・実験{totalExperiments}個・確認問題{totalQuestions}問。読むだけの単元はひとつもありません。
+                  数値を打ちこみ、ビットを押し、絵を描いて確かめていきます。挑んだ記録はこのブラウザに残り、成績ページで弱点まで見えます。
                 </p>
                 <div className="lookup">
                   <label>
@@ -412,6 +483,168 @@ export default function Home() {
             <p className="muted small">
               完了した単元（全実験＋確認問題送信）: {summary.completedLessons} / {summary.lessonCount}
             </p>
+
+            <section className="dashboard">
+              <div className="dash-head">
+                <h2>理解度ダッシュボード</h2>
+                <span className="muted small">送信済みの確認問題から、得意な単元と弱点を割り出します</span>
+              </div>
+
+              <div className="verdict-box">
+                {analysis.verdicts.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+
+              <div className="dash-panel">
+                  <h3>難易度別の到達度</h3>
+                  <p className="muted small">同じ範囲でも、問われ方が変わると正答率は変わります。</p>
+                  <div className="level-bars">
+                    {analysis.byLevel.map((row) => (
+                      <div className="level-row" key={row.level} title={`${row.level}: ${row.correct}/${row.total}問正解`}>
+                        <span className={`level level-${row.level}`}>{row.level}</span>
+                        <div className="bar-track">
+                          <i style={{ width: `${row.rate ?? 0}%` }} />
+                        </div>
+                        <b>{row.rate === null ? "—" : `${row.rate}%`}</b>
+                        <em>
+                          {row.correct}/{row.total}問
+                        </em>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="hint-line">
+                    基礎は用語や定義、共通テスト以上は計算と判断を問う問題です。差が20ポイント以上あると、覚え方と使い方のどちらかに偏りがあります。
+                  </p>
+              </div>
+
+              <div className="dash-panel">
+                  <h3>単元別の理解度マップ</h3>
+                  <p className="muted small">色と文字の両方で状態を示しています。押すとその単元へ移動します。</p>
+                  <div className="unit-map">
+                    {analysis.perLesson.map((row) => (
+                      <button
+                        type="button"
+                        key={row.lesson.id}
+                        className={`map-row state-${row.state}`}
+                        onClick={() => setActive(row.lesson.id)}
+                        title={`${row.lesson.no} ${row.lesson.title} — ${row.submitted ? `${row.correct}/${row.total}問正解` : "未送信"} / 実験 ${row.expDone}/${row.expTotal}`}
+                      >
+                        <span className="map-no">{row.lesson.no}</span>
+                        <span className="map-title">{row.lesson.title}</span>
+                        <span className="bar-track">
+                          <i style={{ width: `${row.rate ?? 0}%` }} />
+                        </span>
+                        <b>{row.rate === null ? "—" : `${row.rate}%`}</b>
+                        <em className="map-state">
+                          {row.state === "good" ? "定着" : row.state === "warn" ? "あと一歩" : row.state === "bad" ? "要復習" : "未受験"}
+                        </em>
+                        <em className="map-exp">
+                          実験 {row.expDone}/{row.expTotal}
+                        </em>
+                      </button>
+                    ))}
+                  </div>
+              </div>
+
+              {analysis.weak.length > 0 && (
+                <div className="dash-panel">
+                  <h3>いま優先して立て直したい単元</h3>
+                  <p className="muted small">正答率の低い順に、最大3つまで表示しています。</p>
+                  <div className="weak-cards">
+                    {analysis.weak.map((row) => (
+                      <article className="weak-card" key={row.lesson.id}>
+                        <header>
+                          <span className="map-no">{row.lesson.no}</span>
+                          <b>{row.lesson.title}</b>
+                          <em>
+                            {row.correct}/{row.total}問正解（{row.rate}%）
+                          </em>
+                        </header>
+                        <div className="weak-block">
+                          <span>つまずいている可能性</span>
+                          <p>{row.lesson.remedy.stumble}</p>
+                        </div>
+                        {row.wrong.length > 0 && (
+                          <div className="weak-block">
+                            <span>間違えた問題で問われていたこと</span>
+                            <ul>
+                              {row.wrong.slice(0, 3).map((w) => (
+                                <li key={w.question.id}>{w.question.q.length > 46 ? `${w.question.q.slice(0, 46)}…` : w.question.q}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <div className="weak-block">
+                          <span>こうすれば分かるようになります</span>
+                          <ol className="remedy-steps">
+                            {row.lesson.remedy.actions.map((action, i) => (
+                              <li key={action}>
+                                <i>{i + 1}</i>
+                                {action}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                        <div className="weak-foot">
+                          <span className="muted small">
+                            実験の実施 {row.expDone}/{row.expTotal}
+                            {row.expDone < row.expTotal / 2 ? "（まず実験に戻るのが近道です）" : ""}
+                          </span>
+                          <button type="button" className="primary" onClick={() => setActive(row.lesson.id)}>
+                            {row.lesson.no} をやり直す
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {analysis.strong.length > 0 && (
+                <div className="dash-panel">
+                  <h3>もう身についている単元</h3>
+                  <div className="strong-list">
+                    {analysis.strong.map((row) => (
+                      <span key={row.lesson.id}>
+                        {row.lesson.no} {row.lesson.title}
+                        <i>{row.rate}%</i>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {analysis.answered.some((row) => row.wrong.length > 0) && (
+                <details className="dash-panel review">
+                  <summary>
+                    間違えた問題をまとめて復習する（{analysis.answered.reduce((a, b) => a + b.wrong.length, 0)}問）
+                  </summary>
+                  {analysis.answered
+                    .filter((row) => row.wrong.length > 0)
+                    .map((row) => (
+                      <div className="review-lesson" key={row.lesson.id}>
+                        <h4>
+                          {row.lesson.no} {row.lesson.title}
+                        </h4>
+                        {row.wrong.map((w) => (
+                          <div className="review-item" key={w.question.id}>
+                            <p className="review-q">
+                              <span className={`level level-${w.question.level}`}>{w.question.level}</span>
+                              {w.question.q}
+                            </p>
+                            <p className="review-a">
+                              <span className="ng">あなたの答え: {w.picked >= 0 ? w.question.choices[w.picked] : "無回答"}</span>
+                              <span className="ok">正解: {w.question.choices[w.question.answer]}</span>
+                            </p>
+                            <p className="review-e">{w.question.explanation}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                </details>
+              )}
+            </section>
             <div className="unit-results">
               {lessons.map((lesson) => (
                 <div key={lesson.id}>

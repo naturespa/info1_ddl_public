@@ -228,13 +228,14 @@ export function Results({ items }: { items: { label: string; value: ReactNode; n
   );
 }
 
-export function Steps({ items }: { items: { label: string; value: ReactNode }[] }) {
+export function Steps({ items }: { items: { label: string; value: ReactNode; note?: string }[] }) {
   return (
     <div className="calc-steps">
       {items.map((item, index) => (
         <div key={`${item.label}-${index}`}>
           <span>{item.label}</span>
           <b>{item.value}</b>
+          {item.note && <em>{item.note}</em>}
         </div>
       ))}
     </div>

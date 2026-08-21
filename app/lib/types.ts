@@ -19,13 +19,29 @@ export type Term = {
   meaning: string;
 };
 
+export type MissionStep = {
+  /** 図解カードの見出し */
+  label: string;
+  /** その手順で何をするか */
+  detail: string;
+};
+
 export type Mission = {
   title: string;
   body: string;
-  checks: string[];
+  /** 応用ミッションの手順を図解するための3ステップ */
+  steps: MissionStep[];
 };
 
 export type Area = "デジタル" | "データ活用";
+
+/** つまずいたときの立て直し方。ダッシュボードの弱点カードに表示する */
+export type Remedy = {
+  /** この単元でつまずく人に共通する原因 */
+  stumble: string;
+  /** 何をすれば理解できるようになるか（順番に3つ） */
+  actions: string[];
+};
 
 export type Lesson = {
   id: string;
@@ -46,6 +62,8 @@ export type Lesson = {
   theory: string[];
   /** 応用ミッション（実験の最後に配置） */
   mission: Mission;
+  /** 正答率が低かったときに表示する学び直しの手順 */
+  remedy: Remedy;
   questions: Question[];
 };
 

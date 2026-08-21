@@ -25,7 +25,14 @@ import {
   parseBits,
   parseNumbers,
   radixComplement,
+  compressionRate,
+  divisionLadder,
+  huffman,
+  nandOnly,
+  nandRecipe,
   rippleAdder,
+  runLength,
+  seededRandom,
   shiftBits,
   signedValue,
   sjisBytes,
@@ -61,10 +68,21 @@ import {
 export type CardRenderer = (index: number, title: string, goal: string, body: ReactNode) => ReactNode;
 export type LabProps = { card: CardRenderer };
 
+/** 教科書（1KB＝1,024B）にそろえた段階表示。IPAの問題文が1,000進を指定する場合は下段を見る */
 const bytesRow = (bytes: number) => {
   const s = byteSteps(bytes);
   return [
     { label: "バイト", value: `${fmt(s.bytes, 0)} B` },
+    { label: "キロバイト", value: `${fmt(s.kib, 2)} KB`, note: "÷1,024" },
+    { label: "メガバイト", value: `${fmt(s.mib, 3)} MB`, note: "÷1,024²" },
+    { label: "ギガバイト", value: `${fmt(s.gib, 4)} GB`, note: "÷1,024³" }
+  ];
+};
+
+/** 問題文で1MB＝1,000kBと指定されたときの値 */
+const bytesRowSI = (bytes: number) => {
+  const s = byteSteps(bytes);
+  return [
     { label: "キロバイト", value: `${fmt(s.kb, 2)} kB`, note: "÷1,000" },
     { label: "メガバイト", value: `${fmt(s.mb, 3)} MB`, note: "÷1,000²" },
     { label: "ギガバイト", value: `${fmt(s.gb, 4)} GB`, note: "÷1,000³" }
@@ -75,137 +93,363 @@ const bytesRow = (bytes: number) => {
  * D0 デジタル情報の特徴
  * ====================================================================== */
 export function FeatureLab({ card }: LabProps) {
-  const [analog, setAnalog] = useState(6.37);
-  const [levels, setLevels] = useState(8);
-  const [generations, setGenerations] = useState(5);
-  const [noise, setNoise] = useState(3);
+  const [temp, setTemp] = useState(21.7);
+  const [gradation, setGradation] = useState("1");
+  const [copies, setCopies] = useState(6);
+  const [wear, setWear] = useState("normal");
   const [bits, setBits] = useState(8);
-  const [size, setSize] = useState(2.5);
-  const [unit, setUnit] = useState("GB");
+  const [kinds, setKinds] = useState(15);
   const [stage, setStage] = useState("digitization");
   const [plan, setPlan] = useState("");
 
-  const step = 10 / (levels - 1);
-  const quantized = Math.round(analog / step) * step;
-  const analogAfter = analog + (noise / 100) * generations * analog;
-  const unitFactor: Record<string, number> = { B: 1, KB: 1e3, MB: 1e6, GB: 1e9, TB: 1e12 };
-  const totalBytes = size * unitFactor[unit];
-  const stageInfo: Record<string, [string, string]> = {
-    digitization: ["デジタイゼーション", "情報の形式をデータに変えるだけ。紙をPDFにする、名簿をExcelにする。"],
-    digitalization: ["デジタライゼーション", "手順そのものを作り変える。申請をオンライン化して押印をなくす。"],
-    dx: ["DX", "仕組みごと変える。そもそも申請という手続きを不要にする。"]
+  /* --- 実験1: アナログ温度計とデジタル温度計 --- */
+  const stepSize = Number(gradation);
+  const digitalTemp = Math.round(temp / stepSize) * stepSize;
+  const gap = Math.abs(temp - digitalTemp);
+  const TEMP_MIN = -5;
+  const TEMP_MAX = 40;
+  const heightOf = (value: number) => ((value - TEMP_MIN) / (TEMP_MAX - TEMP_MIN)) * 100;
+
+  /* --- 実験2: コピーを重ねる --- */
+  const HEART = [
+    "00000000",
+    "01100110",
+    "11111111",
+    "11111111",
+    "11111111",
+    "01111110",
+    "00111100",
+    "00011000"
+  ];
+  const wearAmount = wear === "small" ? 0.04 : wear === "large" ? 0.2 : 0.1;
+  const copied = useMemo(() => {
+    const random = seededRandom(20260818);
+    const rows = HEART.map((row) => row.split("").map(Number));
+    const analog = rows.map((row) => row.map((v) => v));
+    for (let c = 0; c < copies; c++) {
+      for (let y = 0; y < analog.length; y++) {
+        for (let x = 0; x < analog[y].length; x++) {
+          analog[y][x] = clamp(analog[y][x] + (random() - 0.5) * 2 * wearAmount, 0, 1);
+        }
+      }
+    }
+    // デジタルは1回ごとに「0.5より上か下か」で判定し直すので、もとの値に戻る
+    const digital = rows.map((row) => row.map((v) => v));
+    const diffs = analog.flatMap((row, y) => row.map((v, x) => Math.abs(v - rows[y][x])));
+    return {
+      original: rows,
+      analog,
+      digital,
+      analogGap: diffs.reduce((a, b) => a + b, 0) / diffs.length,
+      worst: Math.max(...diffs)
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copies, wearAmount]);
+
+  /* --- 実験3: ビット数と表せる組み合わせ --- */
+  const combos = 2n ** BigInt(bits);
+  const binaryRaw = combos.toString(2);
+  const padded = binaryRaw.padStart(Math.ceil(binaryRaw.length / 8) * 8, "0");
+  const byteGroups = padded.match(/.{8}/g) ?? [];
+  const combosNumber = Number(combos);
+  const unit = (value: number) => {
+    if (value === 0) return "0";
+    if (value >= 1e15 || value < 1e-4) return value.toExponential(3);
+    return value.toLocaleString("ja-JP", { maximumFractionDigits: value < 1 ? 6 : 3 });
   };
+
+  /* --- 実験4: 符号化に必要なビット数 --- */
+  const safeKinds = Math.max(2, Math.round(kinds));
+  const neededBits = Math.ceil(Math.log2(safeKinds));
+  const capacity = 2 ** neededBits;
+  const presets: [string, number][] = [
+    ["天気 15種類", 15],
+    ["色鉛筆 50色", 50],
+    ["ひらがな 46字", 46],
+    ["英字 大小52字", 52],
+    ["常用漢字 2,136字", 2136],
+    ["半角文字 256種", 256]
+  ];
+
+  /* --- 応用: デジタル化の3段階 --- */
+  const stages: [string, string, string, string][] = [
+    ["digitization", "デジタイゼーション", "形式を変える", "紙の出席簿を、そのままの形でアプリに入力する"],
+    ["digitalization", "デジタライゼーション", "手順を変える", "入室時のICカードで出席が自動記録され、点呼をやめる"],
+    ["dx", "DX", "仕組みを変える", "「授業に来たか」ではなく「どこでどれだけ学んだか」で学習を捉え直す"]
+  ];
 
   return (
     <>
       {card(
         0,
-        "アナログの値をデジタルに丸める",
-        "連続した値を段階の値に置き換えると、どれだけずれるかを確かめます。",
+        "アナログ温度計とデジタル温度計を見比べる",
+        "同じ温度を、連続で表す場合と段階で表す場合で並べます。つまみを動かしてみましょう。",
         <>
-          <Row>
-            <NumberField label="測定した値（アナログ）" value={analog} onChange={setAnalog} step={0.01} min={0} max={10} unit="V" />
-            <NumberField label="量子化の段階数" value={levels} onChange={setLevels} min={2} max={256} hint="2のn乗にすると扱いやすい" />
-          </Row>
-          <Formula>1段階の幅 ＝ 測定範囲 10 ÷ (段階数 − 1)</Formula>
-          <Results
-            items={[
-              { label: "1段階の幅", value: `${fmt(step, 4)} V` },
-              { label: "デジタル化した値", value: `${fmt(quantized, 4)} V` },
-              { label: "量子化誤差", value: `${fmt(Math.abs(analog - quantized), 4)} V`, warn: Math.abs(analog - quantized) > step / 4 },
-              { label: "必要なビット数", value: `${Math.ceil(Math.log2(levels))} bit` }
+          <SliderField label="いまの本当の温度" value={temp} onChange={setTemp} min={-5} max={40} step={0.1} unit=" ℃" />
+          <SelectField
+            label="デジタル温度計の細かさ"
+            value={gradation}
+            onChange={setGradation}
+            options={[
+              { value: "1", label: "1℃きざみ（整数だけ表示）" },
+              { value: "0.5", label: "0.5℃きざみ" },
+              { value: "0.1", label: "0.1℃きざみ" }
             ]}
           />
-          <Hint>段階数を増やすほど誤差は小さくなりますが、1つの値を記録するのに必要なビット数が増えます。</Hint>
+          <div className="thermo-pair">
+            <div className="thermo">
+              <span className="thermo-title">アナログ温度計</span>
+              <div className="thermo-tube">
+                <i style={{ height: `${heightOf(temp)}%` }} />
+              </div>
+              <b className="thermo-read analog">{temp.toFixed(1)} ℃</b>
+              <small>液体の高さがなめらかに変わる</small>
+            </div>
+            <div className="thermo">
+              <span className="thermo-title">デジタル温度計</span>
+              <div className="thermo-tube stepped">
+                <i style={{ height: `${heightOf(digitalTemp)}%` }} />
+                {gap > 0.001 && (
+                  <em
+                    style={{
+                      bottom: `${Math.min(heightOf(temp), heightOf(digitalTemp))}%`,
+                      height: `${Math.abs(heightOf(temp) - heightOf(digitalTemp))}%`
+                    }}
+                  />
+                )}
+              </div>
+              <b className="thermo-read digital">{digitalTemp.toFixed(gradation === "1" ? 0 : 1)} ℃</b>
+              <small>段階が決まっていて、途中で止まらない</small>
+            </div>
+          </div>
+          <Results
+            items={[
+              { label: "本当の温度", value: `${temp.toFixed(1)} ℃` },
+              { label: "デジタルの表示", value: `${digitalTemp.toFixed(gradation === "1" ? 0 : 1)} ℃` },
+              { label: "表せなかった分", value: `${gap.toFixed(2)} ℃`, warn: gap > stepSize / 4 },
+              { label: "1℃あたりの段階数", value: `${fmt(1 / stepSize, 0)} 段階` }
+            ]}
+          />
+          <Hint>
+            つまみを少しずつ動かすと、左はなめらかに動き、右はカクカクと飛びます。この「段階に置きかえる」考え方が、このあと学ぶ
+            音（D7）・画像（D8）・動画（D9）のデジタル化すべての土台になります。
+          </Hint>
         </>
       )}
 
       {card(
         1,
-        "コピーを重ねたときの劣化",
-        "アナログは複製のたびに劣化し、デジタルは劣化しないことを比べます。",
+        "コピーを重ねると、絵はどうなるか",
+        "同じ絵をアナログとデジタルでコピーし続けます。回数を増やして見比べましょう。",
         <>
-          <Row>
-            <NumberField label="複製の世代数" value={generations} onChange={setGenerations} min={0} max={50} unit="回" />
-            <NumberField label="1回あたりのノイズ" value={noise} onChange={setNoise} min={0} max={30} unit="%" />
-          </Row>
-          <Results
-            items={[
-              { label: "アナログ（元の値）", value: fmt(analog, 3) },
-              { label: `アナログ（${generations}世代後）`, value: fmt(analogAfter, 3), warn: generations > 0 },
-              { label: "デジタル（元の値）", value: fmt(quantized, 3) },
-              { label: `デジタル（${generations}世代後）`, value: fmt(quantized, 3), note: "0/1の判定さえ誤らなければ不変" }
+          <SliderField label="コピーした回数" value={copies} onChange={setCopies} min={0} max={20} unit=" 回" />
+          <SelectField
+            label="1回コピーするごとの劣化の大きさ"
+            value={wear}
+            onChange={setWear}
+            options={[
+              { value: "small", label: "小さい（きれいなコピー機）" },
+              { value: "normal", label: "ふつう" },
+              { value: "large", label: "大きい（古いコピー機）" }
             ]}
           />
-          <Hint>デジタルは「どちらの段階に近いか」だけを判定するので、小さなノイズは復元の途中で消えます。</Hint>
+          <div className="copy-lab">
+            <div>
+              <span>もとの絵</span>
+              <div className="pixel-grid">
+                {copied.original.map((row, y) => (
+                  <div key={y}>
+                    {row.map((v, x) => (
+                      <i key={x} style={{ background: `rgb(${v * 220 + 20},${v * 60 + 20},${v * 70 + 30})` }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <small>スタート</small>
+            </div>
+            <div className="arrow">→</div>
+            <div>
+              <span>アナログでコピー</span>
+              <div className="pixel-grid">
+                {copied.analog.map((row, y) => (
+                  <div key={y}>
+                    {row.map((v, x) => (
+                      <i key={x} style={{ background: `rgb(${v * 220 + 20},${v * 60 + 20},${v * 70 + 30})` }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <small className={copies > 0 ? "bad" : ""}>{copies}回コピー後</small>
+            </div>
+            <div>
+              <span>デジタルでコピー</span>
+              <div className="pixel-grid">
+                {copied.digital.map((row, y) => (
+                  <div key={y}>
+                    {row.map((v, x) => (
+                      <i key={x} style={{ background: `rgb(${v * 220 + 20},${v * 60 + 20},${v * 70 + 30})` }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <small className="good">{copies}回コピー後</small>
+            </div>
+          </div>
+          <Results
+            items={[
+              { label: "アナログのくずれ具合", value: `${(copied.analogGap * 100).toFixed(1)} %`, warn: copied.analogGap > 0.05 },
+              { label: "いちばんくずれた点", value: `${(copied.worst * 100).toFixed(1)} %`, warn: copied.worst > 0.2 },
+              { label: "デジタルのくずれ具合", value: "0.0 %" },
+              { label: "あと5回コピーすると", value: copies >= 15 ? "アナログは判別が難しい" : "アナログはさらにくずれる" }
+            ]}
+          />
+          <Hint>
+            デジタルが崩れないのは、コピーのたびに「この点は明るいほうか、暗いほうか」を判定し直して、0か1に戻しているからです。
+            少しくらい汚れても、どちら寄りかさえ分かれば元どおりにできます。
+          </Hint>
         </>
       )}
 
       {card(
         2,
-        "ビットが1つ増えると何倍になるか",
-        "ビット数と、表せる組合せの数の関係を確かめます。",
+        "ビット数を変えて、表せる数を確かめる",
+        "1ビットから128ビットまで動かします。上段が表せる数、下段がバイトに直した大きさです。",
         <>
-          <SliderField label="ビット数" value={bits} onChange={setBits} min={1} max={64} unit=" bit" />
-          <Formula>組合せの数 ＝ 2 の {bits} 乗</Formula>
-          <Results
-            items={[
-              { label: "表せる組合せ", value: (2n ** BigInt(bits)).toLocaleString("ja-JP") },
-              { label: "1ビット減らすと", value: (2n ** BigInt(Math.max(1, bits - 1))).toLocaleString("ja-JP"), note: "ちょうど半分" },
-              { label: "バイト換算", value: `${fmt(bits / 8, 2)} B` },
-              { label: "16進数のけた数", value: `${Math.ceil(bits / 4)} けた`, note: "2進4けた＝16進1けた" }
-            ]}
-          />
+          <Row>
+            <NumberField label="ビット数を直接入力" value={bits} onChange={(v) => setBits(clamp(Math.round(v), 1, 128))} min={1} max={128} unit="bit" />
+          </Row>
+          <SliderField label="ビット数" value={bits} onChange={setBits} min={1} max={128} unit=" bit" />
+          <Formula>
+            表せる組み合わせ ＝ 2 の {bits} 乗　／　{bits} bit ＝ {fmt(bits / 8, 3)} バイト
+          </Formula>
+
+          <div className="tier">
+            <span className="tier-label">上段　表せる組み合わせ</span>
+            <div className="tier-body">
+              <div className="tier-cell wide">
+                <small>2進数（1バイト＝8ビットごとに区切って表示）</small>
+                <div className="byte-groups">
+                  {byteGroups.map((group, index) => (
+                    <b key={index} className="mono">
+                      {group}
+                    </b>
+                  ))}
+                </div>
+                <em>2進数で {binaryRaw.length} けた。8ビットずつ区切って表示（先頭は0で埋めています）</em>
+              </div>
+              <div className="tier-cell">
+                <small>10進数</small>
+                <b className="big-number">{combos.toLocaleString("ja-JP")}</b>
+                <em>通り</em>
+              </div>
+              <div className="tier-cell">
+                <small>16進数</small>
+                <b className="mono big-number">{combos.toString(16).toUpperCase()}</b>
+                <em>{combos.toString(16).length} けた</em>
+              </div>
+            </div>
+          </div>
+
+          <div className="tier">
+            <span className="tier-label">下段　この数をバイトとみなした大きさ</span>
+            <div className="tier-body four">
+              <div className="tier-cell">
+                <small>B（バイト）</small>
+                <b>{unit(combosNumber)}</b>
+              </div>
+              <div className="tier-cell">
+                <small>KB（÷1,024）</small>
+                <b>{unit(combosNumber / 1024)}</b>
+              </div>
+              <div className="tier-cell">
+                <small>MB（÷1,024²）</small>
+                <b>{unit(combosNumber / 1024 ** 2)}</b>
+              </div>
+              <div className="tier-cell">
+                <small>GB（÷1,024³）</small>
+                <b>{unit(combosNumber / 1024 ** 3)}</b>
+              </div>
+            </div>
+          </div>
+
+          <div className="preset-row">
+            {[8, 10, 16, 20, 30, 32, 64, 128].map((n) => (
+              <button type="button" key={n} onClick={() => setBits(n)}>
+                {n} bit
+              </button>
+            ))}
+          </div>
+          <Hint>
+            10ビットにすると1KB、20ビットで1MB、30ビットで1GBちょうどになります。情報量の単位が2の10乗ごとに繰り上がるのは、このためです。
+          </Hint>
         </>
       )}
 
       {card(
         3,
-        "情報量の単位を換算する",
-        "1,000倍で数える単位と、1,024倍で数える単位の違いを確かめます。",
+        "何ビットあれば区別できるかを求める",
+        "区別したいものの数を入れると、必要なビット数が出ます。",
         <>
-          <Row>
-            <NumberField label="容量" value={size} onChange={setSize} step={0.1} min={0} />
-            <SelectField
-              label="単位"
-              value={unit}
-              onChange={setUnit}
-              options={["B", "KB", "MB", "GB", "TB"].map((value) => ({ value, label: value }))}
-            />
-          </Row>
+          <div className="preset-row">
+            {presets.map(([label, value]) => (
+              <button type="button" key={label} onClick={() => setKinds(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <NumberField label="区別したいものの数" value={kinds} onChange={setKinds} min={2} max={100000} unit="種類" />
+          <Formula>2 の（必要なビット数）乗 ≧ 区別したいものの数</Formula>
           <Results
             items={[
-              { label: "バイト", value: fmt(totalBytes, 0) },
-              { label: "1,000進（GB）", value: fmt(totalBytes / 1e9, 3) },
-              { label: "1,024進（GiB）", value: fmt(totalBytes / 1024 ** 3, 3), note: "本来の2進の単位" },
-              { label: "差", value: `${fmt((1 - 1e9 / 1024 ** 3) * 100, 1)} %`, note: "カタログ容量が小さく見える理由" }
+              { label: "必要な最小ビット数", value: `${neededBits} bit` },
+              { label: `${neededBits}ビットで表せる数`, value: `${fmt(capacity, 0)} 通り` },
+              { label: "余り", value: `${fmt(capacity - safeKinds, 0)} 通り` },
+              { label: `${neededBits - 1}ビットだと`, value: `${fmt(2 ** (neededBits - 1), 0)} 通りで不足`, warn: true }
             ]}
           />
-          <Hint>1KB＝1,000B と 1KiB＝1,024B は別のものです。問題文でどちらを使うか必ず確認します。</Hint>
+          <DataTable
+            head={["ビット数", "表せる数", "判定"]}
+            rows={[neededBits - 2, neededBits - 1, neededBits, neededBits + 1]
+              .filter((n) => n >= 1)
+              .map((n) => [`${n} bit`, fmt(2 ** n, 0), 2 ** n >= safeKinds ? "足りる" : "足りない"])}
+            highlight={(index) =>
+              [neededBits - 2, neededBits - 1, neededBits, neededBits + 1].filter((n) => n >= 1)[index] === neededBits
+            }
+          />
+          <Hint>
+            必要なビット数は「その数以上になる最小の2のn乗」を探すことで求まります。15種類なら4ビット（16通り）、50色なら6ビット（64通り）です。
+          </Hint>
         </>
       )}
 
       {card(
         4,
-        "デジタル化の3段階に分類する",
-        "身近な事例が、形式だけの変換か、手順の変更か、仕組みの作り変えかを判断します。",
+        "デジタル化の3つの段階で身近な情報を分類する",
+        "段階が上がるほど、変わる範囲が広がります。カードを押して確かめましょう。",
         <>
-          <SelectField
-            label="どの段階か"
-            value={stage}
-            onChange={setStage}
-            options={[
-              { value: "digitization", label: "デジタイゼーション（形式の変換）" },
-              { value: "digitalization", label: "デジタライゼーション（手順の変更）" },
-              { value: "dx", label: "DX（仕組みの作り変え）" }
-            ]}
-          />
-          <Results items={[{ label: stageInfo[stage][0], value: stageInfo[stage][1] }]} />
+          <div className="stage-flow">
+            {stages.map(([id, name, change, example], index) => (
+              <div key={id} className={`stage-card ${stage === id ? "active" : ""}`} onClick={() => setStage(id)}>
+                <span className="stage-step">STEP {index + 1}</span>
+                <b>{name}</b>
+                <i>{change}</i>
+                <p>{example}</p>
+              </div>
+            ))}
+          </div>
+          <div className="stage-scale">
+            <span>形式だけ</span>
+            <div className="scale-bar">
+              <i style={{ width: `${(stages.findIndex(([id]) => id === stage) + 1) * 33.3}%` }} />
+            </div>
+            <span>仕組みごと</span>
+          </div>
           <AreaField
             label="選んだ事例と、次の段階に進めるなら何を変えるか"
             value={plan}
             onChange={setPlan}
-            placeholder="例：出席確認は今アプリ入力（デジタイゼーション）。入力の代わりに入室時のICカードで自動記録すれば手順が変わる。"
+            placeholder="例：出席確認は今アプリ入力なのでデジタイゼーション。入室時のICカードで自動記録すれば点呼の手順がなくなり、デジタライゼーションに進む。"
+            rows={4}
           />
         </>
       )}
@@ -218,6 +462,7 @@ export function FeatureLab({ card }: LabProps) {
  * ====================================================================== */
 export function BaseLab({ card }: LabProps) {
   const [decimal, setDecimal] = useState(45);
+  const [ladderValue, setLadderValue] = useState(36);
   const [bitInput, setBitInput] = useState("00101101");
   const [hexInput, setHexInput] = useState("2F");
   const [fraction, setFraction] = useState(0.1);
@@ -233,6 +478,7 @@ export function BaseLab({ card }: LabProps) {
   const [growth, setGrowth] = useState(3);
   const [idPlan, setIdPlan] = useState("");
 
+  const ladder = divisionLadder(ladderValue);
   const bits = padBits(parseBits(bitInput) || "0", 8);
   const bitValue = parseInt(bits, 2);
   const hexValue = fromBase(hexInput, 16);
@@ -277,6 +523,46 @@ export function BaseLab({ card }: LabProps) {
 
       {card(
         1,
+        "割り算をくり返して2進数にする",
+        "10進数を2で割り続け、余りを逆から並べます。教科書と同じ手順です。",
+        <>
+          <NumberField label="10進数(10)を入力" value={ladderValue} onChange={(v) => setLadderValue(clamp(Math.round(v), 0, 100000))} min={0} max={100000} />
+          <div className="preset-row">
+            {[36, 88, 72, 44, 255].map((v) => (
+              <button type="button" key={v} onClick={() => setLadderValue(v)}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <DataTable
+            head={["割られる数", "÷2 の商", "余り"]}
+            rows={ladder.rows.map((r, i) => [
+              r.dividend,
+              r.quotient,
+              <b key={i} className="hot">{r.remainder}</b>
+            ])}
+          />
+          <div className="ladder-result">
+            <span>余りを下から上へ並べる → 2進数(2)</span>
+            <b className="mono">{ladder.digits}</b>
+          </div>
+          <Results
+            items={[
+              { label: "10進数(10)", value: ladderValue },
+              { label: "2進数(2)", value: <span className="mono">{ladder.digits}</span> },
+              { label: "けた数", value: `${ladder.digits.length} けた` },
+              { label: "検算（2進→10進）", value: parseInt(ladder.digits, 2) === ladderValue ? "一致" : "不一致", warn: parseInt(ladder.digits, 2) !== ladderValue }
+            ]}
+          />
+          <Hint>
+            商が0になるまで2で割り、出てきた余りを最後から最初へ逆順に並べると2進数になります。
+            表の余りの列を、下から上へ読んでみましょう。
+          </Hint>
+        </>
+      )}
+
+      {card(
+        2,
         "2進数4けたを16進数1けたにまとめる",
         "16進数を入力して、4けた区切りの対応を確かめます。",
         <>
@@ -288,7 +574,7 @@ export function BaseLab({ card }: LabProps) {
               <Steps
                 items={[
                   { label: "16進数(16)", value: hexInput.toUpperCase() },
-                  { label: "1けたずつ2進数(2)4けたに", value: hexInput.toUpperCase().replace(/[^0-9A-Fa-f]/g, "").split("").map((c) => parseInt(c, 16).toString(2).padStart(4, "0")).join(" ") },
+                  { label: "1けたずつ2進4けたに", value: hexInput.toUpperCase().replace(/[^0-9A-Fa-f]/g, "").split("").map((c) => parseInt(c, 16).toString(2).padStart(4, "0")).join(" ") },
                   { label: "10進数(10)", value: fmt(hexValue, 4) }
                 ]}
               />
@@ -299,7 +585,7 @@ export function BaseLab({ card }: LabProps) {
       )}
 
       {card(
-        2,
+        3,
         "小数を2進数にする",
         "10進の小数を2進数に直し、有限けたで表せるかを確かめます。",
         <>
@@ -307,8 +593,8 @@ export function BaseLab({ card }: LabProps) {
           <Results
             items={[
               { label: "2進数(2)（20けたまで）", value: <span className="mono">{fracBinary}</span> },
-              { label: "10進数(10)へ戻した値", value: fmt(fracBack, 12) },
-              { label: "10進数(10)での誤差", value: fmt(Math.abs(fraction - fracBack), 12), warn: Math.abs(fraction - fracBack) > 1e-9 },
+              { label: "戻した値", value: fmt(fracBack, 12) },
+              { label: "誤差", value: fmt(Math.abs(fraction - fracBack), 12), warn: Math.abs(fraction - fracBack) > 1e-9 },
               { label: "有限けたで表せるか", value: Math.abs(fraction - fracBack) < 1e-12 ? "表せる" : "表せない（循環する）" }
             ]}
           />
@@ -317,25 +603,25 @@ export function BaseLab({ card }: LabProps) {
       )}
 
       {card(
-        3,
+        4,
         "2進数の筆算で足す",
         "8けたの2進数を2つ入力し、けたごとの繰り上がりを追います。",
         <>
           <Row>
-            <TextField label="元の値(2)" value={addA} onChange={setAddA} mono />
-            <TextField label="加える値(2)" value={addB} onChange={setAddB} mono />
+            <TextField label="元の値" value={addA} onChange={setAddA} mono />
+            <TextField label="加える値" value={addB} onChange={setAddB} mono />
           </Row>
           <div className="calc-sheet">
-            <div><span>繰り上がり</span><b className="mono">{add.carries}</b></div>
+            <div><span>繰り上がり(2)</span><b className="mono">{add.carries}</b></div>
             <div><span>元の値(2)</span><b className="mono">{add.a}</b></div>
             <div><span>加える値(2)</span><b className="mono">{add.b}</b></div>
             <div className="sum"><span>結果(2)</span><b className="mono">{add.sum}</b></div>
           </div>
           <Results
             items={[
-              { label: "10進数(10)での確認", value: `${add.decimalA} + ${add.decimalB} = ${add.decimalSum}` },
+              { label: "10進での確認", value: `${add.decimalA} + ${add.decimalB} = ${add.decimalSum}` },
               { label: "8けたに収まるか", value: add.overflow ? "オーバーフロー" : "収まる", warn: add.overflow },
-              { label: "けたあふれを含む結果(2)", value: <span className="mono">{add.full}</span> }
+              { label: "けたあふれを含む結果", value: <span className="mono">{add.full}</span> }
             ]}
           />
           <Hint>1 + 1 は 10（イチゼロ）。決めたけた数からあふれた1は捨てられます。これがオーバーフローです。</Hint>
@@ -343,7 +629,7 @@ export function BaseLab({ card }: LabProps) {
       )}
 
       {card(
-        4,
+        5,
         "論理シフト（符号なし）",
         "空いたビットに必ず0が入ることと、値が2倍・半分になることを確かめます。",
         <>
@@ -357,8 +643,8 @@ export function BaseLab({ card }: LabProps) {
           <BitStrip bits={logical.after} />
           <Results
             items={[
-              { label: "シフト前（10進数(10)）", value: logical.beforeValue },
-              { label: "シフト後（10進数(10)）", value: logical.afterValue },
+              { label: "シフト前（10進）", value: logical.beforeValue },
+              { label: "シフト後（10進）", value: logical.afterValue },
               { label: "理論上の倍率", value: shiftDir === "left" ? `×${2 ** shiftCount}` : `÷${2 ** shiftCount}` },
               { label: "実際の倍率", value: logical.beforeValue ? fmt(logical.afterValue / logical.beforeValue, 3) : "-", warn: shiftDir === "left" && logical.afterValue < logical.beforeValue }
             ]}
@@ -368,7 +654,7 @@ export function BaseLab({ card }: LabProps) {
       )}
 
       {card(
-        5,
+        6,
         "算術シフト（符号あり）",
         "右シフトのとき、空いたビットに符号ビットと同じ値が入ることを確かめます。",
         <>
@@ -385,7 +671,7 @@ export function BaseLab({ card }: LabProps) {
               { label: "シフト前（符号付き）", value: arithmetic.beforeValue },
               { label: "シフト後（符号付き）", value: arithmetic.afterValue },
               { label: "符号は保たれたか", value: arithmetic.before[0] === arithmetic.after[0] ? "保たれた" : "変わった", warn: arithmetic.before[0] !== arithmetic.after[0] },
-              { label: "論理シフトなら(2)", value: shiftBits(arithSource, 8, arithDir as "left" | "right", arithCount, "logical").after }
+              { label: "論理シフトなら", value: shiftBits(arithSource, 8, arithDir as "left" | "right", arithCount, "logical").after }
             ]}
           />
           <Hint>負の数を論理シフトすると符号が消えて正の数になってしまいます。だから符号ありには算術シフトを使います。</Hint>
@@ -393,7 +679,7 @@ export function BaseLab({ card }: LabProps) {
       )}
 
       {card(
-        6,
+        7,
         "必要なビット数を見積もる",
         "重複しない番号を付けるのに、何ビット必要かを求めます。",
         <>
@@ -414,7 +700,7 @@ export function BaseLab({ card }: LabProps) {
       )}
 
       {card(
-        7,
+        8,
         "校内の端末に重複しないIDを設計する",
         "見積もった数値をもとに、採用するビット数とその理由を書きます。",
         <>
@@ -436,8 +722,8 @@ export function BaseLab({ card }: LabProps) {
  * D2 負の数（補数）
  * ====================================================================== */
 export function NegativeLab({ card }: LabProps) {
-  const [minuend, setMinuend] = useState(433);
-  const [subtrahend, setSubtrahend] = useState(114);
+  const [minuend, setMinuend] = useState(56);
+  const [subtrahend, setSubtrahend] = useState(17);
   const [source, setSource] = useState("00000101");
   const [target, setTarget] = useState(-50);
   const [width, setWidth] = useState(8);
@@ -461,24 +747,41 @@ export function NegativeLab({ card }: LabProps) {
     <>
       {card(
         0,
-        "10進数の補数で引き算する",
-        "引く数を補数に置きかえて、足し算とけた捨てで答えが出ることを確かめます。",
+        "足し算しかできない機械で、引き算をする",
+        "CPUの計算回路は足し算が基本です。引き算をどうやって足し算に変えるかを試します。",
         <>
+          <div className="premise">
+            <b>この機械にできること</b>
+            <span className="ok">足し算</span>
+            <span className="ng">引き算</span>
+            <span className="ok">けたあふれを捨てる</span>
+          </div>
           <Row>
             <NumberField label="引かれる数" value={minuend} onChange={setMinuend} min={0} max={99999} />
             <NumberField label="引く数" value={subtrahend} onChange={setSubtrahend} min={0} max={99999} />
           </Row>
           <Steps
             items={[
-              { label: `${subtrahend} の ${10 ** digits} の補数`, value: fmt(complement, 0) },
-              { label: "足し算する", value: `${minuend} + ${complement} = ${fmt(added, 0)}` },
-              { label: `${10 ** digits} のけたを捨てる`, value: fmt(dropped, 0) },
+              { label: `引く数を補数にする`, value: fmt(complement, 0), note: `${10 ** digits} − ${subtrahend}` },
+              { label: "足し算だけする", value: `${minuend} + ${complement} = ${fmt(added, 0)}` },
+              { label: "あふれたけたを捨てる", value: fmt(dropped, 0), note: `${10 ** digits} のけたを消す` },
               { label: "ふつうに引くと", value: fmt(minuend - subtrahend, 0) }
             ]}
           />
+          <div className="drop-digit">
+            <span className="dropped">{String(added).slice(0, String(added).length - digits) || "0"}</span>
+            <span className="kept">{String(added).slice(-digits).padStart(digits, "0")}</span>
+            <i>← 左の色が薄い部分は、けたあふれとして捨てられる</i>
+          </div>
           <Verdict ok={dropped === minuend - subtrahend}>
-            {dropped === minuend - subtrahend ? "一致しました。引き算が足し算に置きかわっています。" : "けた数の指定を見直してください。"}
+            {dropped === minuend - subtrahend
+              ? `${minuend} − ${subtrahend} を、引き算をひとつも使わずに求められました。`
+              : "けた数の指定を見直してください。"}
           </Verdict>
+          <Hint>
+            補数とは「その数に足したとき、けた上がりする最小の数」です。引き算を、足し算とけた捨てに置きかえられるので、
+            機械は加算回路だけを持てばよくなります。次からは、これを2進数でやってみます。
+          </Hint>
         </>
       )}
 
@@ -487,11 +790,11 @@ export function NegativeLab({ card }: LabProps) {
         "1の補数をつくる",
         "0と1をすべて反転させます。機械にとって最も簡単な操作です。",
         <>
-          <TextField label="元のビット列(2)（8けた）" value={source} onChange={setSource} mono />
+          <TextField label="元のビット列（8けた）" value={source} onChange={setSource} mono />
           <BitStrip bits={bits} />
           <div className="shift-arrow">すべて反転（NOT）</div>
           <BitStrip bits={ones} />
-          <Results items={[{ label: "元の値（符号なし10進数(10)）", value: parseInt(bits, 2) }, { label: "1の補数(2)", value: <span className="mono">{ones}</span> }]} />
+          <Results items={[{ label: "元の値（符号なし）", value: parseInt(bits, 2) }, { label: "1の補数", value: <span className="mono">{ones}</span> }]} />
         </>
       )}
 
@@ -502,18 +805,18 @@ export function NegativeLab({ card }: LabProps) {
         <>
           <Steps
             items={[
-              { label: "元の値(2)", value: <span className="mono">{bits}</span> },
-              { label: "反転（1の補数(2)）", value: <span className="mono">{twos.flipped}</span> },
-              { label: "1を足す（2の補数(2)）", value: <span className="mono">{twos.result}</span> },
-              { label: "10進数(10)で読むと", value: signedValue(twos.result) }
+              { label: "元の値", value: <span className="mono">{bits}</span> },
+              { label: "反転（1の補数）", value: <span className="mono">{twos.flipped}</span> },
+              { label: "1を足す（2の補数）", value: <span className="mono">{twos.result}</span> },
+              { label: "10進で読むと", value: signedValue(twos.result) }
             ]}
           />
           <Formula>
-            {bits}(2) + {twos.result}(2) = {check.full}(2)（8けたからあふれた1を捨てると {check.sum}(2)）
+            {bits} + {twos.result} = {check.full}（8けたからあふれた1を捨てると {check.sum}）
           </Formula>
           <Verdict ok={check.sum === "00000000"}>
             {check.sum === "00000000"
-              ? `${parseInt(bits, 2)}(10) + (${signedValue(twos.result)})(10) = 0(10) が成り立ちました。`
+              ? `${parseInt(bits, 2)} + (${signedValue(twos.result)}) = 0 が成り立ちました。`
               : "0になりません。元の値が0のときは補数も0になります。"}
           </Verdict>
         </>
@@ -533,7 +836,7 @@ export function NegativeLab({ card }: LabProps) {
               <BitStrip bits={signedBits.length > 16 ? signedBits.slice(-16) : signedBits} signed weights={width <= 16} />
               <Results
                 items={[
-                  { label: "2の補数表現(2)", value: <span className="mono">{signedBits}</span> },
+                  { label: "2の補数表現", value: <span className="mono">{signedBits}</span> },
                   { label: "符号ビット", value: signedBits[0] === "1" ? "1（負）" : "0（正）" },
                   { label: "16進数(16)", value: parseInt(signedBits, 2).toString(16).toUpperCase() }
                 ]}
@@ -555,8 +858,8 @@ export function NegativeLab({ card }: LabProps) {
           <SliderField label="ビット幅" value={width} onChange={setWidth} min={4} max={32} unit=" bit" />
           <Results
             items={[
-              { label: "符号なし10進数(10)", value: `0 〜 ${fmt(unsignedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
-              { label: "符号あり10進数(10)", value: `${fmt(signedMin, 0)} 〜 ${fmt(signedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
+              { label: "符号なし", value: `0 〜 ${fmt(unsignedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
+              { label: "符号あり", value: `${fmt(signedMin, 0)} 〜 ${fmt(signedMax, 0)}`, note: `${fmt(2 ** width, 0)} 通り` },
               { label: "正の側", value: `${fmt(signedMax + 1, 0)} 個`, note: "0を含む" },
               { label: "負の側", value: `${fmt(-signedMin, 0)} 個`, note: "負が1つ多い" }
             ]}
@@ -596,23 +899,33 @@ export function NegativeLab({ card }: LabProps) {
  * D3 実数（浮動小数点）
  * ====================================================================== */
 export function RealLab({ card }: LabProps) {
+  const [times, setTimes] = useState(100);
+  const [addend, setAddend] = useState(0.1);
   const [value, setValue] = useState(-10.25);
-  const [floatA, setFloatA] = useState(0.1);
-  const [floatB, setFloatB] = useState(0.2);
   const [amounts, setAmounts] = useState("120.8, 80.1, 35.1");
   const [decision, setDecision] = useState("");
 
+  /* --- 実験1: 0.1 を何回も足す --- */
+  const naiveTotal = useMemo(() => {
+    let total = 0;
+    for (let i = 0; i < times; i++) total += addend;
+    return total;
+  }, [times, addend]);
+  const trueTotal = Math.round(addend * times * 1e10) / 1e10;
+  const drift = naiveTotal - trueTotal;
+  const trace = useMemo(() => {
+    const marks: { at: number; sum: number }[] = [];
+    let total = 0;
+    for (let i = 1; i <= times; i++) {
+      total += addend;
+      if (i <= 4 || i === times || i === Math.round(times / 2)) marks.push({ at: i, sum: total });
+    }
+    return marks;
+  }, [times, addend]);
+
+  /* --- 実験2以降 --- */
   const normalized = normalizeBinary(value);
-  const integerPart = Math.trunc(value);
-  const fractionalPart = Math.abs(value - integerPart);
-  const signedIntegerBits = toSignedBits(integerPart, 8);
-  const fractionalBits = toBase(fractionalPart, 2, 16).replace(/^0/, "");
-  const realBinary = `${signedIntegerBits ?? "8ビット範囲外"}${fractionalPart > 0 ? fractionalBits : ""}`;
-  const fractionalHex = toBase(fractionalPart, 16, 8).replace(/^0/, "");
-  const realHex = signedIntegerBits ? `${parseInt(signedIntegerBits, 2).toString(16).toUpperCase().padStart(2, "0")}${fractionalPart > 0 ? fractionalHex : ""}` : "8ビット範囲外";
   const float32 = toFloat32(value);
-  const sum = floatA + floatB;
-  const expected = Math.round(sum * 1e10) / 1e10;
   const values = parseNumbers(amounts);
   const naive = values.reduce((a, b) => a + b, 0);
   const integerSum = values.reduce((a, b) => a + Math.round(b * 10), 0) / 10;
@@ -621,25 +934,67 @@ export function RealLab({ card }: LabProps) {
     <>
       {card(
         0,
-        "10進数を2進数に直す",
-        "整数部は原則8ビットで表示し、負の数はマイナス記号を付けず2の補数で表します。",
+        "0.1 を100回足すと、10になるか",
+        "電卓なら当たり前の計算を、コンピュータにやらせてみます。",
         <>
-          <NumberField label="10進数(10)（小数可・負も可）" value={value} onChange={setValue} step={0.25} />
+          <Row>
+            <NumberField label="足す数" value={addend} onChange={setAddend} step={0.1} min={0.01} max={10} />
+            <NumberField label="足す回数" value={times} onChange={(v) => setTimes(clamp(Math.round(v), 1, 10000))} min={1} max={10000} unit="回" />
+          </Row>
+          <div className="code-block">
+            <code>
+              {addend} を {times} 回たすと … {naiveTotal}
+            </code>
+          </div>
           <Results
             items={[
-              { label: "2進数(2)（8ビット・負数は2の補数）", value: <span className="mono">{realBinary}</span>, warn: signedIntegerBits === null },
-              { label: "16進数(16)（整数部は2の補数）", value: <span className="mono">{realHex}</span>, warn: signedIntegerBits === null },
-              { label: "整数部(10)", value: integerPart },
-              { label: "整数部の解釈", value: signedIntegerBits ? <span className="mono">{signedIntegerBits}(2) = {integerPart}(10)</span> : "8ビット符号付き整数の範囲外" },
-              { label: "小数部(10)", value: fmt(fractionalPart, 6) }
+              { label: "正しい答え", value: trueTotal },
+              { label: "コンピュータの答え", value: String(naiveTotal), warn: drift !== 0 },
+              { label: "ずれ", value: drift === 0 ? "0（ぴったり）" : drift.toExponential(3), warn: drift !== 0 },
+              { label: "ぴったり合ったか", value: naiveTotal === trueTotal ? "合った" : "合わなかった", warn: naiveTotal !== trueTotal }
             ]}
           />
-          <Hint>例: -10.25(10) は整数部 -10(10) を8ビット2の補数で 11110110(2)、小数部 0.25(10) を .01(2) として、11110110.01(2) のように表します。</Hint>
+          <DataTable
+            head={["何回目", "そのときの合計"]}
+            rows={trace.map((m) => [`${m.at} 回目`, <span key={m.at} className="mono">{m.sum}</span>])}
+          />
+          <Hint>
+            0.5 や 0.25 を足すとぴったり合うのに、0.1 や 0.3 だとずれます。この違いはどこから来るのでしょうか。
+            次の実験で、その正体をさぐります。
+          </Hint>
         </>
       )}
 
       {card(
         1,
+        "小数を2進数に直して、正体をさぐる",
+        "さっきの数を2進数にすると、けたが終わらないことが分かります。",
+        <>
+          <NumberField label="10進数(10)（小数可・負も可）" value={value} onChange={setValue} step={0.25} />
+          <div className="preset-row">
+            {[0.5, 0.25, 0.375, 0.1, 0.3, -10.25].map((v) => (
+              <button type="button" key={v} onClick={() => setValue(v)}>
+                {v}
+              </button>
+            ))}
+          </div>
+          <Results
+            items={[
+              { label: "2進数(2)", value: <span className="mono">{toBase(value, 2, 20)}</span> },
+              { label: "16進数(16)", value: <span className="mono">{toBase(value, 16, 8)}</span> },
+              { label: "けたが終わるか", value: toBase(Math.abs(value), 2, 30).length < 24 ? "終わる" : "終わらない（循環する）", warn: toBase(Math.abs(value), 2, 30).length >= 24 },
+              { label: "小数部の重み", value: "1/2, 1/4, 1/8, 1/16 …" }
+            ]}
+          />
+          <Hint>
+            0.5＝1/2、0.25＝1/4、0.375＝1/4+1/8 は、2の負のべき乗の足し算でぴったり表せます。
+            ところが0.1は、いくらけたを増やしても表しきれません。どこかで打ち切るしかないので、必ず誤差が残ります。
+          </Hint>
+        </>
+      )}
+
+      {card(
+        2,
         "正規化して 1.xxx × 2ⁿ の形にする",
         "小数点を動かして、仮数の先頭を1にそろえます。",
         <>
@@ -648,90 +1003,76 @@ export function RealLab({ card }: LabProps) {
               { label: "2進数(2)", value: <span className="mono">{normalized.binary}</span> },
               { label: "符号", value: normalized.negative ? "− (1)" : "＋ (0)" },
               { label: "仮数（正規化後）", value: <span className="mono">{normalized.mantissa}</span> },
-              { label: "指数(10)", value: `2 の ${normalized.exponent} 乗` }
+              { label: "指数", value: `2 の ${normalized.exponent} 乗` }
             ]}
           />
           <Formula>
-            {value}(10) ＝ {normalized.negative ? "−" : "＋"} {normalized.mantissa}(2) × 2<sup>{normalized.exponent}</sup>
+            {value} ＝ {normalized.negative ? "−" : "＋"} {normalized.mantissa} × 2<sup>{normalized.exponent}</sup>
           </Formula>
           <Hint>小数点が左に動けば指数は正、右に動けば負になります。指数は「小数点を何けた動かしたか」そのものです。</Hint>
         </>
       )}
 
       {card(
-        2,
+        3,
         "32ビットの浮動小数点に分解する",
         "符号部1・指数部8・仮数部23 に並べ、格納された値と元の値の差を見ます。",
         <>
           <div className="float-bits">
-            <div className="sign"><small>符号部 1bit</small><b className="mono">{float32.sign}</b></div>
-            <div className="exponent"><small>指数部 8bit</small><b className="mono">{float32.exponent}</b></div>
-            <div className="mantissa"><small>仮数部 23bit</small><b className="mono">{float32.mantissa}</b></div>
+            <div className="sign">
+              <small>符号部 1bit</small>
+              <b className="mono">{float32.sign}</b>
+            </div>
+            <div className="exponent">
+              <small>指数部 8bit</small>
+              <b className="mono">{float32.exponent}</b>
+            </div>
+            <div className="mantissa">
+              <small>仮数部 23bit</small>
+              <b className="mono">{float32.mantissa}</b>
+            </div>
           </div>
           <Results
             items={[
-              { label: "指数部の格納値(10)", value: float32.exponentValue, note: "実際の指数＋127" },
-              { label: "実際の指数(10)", value: float32.realExponent },
-              { label: "格納された値(10)", value: fmt(float32.stored, 10) },
-              { label: "元の値との差(10)", value: fmt(float32.error, 12), warn: float32.error !== 0 }
+              { label: "指数部に入っている値", value: float32.exponentValue, note: "実際の指数＋127" },
+              { label: "実際の指数", value: float32.realExponent },
+              { label: "実際に保存された値", value: fmt(float32.stored, 10) },
+              { label: "元の値とのずれ", value: fmt(float32.error, 12), warn: float32.error !== 0 }
             ]}
           />
-          <Hint>指数部にはバイアス127を足した値が入ります。指数3(10)なら 3 + 127 = 130(10) を2進数(2)で格納します。</Hint>
-        </>
-      )}
-
-      {card(
-        3,
-        "0.1 + 0.2 の誤差を見る",
-        "2つの小数を入力して、期待した値とずれるかを確かめます。",
-        <>
-          <Row>
-            <NumberField label="小数A" value={floatA} onChange={setFloatA} step={0.05} />
-            <NumberField label="小数B" value={floatB} onChange={setFloatB} step={0.05} />
-          </Row>
-          <div className="code-block">
-            <code>
-              {floatA} + {floatB} = {sum}
-            </code>
-          </div>
-          <Results
-            items={[
-              { label: "期待した値(10)", value: expected },
-              { label: "実際の値(10)", value: String(sum) },
-              { label: "ぴったり一致するか", value: sum === expected ? "一致" : "一致しない", warn: sum !== expected },
-              { label: "100倍して整数化した値(10)", value: (Math.round(floatA * 100) + Math.round(floatB * 100)) / 100 }
-            ]}
-          />
+          <Hint>指数部にはバイアス127を足した値が入ります。指数が3なら 3 + 127 = 130 を2進数で格納します。</Hint>
         </>
       )}
 
       {card(
         4,
-        "整数化して誤差を避ける",
-        "金額を小数のまま足す場合と、最小単位の整数で足す場合を比べます。",
+        "整数に直して誤差を消す",
+        "金額を小数のまま足す場合と、円単位の整数で足す場合を比べます。",
         <>
-          <TextField label="金額を並べて入力" value={amounts} onChange={setAmounts} hint="カンマまたはスペース区切り" />
+          <TextField label="金額を並べて入力" value={amounts} onChange={setAmounts} hint="カンマまたはスペースで区切る" />
           <Results
             items={[
-              { label: "そのまま合計(10)", value: String(naive) },
-              { label: "10倍の整数で合計(10)", value: String(integerSum) },
-              { label: "差(10)", value: Math.abs(naive - integerSum).toExponential(2), warn: naive !== integerSum },
+              { label: "そのまま合計", value: String(naive) },
+              { label: "10倍の整数にして合計", value: String(integerSum) },
+              { label: "ずれ", value: naive === integerSum ? "0（ぴったり）" : Math.abs(naive - integerSum).toExponential(2), warn: naive !== integerSum },
               { label: "件数", value: `${values.length} 件` }
             ]}
           />
-          <Hint>件数を増やすほど誤差は積み上がります。金額は円単位の整数で保持し、表示のときだけ小数に戻すのが定石です。</Hint>
+          <Hint>
+            件数を増やすほど、ずれは積み上がります。金額は円単位の整数で持ち、表示するときだけ小数に戻すのが定石です。
+          </Hint>
         </>
       )}
 
       {card(
         5,
         "購買部の会計プログラムを安全にする",
-        "計算した誤差を根拠に、どちらの方式を採用するかを決めます。",
+        "計算したずれを根拠に、どちらの方式を採用するかを決めます。",
         <AreaField
           label="採用する方式と、その根拠"
           value={decision}
           onChange={setDecision}
-          placeholder="例：小数のまま合計すると3件で約1.4×10⁻¹⁴の誤差が出た。1日1,000件では表示に影響しうるため、円単位の整数で保持する方式を採用する。"
+          placeholder="例：0.1を100回足すと 9.99999999999998 になり、正しい10にならなかった。3件の合計でも約1.4×10⁻¹⁴のずれが出る。1日1,000件では表示に影響しうるため、円単位の整数で保持する方式を採用する。"
           rows={4}
         />
       )}
@@ -875,7 +1216,7 @@ export function LogicLab({ card }: LabProps) {
             <div><small>AND → 桁上がり C</small><b>{Number(half.c)}</b></div>
           </div>
           <Formula>
-            {Number(hx)}(2) + {Number(hy)}(2) = {Number(half.c)}{Number(half.s)}(2) ＝ {Number(hx) + Number(hy)}(10)
+            {Number(hx)} + {Number(hy)} = {Number(half.c)}{Number(half.s)} （2進数）＝ {Number(hx) + Number(hy)}（10進数）
           </Formula>
           <DataTable
             head={["X", "Y", "S（和）", "C（桁上がり）"]}
@@ -904,7 +1245,7 @@ export function LogicLab({ card }: LabProps) {
             <div><small>2つのCをOR → Co</small><b>{Number(full.co)}</b></div>
           </div>
           <Formula>
-            {Number(fx)}(2) + {Number(fy)}(2) + {Number(fc)}(2) = {Number(full.co)}{Number(full.s)}(2) ＝ {Number(fx) + Number(fy) + Number(fc)}(10)
+            {Number(fx)} + {Number(fy)} + {Number(fc)} = {Number(full.co)}{Number(full.s)}（2進数）＝ {Number(fx) + Number(fy) + Number(fc)}
           </Formula>
         </>
       )}
@@ -924,8 +1265,8 @@ export function LogicLab({ card }: LabProps) {
           />
           <Results
             items={[
-              { label: "計算結果(2)", value: <span className="mono">{ripple.sum}</span> },
-              { label: "10進数(10)で確認", value: `${parseInt(ripple.x, 2)} + ${parseInt(ripple.y, 2)} = ${parseInt(ripple.x, 2) + parseInt(ripple.y, 2)}` },
+              { label: "計算結果", value: <span className="mono">{ripple.sum}</span> },
+              { label: "10進で確認", value: `${parseInt(ripple.x, 2)} + ${parseInt(ripple.y, 2)} = ${parseInt(ripple.x, 2) + parseInt(ripple.y, 2)}` },
               { label: "最上位の桁上がり", value: ripple.carryOut ? "あり（オーバーフロー）" : "なし", warn: ripple.carryOut }
             ]}
           />
@@ -935,6 +1276,55 @@ export function LogicLab({ card }: LabProps) {
 
       {card(
         7,
+        "NANDゲートだけで、ほかのゲートを作る",
+        "NANDを組み合わせるだけで、すべてのゲートと同じ働きが作れることを確かめます。",
+        <>
+          <Tabs value={gate} onChange={(v) => setGate(v as Gate)} options={gates.map((g) => ({ value: g, label: g }))} />
+          <div className="switches">
+            <Toggle label="入力 A" on={a} onChange={setA} />
+            {gate !== "NOT" && <Toggle label="入力 B" on={b} onChange={setB} />}
+          </div>
+          <div className="nand-recipe">
+            {nandRecipe[gate].steps.map((line, i) => (
+              <div key={line}>
+                <i>{i + 1}</i>
+                {line}
+              </div>
+            ))}
+          </div>
+          <Results
+            items={[
+              { label: `${gate} の出力`, value: Number(gateOutput(gate, a, b)) },
+              { label: "NANDだけで作った回路の出力", value: Number(nandOnly(gate, a, b)) },
+              { label: "一致しているか", value: gateOutput(gate, a, b) === nandOnly(gate, a, b) ? "一致" : "不一致", warn: gateOutput(gate, a, b) !== nandOnly(gate, a, b) },
+              { label: "必要なNANDの数", value: `${nandRecipe[gate].count} 個` }
+            ]}
+          />
+          <DataTable
+            head={["A", "B", `${gate} の出力`, "NANDだけの回路"]}
+            rows={[
+              [false, false],
+              [false, true],
+              [true, false],
+              [true, true]
+            ].map(([x, y]) => [
+              Number(x),
+              Number(y),
+              Number(gateOutput(gate, x, y)),
+              <b key={`${x}${y}`} className={gateOutput(gate, x, y) === nandOnly(gate, x, y) ? "" : "hot"}>
+                {Number(nandOnly(gate, x, y))}
+              </b>
+            ])}
+          />
+          <Hint>
+            NANDだけですべてのゲートが作れるため、実際の電子部品ではNANDが多く使われます。
+            1種類の部品だけで済むうえ、製作コストも安くなるからです。
+          </Hint>
+        </>
+      )}
+
+      {card(
+        8,
         "階段の照明回路を設計する",
         "2か所のスイッチのどちらを操作しても切り替わる回路を選びます。",
         <>
@@ -967,56 +1357,164 @@ export function LogicLab({ card }: LabProps) {
  * D5 コンピュータの構成
  * ====================================================================== */
 export function ComputerLab({ card }: LabProps) {
+  const [left, setLeft] = useState(5);
+  const [right, setRight] = useState(3);
+  const [op, setOp] = useState("+");
+  const [flowStep, setFlowStep] = useState(0);
   const [device, setDevice] = useState("キーボード");
   const [step, setStep] = useState(0);
-  const [clock, setClock] = useState(3);
-  const [cpi, setCpi] = useState(4);
+  const [clock, setClock] = useState(1.6);
+  const [cycles, setCycles] = useState(4);
   const [hitRate, setHitRate] = useState(90);
   const [cacheNs, setCacheNs] = useState(2);
   const [mainNs, setMainNs] = useState(60);
-  const [task, setTask] = useState("動画編集");
-  const [budget, setBudget] = useState(15);
+  const [osTopic, setOsTopic] = useState("task");
   const [spec, setSpec] = useState("");
 
+  /* --- 実験1: 「5+3」が「8」になるまで --- */
+  const answer =
+    op === "+" ? left + right : op === "−" ? left - right : op === "×" ? left * right : right === 0 ? NaN : left / right;
+  const expr = `${left} ${op} ${right}`;
+  const flow: { from: string; to: string; kind: "データ" | "制御"; what: string; detail: string }[] = [
+    {
+      from: "入力装置",
+      to: "記憶装置",
+      kind: "データ",
+      what: `${expr}`,
+      detail: `キーボードで打った「${expr}」が、そのまま主記憶に読み込まれます。まだ計算はしていません。`
+    },
+    {
+      from: "制御装置",
+      to: "演算装置",
+      kind: "制御",
+      what: `${op === "+" ? "加算せよ" : op === "−" ? "減算せよ" : op === "×" ? "乗算せよ" : "除算せよ"}`,
+      detail: "制御装置が主記憶から命令を読み取り、演算装置に「何をするか」を指示します。数そのものは流れません。"
+    },
+    {
+      from: "記憶装置",
+      to: "演算装置",
+      kind: "データ",
+      what: `${left} と ${right}`,
+      detail: "計算に使う2つの数が、主記憶から演算装置へ送られます。"
+    },
+    {
+      from: "演算装置",
+      to: "記憶装置",
+      kind: "データ",
+      what: `${Number.isFinite(answer) ? answer : "エラー"}`,
+      detail: "演算装置が計算し、その結果を主記憶に書き戻します。"
+    },
+    {
+      from: "記憶装置",
+      to: "出力装置",
+      kind: "データ",
+      what: `${Number.isFinite(answer) ? answer : "エラー"}`,
+      detail: "主記憶から結果が読み出され、ディスプレイに表示されます。ここでようやく人が答えを見られます。"
+    }
+  ];
+  const now = flow[flowStep];
+  const lit = (name: string) => (now.from === name || now.to === name ? (now.from === name ? "from" : "to") : "");
+
+  /* --- 実験2: 五大装置 --- */
   const deviceMap: Record<string, [string, string]> = {
-    キーボード: ["入力装置", "人の操作をデータとしてコンピュータへ渡します。"],
-    ディスプレイ: ["出力装置", "処理した結果を人が読める形で表示します。"],
-    メモリ: ["記憶装置（主記憶）", "実行中の命令とデータを一時的に置きます。電源を切ると消えます。"],
-    SSD: ["記憶装置（補助記憶）", "電源を切っても残る保存場所です。"],
-    ALU: ["演算装置", "四則演算や比較などの計算を行います。"],
-    制御装置: ["制御装置", "他の4つの装置に指示を出し、全体の動きを調整します。"],
-    ルータ: ["五大装置ではない", "通信装置は五大装置に含まれません。入力・出力・記憶・演算・制御の5つです。"]
+    キーボード: ["入力装置", "人の操作をデータに変えて、コンピュータへ送りこみます。"],
+    ディスプレイ: ["出力装置", "処理した結果を、人が読める形で表示します。"],
+    メインメモリ: ["記憶装置（主記憶）", "実行中の命令とデータを置きます。CPUと直接やり取りするので高速ですが、容量は小さめです。"],
+    SSD: ["記憶装置（補助記憶）", "電源を切っても残る保存場所です。容量は大きいですが、主記憶より遅くなります。"],
+    演算装置: ["演算装置", "計算や比較を行います。制御装置と合わせてCPUと呼びます。"],
+    制御装置: ["制御装置", "他の4つの装置に制御信号を送り、全体の動きをそろえます。"],
+    ルータ: ["五大装置ではありません", "通信装置は五大装置に入りません。入力・出力・記憶・演算・制御の5つです。"]
   };
-  const cycle = [
+
+  /* --- 実験3: 命令サイクル --- */
+  const cycle: [string, string][] = [
     ["取出し（フェッチ）", "プログラムカウンタが指す番地から、命令を命令レジスタへ読み込みます。"],
     ["解読（デコード）", "デコーダが命令の種類と、必要なデータの場所を判断します。"],
     ["実行（エグゼキュート）", "演算装置が計算し、結果をレジスタや主記憶へ書き戻します。"],
-    ["次へ", "プログラムカウンタが次の命令の番地を指し、また取出しに戻ります。"]
+    ["次へ進む", "プログラムカウンタが次の命令の番地を指し、また取出しに戻ります。"]
   ];
-  const mips = toMips(clock, cpi);
+
+  /* --- 実験4: CPUの性能 --- */
+  const perSecond = (clock * 1e9) / Math.max(1, cycles);
+  const perInstructionNs = cycles / Math.max(0.001, clock);
+
+  /* --- 実験5: 記憶の階層 --- */
   const effective = effectiveAccess(hitRate / 100, cacheNs, mainNs);
-  const advice =
-    task === "動画編集"
-      ? budget >= 16
-        ? "RAM 32GB以上とGPUを優先。書き出し時間が最も短縮されます。"
-        : "予算不足。解像度を下げるか、書き出し時間を許容する必要があります。"
-      : task === "AI推論"
-        ? budget >= 20
-          ? "GPU/NPU搭載機を優先。並列計算が効きます。"
-          : "クラウドのGPUを時間貸しで使うほうが安く済みます。"
-        : budget >= 8
-          ? "CPUとSSDを重視すれば十分です。RAMは16GBあれば快適です。"
-          : "中古機や校内端末の利用も検討しましょう。";
+
+  /* --- 実験6: OSのはたらき --- */
+  const osTopics: Record<string, [string, string, string]> = {
+    task: ["タスク管理", "複数の処理を切り替えながら実行する", "ダウンロードしながら画像編集ができるのは、OSが処理を瞬間的に切り替えているからです。"],
+    memory: ["メモリ管理", "主記憶の領域を各処理に割り当てる", "メモリには限りがあるため、どの処理にどれだけ渡すかをOSが決めています。"],
+    file: ["ファイル管理", "補助記憶のデータを整理する", "フォルダという入れ物をつくって階層的に管理し、保存・削除・読み書きを担います。"],
+    ui: ["ユーザインタフェースの提供", "GUIやCUIで操作できるようにする", "画面上のアイコンを指で触って操作できるのがGUI、文字入力だけで操作するのがCUIです。"],
+    driver: ["ハードウェアとの仲介", "デバイスドライバで機器の違いを吸収する", "機種が違っても同じ操作でプリンタを使えるのは、OSとデバイスドライバが違いを吸収しているからです。"]
+  };
 
   return (
     <>
       {card(
         0,
+        "「5＋3」が「8」になるまでを追いかける",
+        "キーボードを打ってから画面に答えが出るまで、5つの装置の間を何が流れるかを1歩ずつ見ます。",
+        <>
+          <Row>
+            <NumberField label="左の数" value={left} onChange={setLeft} min={0} max={9999} />
+            <SelectField label="計算" value={op} onChange={setOp} options={["+", "−", "×", "÷"].map((v) => ({ value: v, label: v }))} />
+            <NumberField label="右の数" value={right} onChange={setRight} min={0} max={9999} />
+          </Row>
+          <Tabs
+            value={String(flowStep)}
+            onChange={(v) => setFlowStep(Number(v))}
+            options={flow.map((_, i) => ({ value: String(i), label: `${i + 1}` }))}
+          />
+          <div className="machine">
+            <div className={`unit control ${lit("制御装置")}`}>
+              <small>制御装置</small>
+              <b>指示を出す</b>
+            </div>
+            <div className={`unit input ${lit("入力装置")}`}>
+              <small>入力装置</small>
+              <b>キーボード</b>
+            </div>
+            <div className={`unit memory ${lit("記憶装置")}`}>
+              <small>記憶装置（主記憶）</small>
+              <b>データを置く</b>
+            </div>
+            <div className={`unit output ${lit("出力装置")}`}>
+              <small>出力装置</small>
+              <b>ディスプレイ</b>
+            </div>
+            <div className={`unit alu ${lit("演算装置")}`}>
+              <small>演算装置</small>
+              <b>計算する</b>
+            </div>
+          </div>
+          <div className={`flow-line ${now.kind === "制御" ? "control" : ""}`}>
+            <span>{now.from}</span>
+            <i>{now.kind === "制御" ? "制御信号" : "データ"}</i>
+            <strong>{now.what}</strong>
+            <i>→</i>
+            <span>{now.to}</span>
+          </div>
+          <Results
+            items={[
+              { label: `手順 ${flowStep + 1} / 5`, value: `${now.from} → ${now.to}` },
+              { label: "流れるもの", value: now.kind },
+              { label: "中身", value: now.what },
+              { label: "最終的な答え", value: Number.isFinite(answer) ? answer : "計算できません", warn: !Number.isFinite(answer) }
+            ]}
+          />
+          <Hint>{now.detail}</Hint>
+        </>
+      )}
+
+      {card(
+        1,
         "五大装置に分類する",
-        "装置を選んで、入力・出力・記憶・演算・制御のどれかを確かめます。",
+        "装置を選んで、入力・出力・記憶・演算・制御のどれにあたるかを確かめます。",
         <>
           <SelectField label="装置を選ぶ" value={device} onChange={setDevice} options={Object.keys(deviceMap).map((value) => ({ value, label: value }))} />
-          <Results items={[{ label: deviceMap[device][0], value: deviceMap[device][1], warn: deviceMap[device][0] === "五大装置ではない" }]} />
+          <Results items={[{ label: deviceMap[device][0], value: deviceMap[device][1], warn: deviceMap[device][0].includes("ではありません") }]} />
           <div className="five-units">
             {["入力装置", "出力装置", "記憶装置", "演算装置", "制御装置"].map((name) => (
               <span key={name} className={deviceMap[device][0].startsWith(name.slice(0, 2)) ? "active" : ""}>
@@ -1024,12 +1522,13 @@ export function ComputerLab({ card }: LabProps) {
               </span>
             ))}
           </div>
+          <Hint>演算装置と制御装置をまとめてCPU（中央処理装置）と呼びます。通信装置は五大装置には含まれません。</Hint>
         </>
       )}
 
       {card(
-        1,
-        "命令サイクルをたどる",
+        2,
+        "CPUの中で命令が回る順番",
         "取出し→解読→実行の1周を、順に確かめます。",
         <>
           <Tabs value={String(step)} onChange={(v) => setStep(Number(v))} options={cycle.map((s, i) => ({ value: String(i), label: `${i + 1} ${s[0]}` }))} />
@@ -1040,74 +1539,106 @@ export function ComputerLab({ card }: LabProps) {
             <span className={step === 1 ? "active" : ""}>デコーダ</span>
             <span className={step === 2 ? "active" : ""}>演算装置</span>
           </div>
-        </>
-      )}
-
-      {card(
-        2,
-        "クロック周波数から性能を計算する",
-        "1秒間に何百万回の命令を実行できるかを求めます。",
-        <>
-          <Row>
-            <NumberField label="クロック周波数" value={clock} onChange={setClock} step={0.1} min={0.1} max={6} unit="GHz" />
-            <NumberField label="CPI（1命令あたりのクロック数）" value={cpi} onChange={setCpi} step={0.1} min={0.5} max={20} />
-          </Row>
-          <Formula>MIPS ＝ クロック周波数(MHz) ÷ CPI</Formula>
-          <Results
-            items={[
-              { label: "性能", value: `${fmt(mips, 0)} MIPS` },
-              { label: "1命令の実行時間", value: `${fmt(instructionTimeNs(clock, cpi), 3)} ns` },
-              { label: "1秒間の命令数", value: `${fmt(mips * 1e6, 0)} 回` },
-              { label: "クロックを2倍にすると", value: `${fmt(toMips(clock * 2, cpi), 0)} MIPS` }
-            ]}
-          />
+          <Hint>この1周を1秒間に何億回も繰り返しています。次の実験で、その回数を計算します。</Hint>
         </>
       )}
 
       {card(
         3,
-        "キャッシュのヒット率と実効速度",
-        "ヒット率を変えて、平均のアクセス時間がどう変わるかを見ます。",
+        "1秒間に何回の命令を実行できるか",
+        "クロック周波数と、1命令に必要なクロック数から計算します。",
         <>
-          <SliderField label="キャッシュのヒット率" value={hitRate} onChange={setHitRate} min={0} max={100} unit=" %" />
           <Row>
-            <NumberField label="キャッシュのアクセス時間" value={cacheNs} onChange={setCacheNs} step={0.5} min={0.5} max={20} unit="ns" />
-            <NumberField label="主記憶のアクセス時間" value={mainNs} onChange={setMainNs} step={5} min={10} max={300} unit="ns" />
+            <NumberField label="クロック周波数" value={clock} onChange={setClock} step={0.1} min={0.1} max={6} unit="GHz" />
+            <NumberField label="1命令あたりのクロック数" value={cycles} onChange={setCycles} min={1} max={20} unit="周期" />
           </Row>
-          <Formula>実効アクセス時間 ＝ ヒット率 × キャッシュ + (1 − ヒット率) × 主記憶</Formula>
-          <Results
+          <Formula>1秒間の命令数 ＝ クロック周波数 ÷ 1命令あたりのクロック数</Formula>
+          <Steps
             items={[
-              { label: "実効アクセス時間", value: `${fmt(effective, 2)} ns` },
-              { label: "キャッシュなしと比べて", value: `${fmt(mainNs / effective, 2)} 倍速い` },
-              { label: "ヒット率を+5%すると", value: `${fmt(effectiveAccess(Math.min(1, hitRate / 100 + 0.05), cacheNs, mainNs), 2)} ns` }
+              { label: "1秒間のクロック数", value: `${fmt(clock, 2)} × 10⁹ 回`, note: `${fmt(clock * 1e9, 0)} 回` },
+              { label: `÷ ${cycles} 周期`, value: `${(perSecond / 1e8).toFixed(2)} × 10⁸ 回` },
+              { label: "1秒間に実行できる命令数", value: `約 ${fmt(perSecond / 1e8, 1)} 億回` }
             ]}
           />
-          <Hint>ヒット率が90%から95%に上がるだけで、実効時間は大きく縮みます。だからCPUはキャッシュに大きな面積を割いています。</Hint>
+          <Results
+            items={[
+              { label: "1命令にかかる時間", value: `${fmt(perInstructionNs, 3)} ns` },
+              { label: "クロックを2倍にすると", value: `約 ${fmt((clock * 2 * 1e9) / cycles / 1e8, 1)} 億回` },
+              { label: "クロック数を半分にすると", value: `約 ${fmt((clock * 1e9) / Math.max(1, cycles / 2) / 1e8, 1)} 億回` }
+            ]}
+          />
+          <Hint>
+            1.6GHzで4周期なら 1.6×10⁹ ÷ 4 ＝ 4.0×10⁸ で、1秒間に4億回。クロックを上げるか、1命令あたりの周期を減らすかの
+            2通りで速くできます。
+          </Hint>
         </>
       )}
 
       {card(
         4,
-        "用途と予算から構成を決める",
-        "作業内容によって、優先すべき部品が変わることを確かめます。",
+        "記憶装置の速さと容量を比べる",
+        "よく使うデータを手元に置くと、待ち時間がどれだけ縮むかを確かめます。",
         <>
+          <DataTable
+            head={["記憶装置", "速さ", "容量", "電源を切ると"]}
+            rows={[
+              ["レジスタ（CPU内）", "最速", "数十バイト", "消える"],
+              ["キャッシュメモリ", "非常に速い", "数MB", "消える"],
+              ["主記憶（メインメモリ）", "速い", "数GB〜数十GB", "消える"],
+              ["補助記憶（SSD・HDD）", "遅い", "数百GB〜数TB", "残る"]
+            ]}
+          />
+          <SliderField label="キャッシュに目当てのデータがあった割合" value={hitRate} onChange={setHitRate} min={0} max={100} unit=" %" />
           <Row>
-            <SelectField label="主な用途" value={task} onChange={setTask} options={["文書作成", "動画編集", "AI推論"].map((value) => ({ value, label: value }))} />
-            <NumberField label="予算の目安" value={budget} onChange={setBudget} min={4} max={60} unit="万円" />
+            <NumberField label="キャッシュの待ち時間" value={cacheNs} onChange={setCacheNs} step={0.5} min={0.5} max={20} unit="ns" />
+            <NumberField label="主記憶の待ち時間" value={mainNs} onChange={setMainNs} step={5} min={10} max={300} unit="ns" />
           </Row>
-          <Results items={[{ label: "推奨する構成", value: advice }]} />
+          <Formula>平均の待ち時間 ＝ 見つかった割合 × キャッシュ ＋ 見つからなかった割合 × 主記憶</Formula>
+          <Results
+            items={[
+              { label: "平均の待ち時間", value: `${fmt(effective, 2)} ns` },
+              { label: "キャッシュなしと比べて", value: `${fmt(mainNs / effective, 2)} 倍速い` },
+              { label: "割合をあと5%上げると", value: `${fmt(effectiveAccess(Math.min(1, hitRate / 100 + 0.05), cacheNs, mainNs), 2)} ns` }
+            ]}
+          />
         </>
       )}
 
       {card(
         5,
+        "OSは何をしているのか",
+        "基本ソフトウェアであるOSの役割を、1つずつ確かめます。",
+        <>
+          <Tabs value={osTopic} onChange={setOsTopic} options={Object.entries(osTopics).map(([value, [label]]) => ({ value, label }))} />
+          <Results
+            items={[
+              { label: osTopics[osTopic][0], value: osTopics[osTopic][1] },
+              { label: "身近な例", value: osTopics[osTopic][2] }
+            ]}
+          />
+          <DataTable
+            head={["区分", "何をするソフトウェアか", "例"]}
+            rows={[
+              ["基本ソフトウェア（OS）", "ハードウェアを制御し、アプリが動く環境を整える", "Windows、macOS、Android"],
+              ["応用ソフトウェア", "目的ごとの作業を行う", "文書作成、表計算、ブラウザ"],
+              ["デバイスドライバ", "周辺機器をOSから使えるようにする", "プリンタ用、カメラ用"]
+            ]}
+          />
+          <Hint>
+            周辺機器はインタフェース（USB・HDMIなど）でつながります。OSを入れ直すとデバイスドライバも消えるため、入れ直しが必要になります。
+          </Hint>
+        </>
+      )}
+
+      {card(
+        6,
         "用途別にPCを選定する",
         "文書作成用と動画編集用のPCを、根拠つきで提案します。",
         <AreaField
           label="2台の構成と、優先順位の理由"
           value={spec}
           onChange={setSpec}
-          placeholder="例：文書作成用はCPUを中位に抑えSSDを512GBに。動画編集用はRAM32GBとGPUを優先。書き出しはGPU依存が大きく、RAM不足だと4K素材でスワップが発生するため。"
+          placeholder="例：文書作成用はCPUを中位に抑えSSDを512GBに。動画編集用はメインメモリ32GBとGPUを優先。書き出しはGPU依存が大きく、メモリ不足だと4K素材で補助記憶への退避が起きて極端に遅くなるため。"
           rows={5}
         />
       )}
@@ -1159,7 +1690,7 @@ export function TextLab({ card }: LabProps) {
               { label: "2進数(2)", value: <span className="mono">{info.bin}</span> }
             ]}
           />
-          <Hint>A は65(10)、a は97(10)。大文字と小文字は32(10)（2進数(2)で1けた分）だけ離れています。</Hint>
+          <Hint>A は65、a は97。大文字と小文字は32（2進数で1けた分）だけ離れています。</Hint>
         </>
       )}
 
@@ -1253,8 +1784,8 @@ export function TextLab({ card }: LabProps) {
             items={[
               { label: "総文字数", value: `${fmt(chars * lines, 0)} 字` },
               { label: "バイト数", value: `${fmt(totalBytes, 0)} B` },
-              { label: "1kB＝1,000B なら", value: `${fmt(totalBytes / 1000, 3)} kB` },
-              { label: "1KiB＝1,024B なら", value: `${fmt(totalBytes / 1024, 3)} KiB` }
+              { label: "1KB＝1,024B なら", value: `${fmt(totalBytes / 1024, 3)} KB`, note: "教科書の表1" },
+              { label: "1kB＝1,000B なら", value: `${fmt(totalBytes / 1000, 3)} kB`, note: "SI・問題文が指定する場合" }
             ]}
           />
           <Hint>1kBを1,000とするか1,024とするかで答えが変わります。問題文の指定を必ず確認しましょう。</Hint>
@@ -1412,6 +1943,11 @@ export function AudioLab({ card }: LabProps) {
             ]}
           />
           <Results items={bytesRow(bytes)} />
+          <details className="unit-note">
+            <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
+            <Results items={bytesRowSI(bytes)} />
+          </details>
+          <Hint>教科書は 1KB＝1,024B で計算します。IPAの問題では 1MB＝1,000kB と指定されることがあるので、問題文を必ず確認しましょう。</Hint>
         </>
       )}
 
@@ -1426,7 +1962,7 @@ export function AudioLab({ card }: LabProps) {
               { label: "標本化周波数", value: `${fmt(pRate, 0)} Hz` },
               { label: "量子化ビット数", value: `${pBits} bit` },
               { label: "チャネル数", value: `${pCh} ch` },
-              { label: "1分あたり", value: `${fmt(audioBytes(pRate, pBits, pCh, 60) / 1e6, 2)} MB`, note: pNote }
+              { label: "1分あたり", value: `${fmt(audioBytes(pRate, pBits, pCh, 60) / 1024 ** 2, 2)} MB`, note: pNote }
             ]}
           />
           <button type="button" className="apply-preset" onClick={() => { setSampleRate(pRate); setQuantBits(pBits); setChannels(pCh); }}>
@@ -1508,8 +2044,8 @@ export function ImageLab({ card }: LabProps) {
           </div>
           <Results
             items={[
-              { label: "10進カラーコード(10)", value: `${r}, ${g}, ${b}` },
-              { label: "16進カラーコード(16)", value: rgbHex },
+              { label: "10進カラーコード", value: `${r}, ${g}, ${b}` },
+              { label: "16進カラーコード", value: rgbHex },
               { label: "2進数(2)（Rのみ）", value: <span className="mono">{r.toString(2).padStart(8, "0")}</span> },
               { label: "表せる色数", value: "16,777,216 色", note: "各8bit＝24bit" }
             ]}
@@ -1536,7 +2072,7 @@ export function ImageLab({ card }: LabProps) {
           </div>
           <Results
             items={[
-              { label: "画面での見え方（RGB換算・10進数(10)）", value: `${cmyToRgb.r}, ${cmyToRgb.g}, ${cmyToRgb.b}` },
+              { label: "画面での見え方（RGB換算）", value: `${cmyToRgb.r}, ${cmyToRgb.g}, ${cmyToRgb.b}` },
               { label: "CMYすべて100%", value: "理論上は黒", note: "実際は濁るのでKを足す" },
               { label: "CMYすべて0%", value: "紙の白" }
             ]}
@@ -1570,7 +2106,11 @@ export function ImageLab({ card }: LabProps) {
             ]}
           />
           <Results items={bytesRow(bytes)} />
-          <Hint>縦横をそれぞれ2倍にすると、画素数は4倍。データ量も4倍になります。</Hint>
+          <details className="unit-note">
+            <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
+            <Results items={bytesRowSI(bytes)} />
+          </details>
+          <Hint>縦横をそれぞれ2倍にすると、画素数は4倍。データ量も4倍になります。教科書は 1KB＝1,024B で計算します。</Hint>
         </>
       )}
 
@@ -1594,6 +2134,10 @@ export function ImageLab({ card }: LabProps) {
             ]}
           />
           <Results items={bytesRow(scanBytes)} />
+          <details className="unit-note">
+            <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
+            <Results items={bytesRowSI(scanBytes)} />
+          </details>
           <Hint>cmのままdpiを掛けてはいけません。必ず1インチ＝2.54cmで単位をそろえてから計算します。</Hint>
         </>
       )}
@@ -1752,12 +2296,16 @@ export function VideoLab({ card }: LabProps) {
           <Formula>データ量 ＝ 横 × 縦 × 色情報 ÷ 8 × fps × 秒数</Formula>
           <Steps
             items={[
-              { label: "1フレーム", value: `${fmt(imageBytes(width, height, colorBits) / 1e6, 2)} MB` },
-              { label: "1秒間", value: `${fmt((imageBytes(width, height, colorBits) * fps) / 1e6, 1)} MB` },
-              { label: `${minutes}分間`, value: `${fmt(raw / 1e9, 2)} GB` }
+              { label: "1フレーム", value: `${fmt(imageBytes(width, height, colorBits) / 1024 ** 2, 2)} MB` },
+              { label: "1秒間", value: `${fmt((imageBytes(width, height, colorBits) * fps) / 1024 ** 2, 1)} MB` },
+              { label: `${minutes}分間`, value: `${fmt(raw / 1024 ** 3, 2)} GB` }
             ]}
           />
           <Results items={bytesRow(raw)} />
+          <details className="unit-note">
+            <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
+            <Results items={bytesRowSI(raw)} />
+          </details>
         </>
       )}
 
@@ -1769,10 +2317,10 @@ export function VideoLab({ card }: LabProps) {
           <SliderField label="圧縮後の割合（元の何%か）" value={ratio} onChange={setRatio} min={1} max={100} unit=" %" />
           <Results
             items={[
-              { label: "非圧縮", value: `${fmt(raw / 1e9, 2)} GB` },
-              { label: "圧縮後", value: `${fmt(compressed / 1e9, 3)} GB` },
+              { label: "非圧縮", value: `${fmt(raw / 1024 ** 3, 2)} GB` },
+              { label: "圧縮後", value: `${fmt(compressed / 1024 ** 3, 3)} GB` },
               { label: "圧縮率", value: `${fmt(100 / ratio, 1)} 分の1` },
-              { label: "1分あたり", value: `${fmt(compressed / minutes / 1e6, 1)} MB` }
+              { label: "1分あたり", value: `${fmt(compressed / minutes / 1024 ** 2, 1)} MB` }
             ]}
           />
           <Hint>H.264などのコーデックは、前のコマとの差分だけを記録することで容量を大きく減らします（キーフレーム圧縮）。</Hint>
@@ -1788,7 +2336,7 @@ export function VideoLab({ card }: LabProps) {
           <Formula>時間(秒) ＝ 容量(byte) × 8 ÷ 速度(bps)</Formula>
           <Steps
             items={[
-              { label: "圧縮後の容量", value: `${fmt(compressed / 1e6, 1)} MB` },
+              { label: "圧縮後の容量", value: `${fmt(compressed / 1024 ** 2, 1)} MB` },
               { label: "ビットに直す（×8）", value: `${fmt((compressed * 8) / 1e6, 1)} Mbit` },
               { label: `÷ ${speed} Mbps`, value: `${fmt(sendSeconds, 1)} 秒` },
               { label: "分に直すと", value: `${fmt(sendSeconds / 60, 2)} 分` }
@@ -1839,6 +2387,227 @@ export function VideoLab({ card }: LabProps) {
   );
 }
 
+/* ========================================================================
+ * D10 データの圧縮
+ * ====================================================================== */
+export function CompressLab({ card }: LabProps) {
+  const [kind, setKind] = useState("lossless");
+  const [before, setBefore] = useState(64);
+  const [after, setAfter] = useState(52);
+  const [runText, setRunText] = useState("AAAABBBBBAAA");
+  const [art, setArt] = useState("00000000\n01111110\n01000000\n01000000\n01111100\n01000000\n01000000\n00000000");
+  const [huffText, setHuffText] = useState("AAAAAAAAAABBBBCCCDDEEF");
+  const [plan, setPlan] = useState("");
+
+  const kinds: Record<string, [string, string, string, string]> = {
+    lossless: ["可逆圧縮", "もとに戻せる", "ZIP・PNG・GIF・FLAC", "文書やプログラムのように、1ビットも変えてはいけないデータに使います。"],
+    lossy: ["非可逆圧縮", "もとに戻せない", "JPEG・MP3・AAC", "写真や音楽のように、人が気づきにくい部分を捨ててよいデータに使います。そのぶん大きく減らせます。"]
+  };
+
+  const run = useMemo(() => runLength(runText.replace(/\s/g, "")), [runText]);
+  const artRows = art.split("\n").map((row) => row.replace(/[^01]/g, "")).filter((row) => row.length > 0);
+  const artFlat = artRows.join("");
+  const artRun = useMemo(() => runLength(artFlat), [artFlat]);
+  const huff = useMemo(() => huffman(huffText), [huffText]);
+
+  return (
+    <>
+      {card(
+        0,
+        "戻せる圧縮と、戻せない圧縮",
+        "2つの圧縮を切り替えて、使いどころの違いを確かめます。",
+        <>
+          <Tabs
+            value={kind}
+            onChange={setKind}
+            options={[
+              { value: "lossless", label: "可逆圧縮" },
+              { value: "lossy", label: "非可逆圧縮" }
+            ]}
+          />
+          <div className="compress-flow">
+            <div className="stage">
+              <small>もとのデータ</small>
+              <div className="bar full" />
+              <b>100%</b>
+            </div>
+            <i>圧縮</i>
+            <div className="stage">
+              <small>圧縮後</small>
+              <div className="bar" style={{ width: kind === "lossless" ? "60%" : "20%" }} />
+              <b>{kind === "lossless" ? "60%" : "20%"}</b>
+            </div>
+            <i>展開</i>
+            <div className="stage">
+              <small>戻したデータ</small>
+              <div className={`bar full ${kind === "lossy" ? "lossy" : ""}`} />
+              <b>{kind === "lossless" ? "もとどおり" : "戻りきらない"}</b>
+            </div>
+          </div>
+          <Results
+            items={[
+              { label: kinds[kind][0], value: kinds[kind][1], warn: kind === "lossy" },
+              { label: "代表的な形式", value: kinds[kind][2] },
+              { label: "圧縮率", value: kind === "lossless" ? "高め（あまり縮まない）" : "低め（よく縮む）" }
+            ]}
+          />
+          <Hint>{kinds[kind][3]}</Hint>
+        </>
+      )}
+
+      {card(
+        1,
+        "圧縮率を計算する",
+        "圧縮前と圧縮後のデータ量を入れて、どれだけ縮んだかを求めます。",
+        <>
+          <Row>
+            <NumberField label="圧縮前のデータ量" value={before} onChange={setBefore} min={1} max={1000000} unit="bit" />
+            <NumberField label="圧縮後のデータ量" value={after} onChange={setAfter} min={1} max={1000000} unit="bit" />
+          </Row>
+          <Formula>圧縮率(%) ＝ 圧縮後のデータ量 ÷ 圧縮前のデータ量 × 100</Formula>
+          <Results
+            items={[
+              { label: "圧縮率", value: `${fmt(compressionRate(after, before), 1)} %`, warn: after > before },
+              { label: "減った量", value: `${fmt(before - after, 0)} bit` },
+              { label: "何分の1になったか", value: `${fmt(before / Math.max(1, after), 2)} 分の1` },
+              { label: "判定", value: after > before ? "かえって増えている" : after === before ? "変わらない" : "縮んでいる", warn: after >= before }
+            ]}
+          />
+          <Hint>圧縮率の数値は、小さいほどよく縮んでいます。100%を超えたら、圧縮したのに増えてしまったということです。</Hint>
+        </>
+      )}
+
+      {card(
+        2,
+        "ランレングス法で文字列を圧縮する",
+        "同じ文字の連続を、その個数に置き換えます。文字を変えて試しましょう。",
+        <>
+          <TextField label="文字列を入力" value={runText} onChange={setRunText} hint="AとBだけにすると教科書の例になります" mono />
+          <div className="run-view">
+            {run.runs.map((r, i) => (
+              <span key={i}>
+                <b>{r.char}</b>
+                <i>{r.count}</i>
+              </span>
+            ))}
+          </div>
+          <Steps
+            items={[
+              { label: "文字の種類", value: `${run.kinds} 種類`, note: `1文字 ${run.symbolBits} bit` },
+              { label: "圧縮前", value: `${run.before} bit`, note: `${run.symbolBits} × ${run.chars}文字` },
+              { label: "連続のかたまり", value: `${run.runs.length} 個`, note: `最大 ${run.maxCount} 連続 → ${run.countBits} bit` },
+              { label: "圧縮後（個数だけ）", value: `${run.afterCountOnly} bit`, note: `${run.countBits} × ${run.runs.length}` }
+            ]}
+          />
+          <Results
+            items={[
+              { label: "圧縮率（個数だけ記録）", value: `${fmt(run.rateCountOnly, 1)} %`, warn: run.rateCountOnly >= 100, note: run.alternating ? "2種類が交互なので記号を省ける" : "この方式が使えるのは2種類が交互のときだけ" },
+              { label: "圧縮率（記号も記録）", value: `${fmt(run.rateWithSymbol, 1)} %`, warn: run.rateWithSymbol >= 100, note: "3種類以上ならこちら" },
+              { label: "符号化した結果", value: <span className="mono">{run.runs.map((r) => `${r.char}${r.count}`).join("")}</span> }
+            ]}
+          />
+          <Hint>
+            「ABABABAB」のように1文字ずつ変わる文字列を入れると、圧縮率が100%を超えます。ランレングス法が効くのは、
+            同じ値が長く続くデータだけです。
+          </Hint>
+        </>
+      )}
+
+      {card(
+        3,
+        "白黒の絵をランレングス法で圧縮する",
+        "0と1で絵を描くと、圧縮率がその場で変わります。",
+        <>
+          <AreaField label="0と1で絵を描く（0＝白 / 1＝黒）" value={art} onChange={setArt} rows={8} hint="改行で行を分ける" />
+          <div className="dot-art">
+            {artRows.map((row, y) => (
+              <div key={y}>
+                {row.split("").map((cell, x) => (
+                  <i key={x} style={{ background: cell === "1" ? "#111111" : "#ffffff" }} />
+                ))}
+              </div>
+            ))}
+          </div>
+          <Steps
+            items={[
+              { label: "総画素数", value: `${artFlat.length} 画素`, note: "1画素 1bit" },
+              { label: "圧縮前", value: `${artFlat.length} bit` },
+              { label: "連続のかたまり", value: `${artRun.runs.length} 個`, note: `最大 ${artRun.maxCount} 連続 → ${artRun.countBits} bit` },
+              { label: "圧縮後", value: `${artRun.afterCountOnly} bit` }
+            ]}
+          />
+          <Results
+            items={[
+              { label: "圧縮率", value: `${fmt(compressionRate(artRun.afterCountOnly, artFlat.length), 1)} %`, warn: artRun.afterCountOnly >= artFlat.length },
+              { label: "個数の並び", value: <span className="mono">{artRun.runs.map((r) => r.count).join(", ")}</span> },
+              { label: "縮んだか", value: artRun.afterCountOnly < artFlat.length ? "縮んだ" : "増えてしまった", warn: artRun.afterCountOnly >= artFlat.length }
+            ]}
+          />
+          <Hint>
+            大きなかたまりのある絵ほどよく縮みます。市松模様のように1マスおきに色が変わる絵を描くと、逆にデータ量が増えます。
+          </Hint>
+        </>
+      )}
+
+      {card(
+        4,
+        "ハフマン符号化で文字列を圧縮する",
+        "よく出る文字ほど短い符号になります。文字の偏りを変えて試しましょう。",
+        <>
+          <TextField label="文字列を入力" value={huffText} onChange={setHuffText} mono hint="同じ文字を増やすと、より縮みます" />
+          {huff ? (
+            <>
+              <DataTable
+                head={["文字", "出現回数", "割り当てられた符号", "ビット数", "合計"]}
+                rows={huff.table.map((r) => [
+                  r.char,
+                  `${r.count} 回`,
+                  <span key={r.char} className="mono">{r.code}</span>,
+                  `${r.bits} bit`,
+                  `${r.total} bit`
+                ])}
+              />
+              <Steps
+                items={[
+                  { label: "文字の種類", value: `${huff.kinds} 種類`, note: `同じ長さなら1文字 ${huff.fixedBits} bit` },
+                  { label: "圧縮前", value: `${huff.before} bit` },
+                  { label: "圧縮後", value: `${huff.after} bit` }
+                ]}
+              />
+              <Results
+                items={[
+                  { label: "圧縮率", value: `${fmt(huff.rate, 1)} %`, warn: huff.rate >= 100 },
+                  { label: "いちばん短い符号", value: `${Math.min(...huff.table.map((r) => r.bits))} bit`, note: "最も多く出る文字" },
+                  { label: "いちばん長い符号", value: `${Math.max(...huff.table.map((r) => r.bits))} bit`, note: "最も少ない文字" }
+                ]}
+              />
+              <Hint>
+                すべての文字が同じ回数なら、ハフマン符号化してもほとんど縮みません。出現回数のかたよりが大きいほど効果が出ます。
+                JPEGやZIPの内部でも、この考え方が使われています。
+              </Hint>
+            </>
+          ) : (
+            <Verdict ok={false}>文字を入力してください。</Verdict>
+          )}
+        </>
+      )}
+
+      {card(
+        5,
+        "配布する教材データの圧縮方法を決める",
+        "資料の種類ごとに、どの圧縮を使うかを決めます。",
+        <AreaField
+          label="決めた方法と、その根拠"
+          value={plan}
+          onChange={setPlan}
+          placeholder="例：文章のPDFは1文字も変えられないのでZIP（可逆）。行事の写真はJPEG（非可逆・品質80）で約1/10に。説明音声はAAC（非可逆）。いずれも元データは無圧縮で別に保存しておく。"
+          rows={5}
+        />
+      )}
+    </>
+  );
+}
+
 export const digitalLabs: Record<string, (props: LabProps) => ReactNode> = {
   feature: FeatureLab,
   base: BaseLab,
@@ -1849,5 +2618,6 @@ export const digitalLabs: Record<string, (props: LabProps) => ReactNode> = {
   text: TextLab,
   audio: AudioLab,
   image: ImageLab,
-  video: VideoLab
+  video: VideoLab,
+  compress: CompressLab
 };
