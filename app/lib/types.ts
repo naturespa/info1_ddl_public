@@ -67,10 +67,25 @@ export type Lesson = {
   questions: Question[];
 };
 
+/** 1問ごとの最終結果。Excelで集計しやすいように日本語のまま出力する */
+export type QuestionResult = "1回目で正解" | "2回目で正解" | "不正解" | "2回目待ち";
+
 export type Submission = {
+  /** 1回目に選んだ選択肢の番号（0始まり） */
   answers: number[];
+  /** 2回目に選んだ選択肢の番号。1回目が正解、またはまだ挑戦していない場合は -1 */
+  retries: number[];
+  /** 1回目で正解した問題数 */
   correct: number;
+  /** 2回目で正解した問題数 */
+  secondCorrect: number;
+  /** 得点。1回目正解＝1点、2回目正解＝0.5点、不正解＝0点 */
+  score: number;
+  /** 問題ごとの結果 */
+  results: QuestionResult[];
   submittedAt: string;
+  /** 最後に2回目の解答をした時刻 */
+  retriedAt?: string;
 };
 
 export type Done = Record<string, boolean>;
@@ -82,21 +97,52 @@ export type Perspective = {
   thinking: number;
 };
 
+/** 分野ごとの成績。デジタル分野・データ活用分野をそれぞれ100点満点で出す */
+export type AreaScore = {
+  area: Area;
+  /** その分野の総合点（100点満点） */
+  totalScore: number;
+  perspective: Perspective;
+  /** 確認問題の素点（0.5刻み） */
+  quizScore: number;
+  /** その分野の確認問題数＝満点 */
+  quizMax: number;
+  firstCorrect: number;
+  secondCorrect: number;
+  experimentDone: number;
+  experimentMax: number;
+  completedLessons: number;
+  lessonCount: number;
+};
+
+export type Summary = {
+  /** 総合点。デジタル分野100点＋データ活用分野100点の合計 */
+  totalScore: number;
+  /** 総合点の満点（分野数×100） */
+  totalMax: number;
+  /** 全体を1つとみなしたときの観点別の到達度（％） */
+  perspective: Perspective;
+  /** 確認問題の素点（1回目正解＝1点、2回目正解＝0.5点） */
+  quizScore: number;
+  /** 1回目で正解した問題数 */
+  quizCorrect: number;
+  /** 2回目で正解した問題数 */
+  quizSecondCorrect: number;
+  quizMax: number;
+  experimentDone: number;
+  experimentMax: number;
+  completedLessons: number;
+  lessonCount: number;
+  /** 分野ごとの成績（それぞれ100点満点） */
+  areas: AreaScore[];
+};
+
 export type StudentRecord = {
-  version: 2;
+  version: 3;
   exportedAt?: string;
   studentCode: string;
   drafts: Record<string, number[]>;
   submissions: Record<string, Submission>;
   experiments: Record<string, boolean>;
-  summary: {
-    totalScore: number;
-    perspective: Perspective;
-    quizCorrect: number;
-    quizMax: number;
-    experimentDone: number;
-    experimentMax: number;
-    completedLessons: number;
-    lessonCount: number;
-  };
+  summary: Summary;
 };

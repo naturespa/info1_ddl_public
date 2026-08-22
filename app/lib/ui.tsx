@@ -4,7 +4,7 @@
 // すべての実験は「自分で数値や文字を入力 → その場で結果が変わる」形にそろえる。
 
 import type { ReactNode } from "react";
-import { clamp } from "./calc";
+import { clamp, normalPdf, tPdf } from "./calc";
 
 /* ---------- 入力部品 ---------- */
 
@@ -254,6 +254,23 @@ export function Hint({ children }: { children: ReactNode }) {
   return <p className="hint-line">{children}</p>;
 }
 
+/**
+ * つまずいたときだけ開くヒント。
+ * 最初は閉じているので、自力で考えたい生徒のじゃまをしない。
+ * label を変えれば「もっとくわしく」など段階をつけられる。
+ */
+export function HintButton({ label = "ヒントを見る", children }: { label?: string; children: ReactNode }) {
+  return (
+    <details className="hint-toggle">
+      <summary>
+        <span aria-hidden="true">？</span>
+        {label}
+      </summary>
+      <div className="hint-toggle-body">{children}</div>
+    </details>
+  );
+}
+
 export function DataTable({
   head,
   rows,
@@ -328,13 +345,19 @@ export function BarChart({
   labels,
   overlay,
   height = 140,
-  unit
+  unit,
+  highlight,
+  tone
 }: {
   values: number[];
   labels?: string[];
   overlay?: (number | null)[];
   height?: number;
   unit?: string;
+  /** true を返した棒だけ色を変える（該当する範囲を示すときに使う） */
+  highlight?: (index: number) => boolean;
+  /** "compare" にすると、2つの集団を並べるための配色になる（赤は使わない） */
+  tone?: "compare";
 }) {
   if (!values.length) return null;
   const max = Math.max(...values, ...(overlay?.filter((v): v is number => v !== null) ?? []));
@@ -349,7 +372,12 @@ export function BarChart({
     .join(" ");
   return (
     <div className="chart-scroll">
-      <svg viewBox={`0 0 ${width} ${height + 20}`} className="chart" role="img" aria-label="グラフ">
+      <svg
+        viewBox={`0 0 ${width} ${height + 20}`}
+        className={tone === "compare" ? "chart chart-compare" : "chart"}
+        role="img"
+        aria-label="グラフ"
+      >
         {values.map((value, index) => (
           <rect
             key={index}
@@ -358,6 +386,7 @@ export function BarChart({
             width={barWidth * 0.7}
             height={Math.max(1, height - 4 - y(value))}
             rx="3"
+            className={highlight?.(index) ? "hot" : undefined}
           />
         ))}
         {points && <polyline points={points} className="overlay" />}
@@ -405,10 +434,19 @@ export function Scatter({
 }
 
 /** 箱ひげ図 */
-export function BoxPlot({ summary }: { summary: { min: number; q1: number; q2: number; q3: number; max: number; mean: number } }) {
+export function BoxPlot({
+  summary,
+  domain
+}: {
+  summary: { min: number; q1: number; q2: number; q3: number; max: number; mean: number };
+  /** 複数の箱ひげ図を並べて比べるときは、共通の目盛り [下端, 上端] を渡す */
+  domain?: [number, number];
+}) {
   const { min, q1, q2, q3, max, mean } = summary;
-  const span = max - min || 1;
-  const pos = (value: number) => 5 + ((value - min) / span) * 90;
+  const low = domain ? domain[0] : min;
+  const high = domain ? domain[1] : max;
+  const span = high - low || 1;
+  const pos = (value: number) => 5 + ((value - low) / span) * 90;
   return (
     <div className="boxplot-wrap">
       <svg viewBox="0 0 100 40" className="boxplot" preserveAspectRatio="none" role="img" aria-label="箱ひげ図">
@@ -426,6 +464,93 @@ export function BoxPlot({ summary }: { summary: { min: number; q1: number; q2: n
         <span>Q3 {q3.toFixed(1)}</span>
         <span>最大 {max}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 棄却域の図。
+ * 分布のカーブを描き、有意水準で決まる「棄却域」を塗り分け、
+ * 実際の検定統計量がどちら側に落ちたかを示す。
+ */
+export function RejectionCurve({
+  stat,
+  critical,
+  alpha,
+  two = true,
+  df,
+  statLabel = "検定統計量"
+}: {
+  stat: number;
+  critical: number;
+  alpha: number;
+  two?: boolean;
+  /** 自由度。指定するとt分布、省略すると標準正規分布を描く */
+  df?: number;
+  statLabel?: string;
+}) {
+  const W = 320;
+  const H = 170;
+  const BASE = 132;
+  const span = Math.max(4, Math.abs(stat) + 1, critical + 1);
+  const density = (x: number) => (df && df > 0 ? tPdf(x, df) : normalPdf(x));
+  const peak = density(0) || 1;
+  const px = (x: number) => ((x + span) / (2 * span)) * W;
+  const py = (d: number) => BASE - (d / peak) * 100;
+
+  const curve = (from: number, to: number) => {
+    const pts: string[] = [];
+    const steps = 80;
+    for (let i = 0; i <= steps; i++) {
+      const x = from + ((to - from) * i) / steps;
+      pts.push(`${px(x).toFixed(2)},${py(density(x)).toFixed(2)}`);
+    }
+    return pts;
+  };
+  const area = (from: number, to: number) =>
+    `${px(from).toFixed(2)},${BASE} ${curve(from, to).join(" ")} ${px(to).toFixed(2)},${BASE}`;
+
+  const inReject = two ? Math.abs(stat) >= critical : stat >= critical;
+  const clampedStat = clamp(stat, -span + 0.05, span - 0.05);
+
+  return (
+    <div className="reject-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} className="reject-curve" role="img"
+        aria-label={`棄却域の図。有意水準 ${alpha}、臨界値 ${critical.toFixed(3)}、${statLabel} ${stat.toFixed(3)}。${inReject ? "棄却域に入っています" : "棄却域に入っていません"}`}>
+        <polygon className="accept-area" points={area(two ? -critical : -span, critical)} />
+        {two && <polygon className="reject-area" points={area(-span, -critical)} />}
+        <polygon className="reject-area" points={area(critical, span)} />
+        <polyline className="reject-line" points={curve(-span, span).join(" ")} />
+        <line x1="0" y1={BASE} x2={W} y2={BASE} className="axis-line" />
+        {two && (
+          <line x1={px(-critical)} y1={py(density(critical))} x2={px(-critical)} y2={BASE} className="critical-line" />
+        )}
+        <line x1={px(critical)} y1={py(density(critical))} x2={px(critical)} y2={BASE} className="critical-line" />
+        <line x1={px(clampedStat)} y1="24" x2={px(clampedStat)} y2={BASE} className="mark" />
+        <text x={clamp(px(clampedStat), 26, W - 26)} y="18" textAnchor="middle" className="axis">
+          {statLabel} {stat.toFixed(3)}
+        </text>
+        {two && (
+          <text x={clamp(px(-critical), 22, W - 22)} y={BASE + 14} textAnchor="middle" className="axis">
+            −{critical.toFixed(3)}
+          </text>
+        )}
+        <text x={clamp(px(critical), 22, W - 22)} y={BASE + 14} textAnchor="middle" className="axis">
+          {critical.toFixed(3)}
+        </text>
+        <text x={W / 2} y={BASE + 30} textAnchor="middle" className="axis">
+          真ん中は「差がない」としても起こりうる範囲
+        </text>
+      </svg>
+      <div className="reject-legend">
+        <span><i className="swatch-accept" />採択域（棄却できない）</span>
+        <span><i className="swatch-reject" />棄却域　合計 {(alpha * 100).toFixed(0)}%{two ? "（両側に半分ずつ）" : "（片側）"}</span>
+      </div>
+      <Verdict ok={!inReject}>
+        {inReject
+          ? `${statLabel}は棄却域に入りました。「たまたまこうなった」では説明しにくい、と判断します。`
+          : `${statLabel}は棄却域に入っていません。「たまたまこうなった」でも説明できる範囲です。`}
+      </Verdict>
     </div>
   );
 }

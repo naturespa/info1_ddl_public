@@ -3,9 +3,45 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Experiments } from "./experiments";
 import { experimentCount, lessons, totalExperiments, totalQuestions } from "./lib/lessons";
-import type { Lesson, Submission, StudentRecord } from "./lib/types";
+import type { Area, Lesson, QuestionResult, Submission, StudentRecord, Summary } from "./lib/types";
 
 const STORAGE_PREFIX = "joho-ddl-public-v2:";
+
+const AREAS: Area[] = ["デジタル", "データ活用"];
+
+/** 1回目正解＝1点、2回目正解＝0.5点、不正解＝0点 */
+const FIRST_POINT = 1;
+const SECOND_POINT = 0.5;
+
+/** 小数第1位まで（0.5刻みの得点を見やすく丸める） */
+const point = (value: number) => Math.round(value * 10) / 10;
+
+/**
+ * 保存されている解答から、問題ごとの結果と得点を組み立て直す。
+ * 旧バージョン（2回目の記録がない）の保存データもここで読めるようにしている。
+ */
+const gradeSubmission = (lesson: Lesson, saved: Partial<Submission> | undefined): Submission | undefined => {
+  if (!saved || !Array.isArray(saved.answers)) return undefined;
+  const answers = lesson.questions.map((_, i) => saved.answers?.[i] ?? -1);
+  const retries = lesson.questions.map((_, i) => saved.retries?.[i] ?? -1);
+  const results: QuestionResult[] = lesson.questions.map((question, i) => {
+    if (answers[i] === question.answer) return "1回目で正解";
+    if (retries[i] === -1) return "2回目待ち";
+    return retries[i] === question.answer ? "2回目で正解" : "不正解";
+  });
+  const correct = results.filter((r) => r === "1回目で正解").length;
+  const secondCorrect = results.filter((r) => r === "2回目で正解").length;
+  return {
+    answers,
+    retries,
+    correct,
+    secondCorrect,
+    score: point(correct * FIRST_POINT + secondCorrect * SECOND_POINT),
+    results,
+    submittedAt: saved.submittedAt ?? new Date().toISOString(),
+    ...(saved.retriedAt ? { retriedAt: saved.retriedAt } : {})
+  };
+};
 
 const normalizeStudentCode = (value: string) =>
   value
@@ -29,25 +65,62 @@ export default function Home() {
 
   const current = lessons.find((lesson) => lesson.id === active);
 
-  const summary = useMemo(() => {
-    const quizCorrect = Object.values(submissions).reduce((sum, submission) => sum + submission.correct, 0);
-    const quizMax = totalQuestions;
-    const experimentDone = Object.values(experiments).filter(Boolean).length;
-    const completedLessons = lessons.filter((lesson) => {
-      const done = Array.from({ length: experimentCount(lesson) }, (_, i) => experiments[`${lesson.id}-${i}`]).every(Boolean);
-      return !!submissions[lesson.id] && done;
-    }).length;
-    const knowledge = Math.round((quizCorrect / quizMax) * 100);
-    const thinking = Math.round((experimentDone / totalExperiments) * 100);
+  const summary = useMemo<Summary>(() => {
+    /** 単元の集合をまとめて集計する。分野ごとにも、全体にも同じ式を使う */
+    const tally = (group: Lesson[]) => {
+      let quizScore = 0;
+      let firstCorrect = 0;
+      let secondCorrect = 0;
+      let quizMax = 0;
+      let experimentDone = 0;
+      let experimentMax = 0;
+      let completedLessons = 0;
+      group.forEach((lesson) => {
+        const submission = submissions[lesson.id];
+        quizMax += lesson.questions.length;
+        if (submission) {
+          quizScore += submission.score;
+          firstCorrect += submission.correct;
+          secondCorrect += submission.secondCorrect;
+        }
+        const expTotal = experimentCount(lesson);
+        const expDone = Array.from({ length: expTotal }, (_, i) => experiments[`${lesson.id}-${i}`]).filter(Boolean).length;
+        experimentMax += expTotal;
+        experimentDone += expDone;
+        if (submission && expDone === expTotal) completedLessons += 1;
+      });
+      const knowledge = quizMax ? Math.round((quizScore / quizMax) * 100) : 0;
+      const thinking = experimentMax ? Math.round((experimentDone / experimentMax) * 100) : 0;
+      return {
+        totalScore: Math.round(knowledge * 0.6 + thinking * 0.4),
+        perspective: { knowledge, thinking },
+        quizScore: point(quizScore),
+        firstCorrect,
+        secondCorrect,
+        quizMax,
+        experimentDone,
+        experimentMax,
+        completedLessons,
+        lessonCount: group.length
+      };
+    };
+
+    const whole = tally(lessons);
+    const areas = AREAS.map((area) => ({ area, ...tally(lessons.filter((lesson) => lesson.area === area)) }));
     return {
-      totalScore: Math.round(knowledge * 0.6 + thinking * 0.4),
-      perspective: { knowledge, thinking },
-      quizCorrect,
-      quizMax,
-      experimentDone,
-      experimentMax: totalExperiments,
-      completedLessons,
-      lessonCount: lessons.length
+      // 総合点は、分野ごとの100点を足した200点満点
+      totalScore: areas.reduce((sum, area) => sum + area.totalScore, 0),
+      totalMax: areas.length * 100,
+      perspective: whole.perspective,
+      quizScore: whole.quizScore,
+      quizCorrect: whole.firstCorrect,
+      quizSecondCorrect: whole.secondCorrect,
+      quizMax: whole.quizMax,
+      experimentDone: whole.experimentDone,
+      experimentMax: whole.experimentMax,
+      completedLessons: whole.completedLessons,
+      lessonCount: whole.lessonCount,
+      areas
     };
   }, [submissions, experiments]);
 
@@ -57,32 +130,46 @@ export default function Home() {
       const submission = submissions[lesson.id];
       const total = lesson.questions.length;
       const correct = submission?.correct ?? 0;
-      const rate = submission ? Math.round((correct / total) * 100) : null;
+      const score = submission?.score ?? 0;
+      const rate = submission ? Math.round((score / total) * 100) : null;
       const wrong = submission
         ? lesson.questions
-            .map((question, index) => ({ question, index, picked: submission.answers[index] }))
-            .filter((row) => row.picked !== row.question.answer)
+            .map((question, index) => ({
+              question,
+              index,
+              picked: submission.answers[index],
+              retried: submission.retries[index],
+              result: submission.results[index]
+            }))
+            .filter((row) => row.result !== "1回目で正解")
         : [];
       const expTotal = experimentCount(lesson);
       const expDone = Array.from({ length: expTotal }, (_, i) => experiments[`${lesson.id}-${i}`]).filter(Boolean).length;
       const state: "none" | "good" | "warn" | "bad" =
         rate === null ? "none" : rate >= 80 ? "good" : rate >= 60 ? "warn" : "bad";
-      return { lesson, submitted: !!submission, total, correct, rate, wrong, expDone, expTotal, state };
+      return { lesson, submitted: !!submission, total, correct, score, rate, wrong, expDone, expTotal, state };
     });
 
     const levels = ["基礎", "共通テスト", "ITパスポート", "基本情報"] as const;
     const byLevel = levels.map((level) => {
+      let score = 0;
       let correct = 0;
       let total = 0;
       perLesson.forEach((row) => {
         if (!row.submitted) return;
+        const submission = submissions[row.lesson.id]!;
         row.lesson.questions.forEach((question, index) => {
           if (question.level !== level) return;
           total += 1;
-          if (submissions[row.lesson.id]!.answers[index] === question.answer) correct += 1;
+          if (submission.results[index] === "1回目で正解") {
+            correct += 1;
+            score += FIRST_POINT;
+          } else if (submission.results[index] === "2回目で正解") {
+            score += SECOND_POINT;
+          }
         });
       });
-      return { level, correct, total, rate: total ? Math.round((correct / total) * 100) : null };
+      return { level, correct, score: point(score), total, rate: total ? Math.round((score / total) * 100) : null };
     });
 
     const answered = perLesson.filter((row) => row.submitted);
@@ -90,10 +177,10 @@ export default function Home() {
     const strong = answered.filter((row) => (row.rate ?? 0) >= 80);
     const basic = byLevel[0];
     const applied = byLevel.slice(1).reduce(
-      (acc, row) => ({ correct: acc.correct + row.correct, total: acc.total + row.total }),
-      { correct: 0, total: 0 }
+      (acc, row) => ({ score: acc.score + row.score, total: acc.total + row.total }),
+      { score: 0, total: 0 }
     );
-    const appliedRate = applied.total ? Math.round((applied.correct / applied.total) * 100) : null;
+    const appliedRate = applied.total ? Math.round((applied.score / applied.total) * 100) : null;
     const untouched = perLesson.filter((row) => row.expDone === 0 && !row.submitted).length;
 
     /** 集計結果から、事実だけを根拠にした短い講評を組み立てる */
@@ -102,8 +189,12 @@ export default function Home() {
       verdicts.push("まだ確認問題が1つも送信されていません。どの単元でもよいので1つ送信すると、ここに得意と弱点が表示されます。");
     } else {
       const totalCorrect = answered.reduce((a, b) => a + b.correct, 0);
+      const totalSecond = answered.reduce((a, b) => a + b.lesson.questions.length - b.correct - b.wrong.filter((w) => w.result !== "2回目で正解").length, 0);
       const totalAsked = answered.reduce((a, b) => a + b.total, 0);
-      verdicts.push(`送信した${answered.length}単元で、${totalAsked}問中${totalCorrect}問（${Math.round((totalCorrect / totalAsked) * 100)}%）正解しています。`);
+      verdicts.push(
+        `送信した${answered.length}単元で、${totalAsked}問中${totalCorrect}問を1回目で正解しています（${Math.round((totalCorrect / totalAsked) * 100)}%）。` +
+          (totalSecond > 0 ? `さらに${totalSecond}問を2回目で正解しました。` : "")
+      );
       if (basic.rate !== null && appliedRate !== null && basic.rate - appliedRate >= 20) {
         verdicts.push(`用語や定義（基礎${basic.rate}%）は入っていますが、計算や判断を求める問題（${appliedRate}%）で落としています。手順を実験でたどり直すのが近道です。`);
       } else if (basic.rate !== null && appliedRate !== null && appliedRate - basic.rate >= 20) {
@@ -125,7 +216,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!loaded || studentCode.length !== 4) return;
-    const record: StudentRecord = { version: 2, studentCode, drafts, submissions, experiments, summary };
+    const record: StudentRecord = { version: 3, studentCode, drafts, submissions, experiments, summary };
     try {
       localStorage.setItem(`${STORAGE_PREFIX}${studentCode}`, JSON.stringify(record));
     } catch {
@@ -147,8 +238,14 @@ export default function Home() {
     }
     try {
       const saved = JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${code}`) ?? "{}") as Partial<StudentRecord>;
+      // 旧バージョンで保存したデータも、ここで採点し直して読み込む
+      const restored: Record<string, Submission> = {};
+      lessons.forEach((lesson) => {
+        const graded = gradeSubmission(lesson, saved.submissions?.[lesson.id] as Partial<Submission> | undefined);
+        if (graded) restored[lesson.id] = graded;
+      });
       setDrafts(saved.drafts ?? {});
-      setSubmissions(saved.submissions ?? {});
+      setSubmissions(restored);
       setExperiments(saved.experiments ?? {});
     } catch {
       reset();
@@ -167,8 +264,19 @@ export default function Home() {
   const submitLesson = (lesson: Lesson) => {
     const answers = drafts[lesson.id] ?? [];
     if (answers.length !== lesson.questions.length || answers.some((a) => a === -1 || a === undefined)) return;
-    const correct = lesson.questions.filter((question, index) => question.answer === answers[index]).length;
-    setSubmissions((prev) => ({ ...prev, [lesson.id]: { answers, correct, submittedAt: new Date().toISOString() } }));
+    const graded = gradeSubmission(lesson, { answers, submittedAt: new Date().toISOString() });
+    if (graded) setSubmissions((prev) => ({ ...prev, [lesson.id]: graded }));
+  };
+
+  /** 1回目に間違えた問題だけ、もう1回だけ選び直せる */
+  const retry = (lesson: Lesson, questionIndex: number, choiceIndex: number) => {
+    const submission = submissions[lesson.id];
+    if (!submission) return;
+    if (submission.results[questionIndex] !== "2回目待ち") return;
+    const retries = [...submission.retries];
+    retries[questionIndex] = choiceIndex;
+    const graded = gradeSubmission(lesson, { ...submission, retries, retriedAt: new Date().toISOString() });
+    if (graded) setSubmissions((prev) => ({ ...prev, [lesson.id]: graded }));
   };
 
   const markExperiment = (lessonId: string, index: number) =>
@@ -180,7 +288,7 @@ export default function Home() {
   const exportJson = () => {
     if (studentCode.length !== 4) return;
     const record: StudentRecord = {
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       studentCode,
       drafts,
@@ -238,7 +346,9 @@ export default function Home() {
           ) : (
             <div className="theory-box">
               <b>理論</b>
-              <p>{lesson.theory[index]}</p>
+              {lesson.theory[index].split("\n").map((paragraph, i) => (
+                <p key={i}>{paragraph}</p>
+              ))}
             </div>
           )}
           <div className="experiment-body">{body}</div>
@@ -289,7 +399,7 @@ export default function Home() {
               <div className="score-panel">
                 <div className="score-ring">
                   <strong>{summary.totalScore}</strong>
-                  <span>/100</span>
+                  <span>/{summary.totalMax}</span>
                 </div>
                 <ul className="perspective">
                   <li>
@@ -404,31 +514,68 @@ export default function Home() {
               </p>
               {current.questions.map((question, index) => {
                 const submitted = submissions[current.id];
-                const selected = submitted ? submitted.answers[index] : (drafts[current.id]?.[index] ?? -1);
+                const result = submitted?.results[index];
+                // 1回目に間違えて、まだ2回目を選んでいない状態
+                const awaiting = result === "2回目待ち";
+                const first = submitted ? submitted.answers[index] : (drafts[current.id]?.[index] ?? -1);
+                const second = submitted ? submitted.retries[index] : -1;
+                const selected = awaiting ? first : second >= 0 ? second : first;
+                // 2回目待ちのあいだは、正解も解説もまだ見せない
+                const resolved = !!submitted && !awaiting;
                 return (
-                  <article className="question" key={question.id}>
+                  <article className={`question ${awaiting ? "retry-open" : ""}`} key={question.id}>
                     <h3>
                       <span className={`level level-${question.level}`}>{question.level}</span>
                       Q{index + 1}. {question.q}
+                      {result && result !== "2回目待ち" && (
+                        <span className={`result-tag ${result === "1回目で正解" ? "first" : result === "2回目で正解" ? "second" : "miss"}`}>
+                          {result}
+                          {result === "2回目で正解" ? "（0.5点）" : result === "1回目で正解" ? "（1点）" : "（0点）"}
+                        </span>
+                      )}
                     </h3>
                     {question.source && <p className="source">出典: {question.source}</p>}
+                    {awaiting && (
+                      <p className="retry-banner">
+                        1回目は不正解でした。<b>もう1回だけ選べます</b>（2回目で正解すると0.5点）。よく読んで選び直しましょう。
+                      </p>
+                    )}
                     <div className="choices">
-                      {question.choices.map((choice, choiceIndex) => (
-                        <button
-                          key={choice}
-                          disabled={!!submitted}
-                          className={`${selected === choiceIndex ? "selected" : ""} ${submitted && question.answer === choiceIndex ? "correct" : ""} ${
-                            submitted && selected === choiceIndex && question.answer !== choiceIndex ? "wrong" : ""
-                          }`}
-                          onClick={() => choose(current, index, choiceIndex)}
-                        >
-                          {String.fromCharCode(65 + choiceIndex)}. {choice}
-                        </button>
-                      ))}
+                      {question.choices.map((choice, choiceIndex) => {
+                        const isFirstPick = !!submitted && first === choiceIndex;
+                        const isSecondPick = second === choiceIndex;
+                        return (
+                          <button
+                            key={choice}
+                            // 未送信なら自由に選べる。2回目待ちのあいだは、1回目に選んだ選択肢以外を押せる
+                            disabled={submitted ? !awaiting || isFirstPick : false}
+                            className={[
+                              !submitted && selected === choiceIndex ? "selected" : "",
+                              resolved && question.answer === choiceIndex ? "correct" : "",
+                              resolved && selected === choiceIndex && question.answer !== choiceIndex ? "wrong" : "",
+                              resolved && isFirstPick && question.answer !== choiceIndex ? "wrong tried" : "",
+                              awaiting && isFirstPick ? "wrong tried" : "",
+                              isSecondPick ? "second-pick" : ""
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={() => (awaiting ? retry(current, index, choiceIndex) : choose(current, index, choiceIndex))}
+                          >
+                            {String.fromCharCode(65 + choiceIndex)}. {choice}
+                            {isFirstPick && question.answer !== choiceIndex && <em className="pick-tag">1回目に選んだ</em>}
+                            {resolved && isSecondPick && <em className="pick-tag">2回目に選んだ</em>}
+                          </button>
+                        );
+                      })}
                     </div>
-                    {submitted && (
+                    {resolved && (
                       <div className="feedback">
-                        {selected === question.answer ? "正解。" : "不正解。"} {question.explanation}
+                        {result === "1回目で正解"
+                          ? "1回目で正解。"
+                          : result === "2回目で正解"
+                            ? "2回目で正解。半分の0.5点です。"
+                            : "2回とも不正解。"}{" "}
+                        {question.explanation}
                       </div>
                     )}
                   </article>
@@ -443,7 +590,24 @@ export default function Home() {
                   {current.questions.length}問の解答を送信して得点を確定
                 </button>
               ) : (
-                <div className="notice">送信済みです。得点はこのブラウザに保存されています。</div>
+                (() => {
+                  const submission = submissions[current.id]!;
+                  const waiting = submission.results.filter((r) => r === "2回目待ち").length;
+                  return (
+                    <div className="notice">
+                      {waiting > 0 ? (
+                        <>
+                          あと <b>{waiting}問</b> が2回目の解答待ちです。上の赤い枠の問題を選び直すと得点が確定します。
+                        </>
+                      ) : (
+                        <>
+                          この単元の得点は <b>{submission.score}</b> / {current.questions.length}点です（1回目正解 {submission.correct}問、
+                          2回目正解 {submission.secondCorrect}問）。記録はこのブラウザに保存されています。
+                        </>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </section>
 
@@ -457,19 +621,21 @@ export default function Home() {
             </button>
             <h1>成績・JSON出力</h1>
             <p className="muted">
-              知識・技能（確認問題）60％、思考・判断・表現（実験）40％で総合点を計算します。教員用の保存機能はありません。
+              デジタル分野100点＋データ活用分野100点の<b>200点満点</b>です。分野ごとに、知識・技能（確認問題）60％、
+              思考・判断・表現（実験）40％で計算します。確認問題は1回目で正解すると1点、2回目で正解すると0.5点です。
+              教員用の保存機能はありません。
             </p>
             <div className="result-grid">
               <div className="metric">
-                <span>総合点</span>
+                <span>総合点（2分野の合計）</span>
                 <b>{summary.totalScore}</b>
-                <small>/100</small>
+                <small>/{summary.totalMax}</small>
               </div>
               <div className="metric">
                 <span>知識・技能</span>
                 <b>{summary.perspective.knowledge}</b>
                 <small>
-                  {summary.quizCorrect}/{summary.quizMax}問
+                  {summary.quizScore}/{summary.quizMax}点
                 </small>
               </div>
               <div className="metric">
@@ -480,8 +646,60 @@ export default function Home() {
                 </small>
               </div>
             </div>
+
+            <div className="area-grid">
+              {summary.areas.map((area) => (
+                <div className="area-card" key={area.area}>
+                  <div className="area-head">
+                    <b>{area.area}分野</b>
+                    <span>
+                      {area.lessonCount}単元 ・ 確認問題{area.quizMax}問 ・ 実験{area.experimentMax}個
+                    </span>
+                  </div>
+                  <div className="area-score">
+                    <strong>{area.totalScore}</strong>
+                    <span>/ 100点</span>
+                  </div>
+                  <div className="area-bar">
+                    <i style={{ width: `${area.totalScore}%` }} />
+                  </div>
+                  <dl className="area-detail">
+                    <div>
+                      <dt>確認問題の素点</dt>
+                      <dd>
+                        {area.quizScore} / {area.quizMax}点
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>1回目で正解</dt>
+                      <dd>{area.firstCorrect}問</dd>
+                    </div>
+                    <div>
+                      <dt>2回目で正解</dt>
+                      <dd>{area.secondCorrect}問</dd>
+                    </div>
+                    <div>
+                      <dt>実験の実施</dt>
+                      <dd>
+                        {area.experimentDone} / {area.experimentMax}個
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>知識・技能</dt>
+                      <dd>{area.perspective.knowledge}</dd>
+                    </div>
+                    <div>
+                      <dt>思考・判断・表現</dt>
+                      <dd>{area.perspective.thinking}</dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </div>
+
             <p className="muted small">
-              完了した単元（全実験＋確認問題送信）: {summary.completedLessons} / {summary.lessonCount}
+              完了した単元（全実験＋確認問題送信）: {summary.completedLessons} / {summary.lessonCount}　／
+              確認問題は 1回目で {summary.quizCorrect}問、2回目で {summary.quizSecondCorrect}問 正解しています。
             </p>
 
             <section className="dashboard">
@@ -634,10 +852,16 @@ export default function Home() {
                               {w.question.q}
                             </p>
                             <p className="review-a">
-                              <span className="ng">あなたの答え: {w.picked >= 0 ? w.question.choices[w.picked] : "無回答"}</span>
+                              <span className="ng">1回目: {w.picked >= 0 ? w.question.choices[w.picked] : "無回答"}</span>
+                              {w.retried >= 0 && (
+                                <span className={w.result === "2回目で正解" ? "ok" : "ng"}>
+                                  2回目: {w.question.choices[w.retried]}
+                                </span>
+                              )}
+                              {w.result === "2回目待ち" && <span className="wait">2回目はまだ解答していません</span>}
                               <span className="ok">正解: {w.question.choices[w.question.answer]}</span>
                             </p>
-                            <p className="review-e">{w.question.explanation}</p>
+                            {w.result !== "2回目待ち" && <p className="review-e">{w.question.explanation}</p>}
                           </div>
                         ))}
                       </div>
@@ -653,7 +877,11 @@ export default function Home() {
                   <em>
                     実験 {lessonProgress(lesson)}/{experimentCount(lesson)}
                   </em>
-                  <em>{submissions[lesson.id] ? `${submissions[lesson.id].correct}/${lesson.questions.length}` : "未送信"}</em>
+                  <em>
+                    {submissions[lesson.id]
+                      ? `${submissions[lesson.id].score}/${lesson.questions.length}点（1回目${submissions[lesson.id].correct}問・2回目${submissions[lesson.id].secondCorrect}問）`
+                      : "未送信"}
+                  </em>
                 </div>
               ))}
             </div>

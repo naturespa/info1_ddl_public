@@ -706,6 +706,38 @@ export const tCdf = (t: number, df: number): number => {
 /** t検定の両側p値 */
 export const tTwoSidedP = (t: number, df: number) => 2 * (1 - tCdf(Math.abs(t), df));
 
+/** t分布の確率密度 */
+export const tPdf = (t: number, df: number) =>
+  Math.exp(gammaLn((df + 1) / 2) - gammaLn(df / 2)) /
+  Math.sqrt(df * Math.PI) /
+  (1 + (t * t) / df) ** ((df + 1) / 2);
+
+/** t分布の臨界値。two=true なら両側、false なら片側 */
+export const tCritical = (df: number, alpha = 0.05, two = true) => {
+  const target = two ? 1 - alpha / 2 : 1 - alpha;
+  let low = 0;
+  let high = 400;
+  for (let i = 0; i < 200; i++) {
+    const mid = (low + high) / 2;
+    if (tCdf(mid, df) < target) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+};
+
+/** 標準正規分布の臨界値。two=true なら両側、false なら片側 */
+export const zCritical = (alpha = 0.05, two = true) => {
+  const target = two ? 1 - alpha / 2 : 1 - alpha;
+  let low = 0;
+  let high = 10;
+  for (let i = 0; i < 200; i++) {
+    const mid = (low + high) / 2;
+    if (normalCdf(mid) < target) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+};
+
 /** 正則不完全ガンマ関数 P(a, x) */
 const gammaP = (a: number, x: number): number => {
   if (x <= 0) return 0;

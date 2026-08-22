@@ -508,8 +508,13 @@ footer {
 
 .theory-box p,
 .mission-box p {
-  margin: 0;
+  margin: 0 0 8px;
   font-size: 14px;
+}
+
+.theory-box p:last-child,
+.mission-box p:last-child {
+  margin-bottom: 0;
 }
 
 .mission-checks {
@@ -845,6 +850,79 @@ footer {
   color: var(--muted);
   padding-left: 14px;
   border-left: 3px solid var(--line);
+}
+
+/* ---------- 押して開くヒント ---------- */
+
+.hint-toggle {
+  border: 1px dashed var(--green-soft);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.hint-toggle > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  border-radius: 12px;
+}
+
+.hint-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+
+.hint-toggle > summary span {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--mint);
+  color: var(--green);
+  display: grid;
+  place-content: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.hint-toggle > summary::after {
+  content: "＋";
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.hint-toggle[open] > summary::after {
+  content: "−";
+}
+
+.hint-toggle > summary:hover {
+  background: var(--mint);
+}
+
+.hint-toggle > summary:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.hint-toggle-body {
+  padding: 0 14px 12px 42px;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.hint-toggle-body p {
+  margin: 0 0 8px;
+}
+
+.hint-toggle-body p:last-child {
+  margin-bottom: 0;
 }
 
 .code-block {
@@ -1282,6 +1360,19 @@ footer {
   fill: var(--green-soft);
 }
 
+.chart rect.hot {
+  fill: var(--state-bad);
+}
+
+/* 2つの集団を並べて比べるとき。状態色（赤＝悪い）と混同させないための配色 */
+.chart-compare rect {
+  fill: #348f66;
+}
+
+.chart-compare rect.hot {
+  fill: #8f5bd6;
+}
+
 .chart .overlay {
   fill: none;
   stroke: var(--red);
@@ -1334,6 +1425,85 @@ footer {
   stroke: var(--red);
   stroke-width: 2;
   stroke-dasharray: 4 3;
+}
+
+/* ---------- 棄却域の図 ---------- */
+
+.reject-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reject-curve {
+  width: 100%;
+  max-width: 460px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.reject-curve .axis {
+  font-size: 9px;
+  fill: var(--muted);
+}
+
+.reject-curve .accept-area {
+  fill: var(--state-good);
+  opacity: 0.16;
+}
+
+.reject-curve .reject-area {
+  fill: var(--state-bad);
+  opacity: 0.45;
+}
+
+.reject-curve .reject-line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.reject-curve .critical-line {
+  stroke: var(--state-bad);
+  stroke-width: 2;
+}
+
+.reject-curve .mark {
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+.reject-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reject-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reject-legend i {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.reject-legend .swatch-accept {
+  background: color-mix(in srgb, var(--state-good) 22%, #fff);
+  border: 1px solid var(--state-good);
+}
+
+.reject-legend .swatch-reject {
+  background: color-mix(in srgb, var(--state-bad) 34%, #fff);
+  border: 1px solid var(--state-bad);
 }
 
 .boxplot-wrap {
@@ -1601,6 +1771,166 @@ footer {
   background: var(--paper);
   border-radius: 8px;
   padding: 8px 12px;
+}
+
+/* ---------- 2回目の解答 ---------- */
+
+.question.retry-open {
+  border-color: var(--state-bad);
+  border-width: 2px;
+  background: #fffaf9;
+}
+
+.retry-banner {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--state-bad);
+  background: #fdeeea;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.retry-banner b {
+  font-weight: 700;
+}
+
+.result-tag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 10px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.result-tag.first {
+  background: var(--mint);
+  color: var(--green);
+}
+
+.result-tag.second {
+  background: #fdf3e0;
+  color: #8a5b06;
+}
+
+.result-tag.miss {
+  background: #fdeeea;
+  color: var(--state-bad);
+}
+
+.choices button.tried {
+  opacity: 0.75;
+}
+
+.choices button.second-pick {
+  border-width: 2px;
+}
+
+.pick-tag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  font-style: normal;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 8px;
+  background: #fff;
+  white-space: nowrap;
+}
+
+/* ---------- 分野ごとの成績 ---------- */
+
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 14px;
+}
+
+.area-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.area-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.area-head b {
+  font-size: 15px;
+  color: var(--green);
+}
+
+.area-head span {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.area-score {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.area-score strong {
+  font-size: 38px;
+  line-height: 1;
+  color: var(--green);
+}
+
+.area-score span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.area-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.area-bar i {
+  display: block;
+  height: 100%;
+  background: var(--green-soft);
+  border-radius: 999px;
+}
+
+.area-detail {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px 12px;
+}
+
+.area-detail > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px dotted var(--line);
+  padding-bottom: 3px;
+}
+
+.area-detail dt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.area-detail dd {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
 }
 
 .primary {
@@ -2810,6 +3140,10 @@ footer {
 .review-a .ok {
   color: var(--state-good);
   font-weight: 700;
+}
+
+.review-a .wait {
+  color: var(--state-warn);
 }
 
 .review-e {
