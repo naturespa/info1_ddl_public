@@ -10,7 +10,11 @@ const nextConfig: NextConfig = {
   },
   trailingSlash: true,
   basePath: basePath || undefined,
-  assetPrefix: basePath ? `${basePath}/` : undefined
+  assetPrefix: basePath ? `${basePath}/` : undefined,
+  // 分野別テストの暗号ファイルを取りに行くときに使う
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath
+  }
 };
 
 export default nextConfig;

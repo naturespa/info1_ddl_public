@@ -137,12 +137,35 @@ export type Summary = {
   areas: AreaScore[];
 };
 
+/** 成績処理に必要な最低限だけを取り出した、分野別テストの1行 */
+export type ExamRow = {
+  studentCode: string;
+  grade: number | null;
+  classNo: number | null;
+  seat: number | null;
+  area: Area;
+  kind: string;
+  setId: string;
+  score: number;
+  max: number;
+  rate: number;
+  knowledge: string;
+  thinking: string;
+  startedAt: string;
+  finishedAt: string;
+  elapsedSeconds: number;
+};
+
 export type StudentRecord = {
-  version: 3;
+  version: 4;
   exportedAt?: string;
   studentCode: string;
   drafts: Record<string, number[]>;
   submissions: Record<string, Submission>;
   experiments: Record<string, boolean>;
   summary: Summary;
+  /** 分野別テストの結果。成績処理はまずこの exams を見れば足りる */
+  exams: ExamRow[];
+  /** 分野別テストの詳細（単元別・観点別・問題ごとの正誤） */
+  examDetails: unknown[];
 };

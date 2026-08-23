@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ExamView } from "./exam";
 import { Experiments } from "./experiments";
 import { experimentCount, lessons, totalExperiments, totalQuestions } from "./lib/lessons";
-import type { Area, Lesson, QuestionResult, Submission, StudentRecord, Summary } from "./lib/types";
+import type { Area, ExamRow, Lesson, QuestionResult, Submission, StudentRecord, Summary } from "./lib/types";
+import type { ExamResult } from "./lib/exam-types";
+import { classOf, gradeOf, seatOf } from "./lib/exam-types";
+import { formatElapsed } from "./lib/exam-runtime";
 
 const STORAGE_PREFIX = "joho-ddl-public-v2:";
 /** 確定した4桁番号を覚えておくキー。次に開いたときも同じ番号で続きから始める */
 const ACTIVE_KEY = "joho-ddl-public-active";
+/** 分野別テストの結果を置くキー */
+const EXAM_RESULTS_KEY = (code: string) => `joho-ddl-exam-results:${code}`;
 
 const AREAS: Area[] = ["デジタル", "データ活用"];
 
@@ -45,6 +51,24 @@ const gradeSubmission = (lesson: Lesson, saved: Partial<Submission> | undefined)
   };
 };
 
+/** 分野別テストの結果を読み書きする。分野ごとに最新の1回だけ残す */
+const loadExamResults = (code: string): ExamResult[] => {
+  try {
+    const raw = localStorage.getItem(EXAM_RESULTS_KEY(code));
+    return raw ? (JSON.parse(raw) as ExamResult[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveExamResults = (code: string, results: ExamResult[]) => {
+  try {
+    localStorage.setItem(EXAM_RESULTS_KEY(code), JSON.stringify(results));
+  } catch {
+    /* 保存できない環境では黙って続行する */
+  }
+};
+
 const normalizeStudentCode = (value: string) =>
   value
     .replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
@@ -69,6 +93,8 @@ export default function Home() {
   const [showTerms, setShowTerms] = useState(false);
   /** 「学習を終了」を押したあとの確認中フラグ */
   const [endConfirm, setEndConfirm] = useState(false);
+  /** 分野別テストの結果（分野ごとに最新の1回） */
+  const [examResults, setExamResults] = useState<ExamResult[]>([]);
 
   const current = lessons.find((lesson) => lesson.id === active);
 
@@ -228,6 +254,7 @@ export default function Home() {
         setStudentCode(saved);
         setCodeDraft(saved);
         loadRecord(saved);
+        setExamResults(loadExamResults(saved));
       }
     } catch {
       /* 読めない環境では、番号の入力から始める */
@@ -238,13 +265,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!loaded || studentCode.length !== 4) return;
-    const record: StudentRecord = { version: 3, studentCode, drafts, submissions, experiments, summary };
+    const record: StudentRecord = { version: 4, studentCode, drafts, submissions, experiments, summary, exams: examRows, examDetails: examResults };
     try {
       localStorage.setItem(`${STORAGE_PREFIX}${studentCode}`, JSON.stringify(record));
     } catch {
       /* 保存できない環境では黙って続行する */
     }
-  }, [loaded, studentCode, drafts, submissions, experiments, summary]);
+  }, [loaded, studentCode, drafts, submissions, experiments, summary, examResults]);
 
   /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
   const loadRecord = (code: string) => {
@@ -258,6 +285,7 @@ export default function Home() {
       setDrafts(saved.drafts ?? {});
       setSubmissions(restored);
       setExperiments(saved.experiments ?? {});
+      setExamResults(loadExamResults(code));
     } catch {
       setDrafts({});
       setSubmissions({});
@@ -286,6 +314,7 @@ export default function Home() {
     if (codeDraft.length !== 4) return;
     setStudentCode(codeDraft);
     loadRecord(codeDraft);
+    setExamResults(loadExamResults(codeDraft));
     try {
       localStorage.setItem(ACTIVE_KEY, codeDraft);
     } catch {
@@ -320,6 +349,44 @@ export default function Home() {
     if (graded) setSubmissions((prev) => ({ ...prev, [lesson.id]: graded }));
   };
 
+  /** 成績処理用の1行にまとめる（クラス・分野・本試験か追試か・点数） */
+  const examRows: ExamRow[] = examResults.map((r) => ({
+    studentCode,
+    grade: gradeOf(studentCode),
+    classNo: classOf(studentCode),
+    seat: seatOf(studentCode),
+    area: r.area,
+    kind: r.kind,
+    setId: r.setId,
+    score: r.score,
+    max: r.max,
+    rate: Math.round((r.score / r.max) * 100),
+    knowledge: (() => {
+      const v = r.byViewpoint.find((x) => x.key === "知識・技能");
+      return v ? `${v.correct}/${v.total}` : "0/0";
+    })(),
+    thinking: (() => {
+      const v = r.byViewpoint.find((x) => x.key === "思考・判断・表現");
+      return v ? `${v.correct}/${v.total}` : "0/0";
+    })(),
+    startedAt: r.startedAt,
+    finishedAt: r.finishedAt,
+    elapsedSeconds: r.elapsedSeconds
+  }));
+
+  /** テストの採点が終わったら受け取る。同じ分野・同じ種類の結果は上書きする */
+  const acceptExamResult = (result: ExamResult) => {
+    setExamResults((prev) => {
+      const same = prev.find((r) => r.setId === result.setId && r.finishedAt === result.finishedAt);
+      if (same) return prev;
+      const next = [...prev.filter((r) => !(r.area === result.area && r.kind === result.kind)), result].sort((a, b) =>
+        a.area === b.area ? a.kind.localeCompare(b.kind) : a.area.localeCompare(b.area)
+      );
+      saveExamResults(studentCode, next);
+      return next;
+    });
+  };
+
   const markExperiment = (lessonId: string, index: number) =>
     setExperiments((prev) => ({ ...prev, [`${lessonId}-${index}`]: true }));
 
@@ -329,13 +396,15 @@ export default function Home() {
   const exportJson = () => {
     if (studentCode.length !== 4) return;
     const record: StudentRecord = {
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       studentCode,
       drafts,
       submissions,
       experiments,
-      summary
+      summary,
+      exams: examRows,
+      examDetails: examResults
     };
     const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json;charset=utf-8" });
     const link = document.createElement("a");
@@ -354,6 +423,7 @@ export default function Home() {
     setStudentCode("");
     setCodeDraft("");
     setEndConfirm(false);
+    setExamResults([]);
     setDrafts({});
     setSubmissions({});
     setExperiments({});
@@ -426,6 +496,7 @@ export default function Home() {
         </button>
         <nav className="nav">
           <button onClick={() => setActive("home")}>学習マップ</button>
+          {studentCode.length === 4 && <button onClick={() => setActive("exam")}>分野別テスト</button>}
           <button onClick={() => setActive("results")}>成績・JSON出力</button>
           {studentCode.length === 4 &&
             (endConfirm ? (
@@ -724,6 +795,10 @@ export default function Home() {
           </section>
         )}
 
+        {active === "exam" && studentCode.length === 4 && (
+          <ExamView studentCode={studentCode} onResult={acceptExamResult} />
+        )}
+
         {active === "results" && (
           <section className="workspace">
             <button className="back" onClick={() => setActive("home")}>
@@ -806,6 +881,110 @@ export default function Home() {
                 </div>
               ))}
             </div>
+
+            {examResults.length > 0 && (
+              <section className="dashboard exam-results">
+                <div className="dash-head">
+                  <h2>分野別テストの結果</h2>
+                  <span className="muted small">
+                    {gradeOf(studentCode)}年{classOf(studentCode)}組{seatOf(studentCode)}番 ／ 普段の学習の点数とは別に記録しています
+                  </span>
+                </div>
+
+                <div className="area-grid">
+                  {examResults.map((r) => (
+                    <div className="area-card" key={r.setId + r.finishedAt}>
+                      <div className="area-head">
+                        <b>
+                          {r.area}分野
+                          <span className={`result-tag ${r.kind === "追試" ? "second" : "first"}`}>{r.kind}</span>
+                        </b>
+                        <span>
+                          {r.setId} ／ {formatElapsed(r.elapsedSeconds)} ／ {new Date(r.finishedAt).toLocaleString("ja-JP")}
+                        </span>
+                      </div>
+                      <div className="area-score">
+                        <strong>{r.score}</strong>
+                        <span>/ {r.max}点</span>
+                      </div>
+                      <div className="area-bar">
+                        <i style={{ width: `${(r.score / r.max) * 100}%` }} />
+                      </div>
+                      <dl className="area-detail">
+                        {r.byViewpoint.map((row) => (
+                          <div key={row.key}>
+                            <dt>{row.label}</dt>
+                            <dd>
+                              {row.correct}/{row.total}（{row.rate}%）
+                            </dd>
+                          </div>
+                        ))}
+                        {r.byLevel.map((row) => (
+                          <div key={row.key}>
+                            <dt>{row.label}</dt>
+                            <dd>
+                              {row.correct}/{row.total}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ))}
+                </div>
+
+                {examResults.map((r) => {
+                  const weak = [...r.byLesson].sort((a, b) => a.rate - b.rate).slice(0, 3);
+                  return (
+                    <div className="dash-panel" key={"weak-" + r.setId + r.finishedAt}>
+                      <h3>
+                        {r.area}分野・{r.kind}　立て直したい単元
+                      </h3>
+                      <p className="muted small">正答率の低い順に3つ。単元名を押すと、その単元の実験へ移動します。</p>
+                      <div className="level-bars">
+                        {weak.map((row) => {
+                          const lesson = lessons.find((l) => `${l.no} ${l.title}` === row.label);
+                          return (
+                            <div className="level-row" key={row.key}>
+                              {lesson ? (
+                                <button className="lesson-name link" onClick={() => setActive(lesson.id)}>
+                                  {row.label}
+                                </button>
+                              ) : (
+                                <span className="lesson-name">{row.label}</span>
+                              )}
+                              <div className="bar-track">
+                                <i
+                                  style={{ width: `${row.rate}%` }}
+                                  className={row.rate >= 80 ? "good" : row.rate >= 60 ? "warn" : "bad"}
+                                />
+                              </div>
+                              <b>{row.rate}%</b>
+                              <em>
+                                {row.correct}/{row.total}問
+                              </em>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {weak[0] &&
+                        (() => {
+                          const lesson = lessons.find((l) => `${l.no} ${l.title}` === weak[0].label);
+                          return lesson ? (
+                            <div className="remedy">
+                              <p className="remedy-stumble">{lesson.remedy.stumble}</p>
+                              <ol className="remedy-actions">
+                                {lesson.remedy.actions.map((a) => (
+                                  <li key={a}>{a}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          ) : null;
+                        })()}
+                    </div>
+                  );
+                })}
+              </section>
+            )}
 
             <p className="muted small">
               完了した単元（全実験＋確認問題送信）: {summary.completedLessons} / {summary.lessonCount}　／
