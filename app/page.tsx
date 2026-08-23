@@ -6,6 +6,8 @@ import { experimentCount, lessons, totalExperiments, totalQuestions } from "./li
 import type { Area, Lesson, QuestionResult, Submission, StudentRecord, Summary } from "./lib/types";
 
 const STORAGE_PREFIX = "joho-ddl-public-v2:";
+/** 確定した4桁番号を覚えておくキー。次に開いたときも同じ番号で続きから始める */
+const ACTIVE_KEY = "joho-ddl-public-active";
 
 const AREAS: Area[] = ["デジタル", "データ活用"];
 
@@ -55,13 +57,18 @@ const todayNumber = () => {
 };
 
 export default function Home() {
+  /** 確定した番号。確定するまでは空文字 */
   const [studentCode, setStudentCode] = useState("");
+  /** 入力中の番号（まだ確定していない） */
+  const [codeDraft, setCodeDraft] = useState("");
   const [active, setActive] = useState("home");
   const [drafts, setDrafts] = useState<Record<string, number[]>>({});
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [experiments, setExperiments] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  /** 「学習を終了」を押したあとの確認中フラグ */
+  const [endConfirm, setEndConfirm] = useState(false);
 
   const current = lessons.find((lesson) => lesson.id === active);
 
@@ -212,7 +219,22 @@ export default function Home() {
     return { perLesson, byLevel, weak, strong, answered, untouched, verdicts };
   }, [submissions, experiments]);
 
-  useEffect(() => setLoaded(true), []);
+  // 前回この端末で確定した番号があれば、そのまま続きから始める
+  useEffect(() => {
+    setLoaded(true);
+    try {
+      const saved = normalizeStudentCode(localStorage.getItem(ACTIVE_KEY) ?? "");
+      if (saved.length === 4) {
+        setStudentCode(saved);
+        setCodeDraft(saved);
+        loadRecord(saved);
+      }
+    } catch {
+      /* 読めない環境では、番号の入力から始める */
+    }
+    // 初回マウントのときだけ実行する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!loaded || studentCode.length !== 4) return;
@@ -224,21 +246,10 @@ export default function Home() {
     }
   }, [loaded, studentCode, drafts, submissions, experiments, summary]);
 
-  const updateStudentCode = (value: string) => {
-    const code = normalizeStudentCode(value);
-    setStudentCode(code);
-    const reset = () => {
-      setDrafts({});
-      setSubmissions({});
-      setExperiments({});
-    };
-    if (code.length !== 4) {
-      reset();
-      return;
-    }
+  /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
+  const loadRecord = (code: string) => {
     try {
       const saved = JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${code}`) ?? "{}") as Partial<StudentRecord>;
-      // 旧バージョンで保存したデータも、ここで採点し直して読み込む
       const restored: Record<string, Submission> = {};
       lessons.forEach((lesson) => {
         const graded = gradeSubmission(lesson, saved.submissions?.[lesson.id] as Partial<Submission> | undefined);
@@ -248,7 +259,37 @@ export default function Home() {
       setSubmissions(restored);
       setExperiments(saved.experiments ?? {});
     } catch {
-      reset();
+      setDrafts({});
+      setSubmissions({});
+      setExperiments({});
+    }
+  };
+
+  /** 入力中の番号に、このブラウザの記録があるかを見て、確認画面に出す内容を決める */
+  const draftPreview = useMemo(() => {
+    if (codeDraft.length !== 4 || !loaded) return null;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${codeDraft}`) ?? "null") as StudentRecord | null;
+      if (!saved) return { found: false, lessons: 0, experiments: 0 };
+      return {
+        found: true,
+        lessons: Object.keys(saved.submissions ?? {}).length,
+        experiments: Object.values(saved.experiments ?? {}).filter(Boolean).length
+      };
+    } catch {
+      return { found: false, lessons: 0, experiments: 0 };
+    }
+  }, [codeDraft, loaded]);
+
+  /** 番号を確定する。確定するとこのブラウザではもう変えられない */
+  const confirmCode = () => {
+    if (codeDraft.length !== 4) return;
+    setStudentCode(codeDraft);
+    loadRecord(codeDraft);
+    try {
+      localStorage.setItem(ACTIVE_KEY, codeDraft);
+    } catch {
+      /* 保存できない環境では黙って続行する */
     }
   };
 
@@ -304,12 +345,24 @@ export default function Home() {
     URL.revokeObjectURL(link.href);
   };
 
+  /**
+   * 学習を終了して、番号の入力からやり直せる状態に戻す。
+   * 共用パソコンで次の人に渡すための機能なので、押し間違いを防ぐため2段階にしている。
+   * 記録そのものは消えないので、同じ番号を入れ直せば続きから再開できる。
+   */
   const endLearning = () => {
     setStudentCode("");
+    setCodeDraft("");
+    setEndConfirm(false);
     setDrafts({});
     setSubmissions({});
     setExperiments({});
     setActive("home");
+    try {
+      localStorage.removeItem(ACTIVE_KEY);
+    } catch {
+      /* 消せない環境では黙って続行する */
+    }
   };
 
   /** 実験カードの共通枠。理論 → 操作 → 記録ボタン の順に並べる */
@@ -374,7 +427,17 @@ export default function Home() {
         <nav className="nav">
           <button onClick={() => setActive("home")}>学習マップ</button>
           <button onClick={() => setActive("results")}>成績・JSON出力</button>
-          {studentCode.length === 4 && <button onClick={endLearning}>学習を終了</button>}
+          {studentCode.length === 4 &&
+            (endConfirm ? (
+              <>
+                <button className="danger" onClick={endLearning}>
+                  終了する（記録は残ります）
+                </button>
+                <button onClick={() => setEndConfirm(false)}>やめる</button>
+              </>
+            ) : (
+              <button onClick={() => setEndConfirm(true)}>学習を終了</button>
+            ))}
         </nav>
       </header>
 
@@ -387,14 +450,61 @@ export default function Home() {
                 <p>
                   全{lessons.length}単元・実験{totalExperiments}個・確認問題{totalQuestions}問。読むだけの単元はひとつもありません。
                   数値を打ちこみ、ビットを押し、絵を描いて確かめていきます。挑んだ記録はこのブラウザに残り、成績ページで弱点まで見えます。
+                  {studentCode.length === 4
+                    ? ""
+                    : "はじめに4桁番号を入れ、確認してから確定してください。確定するとこのブラウザでは番号を変えられません。"}
                 </p>
-                <div className="lookup">
-                  <label>
-                    4桁番号
-                    <input inputMode="numeric" value={studentCode} onChange={(e) => updateStudentCode(e.target.value)} placeholder="例: 1205" />
-                  </label>
-                  <div className="status-pill">{studentCode.length === 4 ? `番号 ${studentCode}` : "半角数字4桁を入力"}</div>
-                </div>
+                {studentCode.length === 4 ? (
+                  <div className="code-locked">
+                    <b>番号 {studentCode}</b>
+                    <span>確定しました。この番号で記録しています。</span>
+                  </div>
+                ) : (
+                  <div className="code-entry">
+                    <div className="lookup">
+                      <label>
+                        4桁番号
+                        <input
+                          inputMode="numeric"
+                          value={codeDraft}
+                          onChange={(e) => setCodeDraft(normalizeStudentCode(e.target.value))}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") confirmCode();
+                          }}
+                          placeholder="例: 1205"
+                          autoComplete="off"
+                        />
+                      </label>
+                      <div className="status-pill">
+                        {codeDraft.length === 4 ? "下のボタンで確定します" : "半角数字4桁を入力"}
+                      </div>
+                    </div>
+
+                    {codeDraft.length === 4 && draftPreview && (
+                      <div className="code-confirm">
+                        <p className="code-ask">
+                          <b>{codeDraft}</b> ですね？
+                        </p>
+                        <p className="code-note">
+                          {draftPreview.found
+                            ? `このブラウザに ${codeDraft} の記録があります（確認問題 ${draftPreview.lessons}単元送信済み・実験 ${draftPreview.experiments}個）。続きから始めます。`
+                            : `このブラウザに ${codeDraft} の記録はありません。新しく始めます。`}
+                        </p>
+                        <p className="code-warn">
+                          確定すると、このブラウザでは番号を変えられなくなります。間違いがないか確かめてください。
+                        </p>
+                        <div className="code-actions">
+                          <button className="primary" onClick={confirmCode}>
+                            はい、{codeDraft} で始める
+                          </button>
+                          <button className="ghost" onClick={() => setCodeDraft("")}>
+                            入力し直す
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="score-panel">
                 <div className="score-ring">

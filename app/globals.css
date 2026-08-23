@@ -68,7 +68,7 @@ button {
   justify-content: space-between;
   align-items: center;
   gap: 18px;
-  padding: 14px max(16px, calc((100vw - 1180px) / 2));
+  padding: 12px max(16px, calc((100vw - 1320px) / 2));
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
@@ -104,20 +104,20 @@ button {
 }
 
 .shell {
-  max-width: 1180px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 24px max(16px, 4vw) 80px;
+  padding: 16px max(16px, 4vw) 56px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 18px;
 }
 
 footer {
   border-top: 1px solid var(--line);
-  padding: 20px max(16px, 4vw) 40px;
+  padding: 16px max(16px, 4vw) 28px;
   color: var(--muted);
   font-size: 12px;
-  max-width: 1180px;
+  max-width: 1320px;
   margin: 0 auto;
 }
 
@@ -169,6 +169,116 @@ footer {
   background: #fff;
   font-size: 18px;
   letter-spacing: 0.3em;
+}
+
+/* ---------- 4桁番号の確認とロック ---------- */
+
+.code-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.code-confirm {
+  background: #fff;
+  border: 2px solid var(--green);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.code-ask {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.code-ask b {
+  font-size: 26px;
+  color: var(--green);
+  letter-spacing: 0.18em;
+  margin-right: 4px;
+}
+
+.code-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.code-warn {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--state-bad);
+  background: #fdeeea;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.code-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.code-actions .primary {
+  align-self: auto;
+  padding: 9px 22px;
+}
+
+.code-actions .ghost {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 9px 20px;
+  font-size: 14px;
+}
+
+.code-actions .ghost:hover {
+  border-color: var(--green-soft);
+  color: var(--green);
+}
+
+.code-locked {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--mint);
+  border: 1px solid var(--green);
+  border-radius: 999px;
+  padding: 7px 18px;
+}
+
+.code-locked b {
+  font-size: 19px;
+  color: var(--green);
+  letter-spacing: 0.14em;
+}
+
+.code-locked span {
+  font-size: 12px;
+  color: var(--green-soft);
+}
+
+.nav button.danger {
+  border-color: var(--state-bad);
+  color: var(--state-bad);
+  font-weight: 700;
+}
+
+.nav button.danger:hover {
+  background: #fdeeea;
+  border-color: var(--state-bad);
+  color: var(--state-bad);
 }
 
 .status-pill {
@@ -322,7 +432,7 @@ footer {
 .workspace {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
 }
 
 .back {
@@ -441,17 +551,17 @@ footer {
 .experiments {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .experiment-card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 22px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   box-shadow: var(--shadow);
 }
 
@@ -462,36 +572,49 @@ footer {
 
 .experiment-heading {
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
 }
 
 .experiment-heading > span {
   background: var(--green);
   color: #fff;
-  border-radius: 10px;
-  padding: 6px 12px;
-  font-size: 12px;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
 
+/* 見出しとねらいを1行に並べて、縦を1行ぶん節約する */
+.experiment-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
 .experiment-heading h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
+  line-height: 1.45;
 }
 
 .experiment-heading p {
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .theory-box,
 .mission-box {
   background: var(--mint);
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 9px 13px;
 }
 
 .mission-box {
@@ -501,15 +624,16 @@ footer {
 .theory-box b,
 .mission-box b {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--green);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .theory-box p,
 .mission-box p {
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0 0 5px;
+  font-size: 13.5px;
+  line-height: 1.62;
 }
 
 .theory-box p:last-child,
@@ -550,7 +674,7 @@ footer {
 .experiment-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 
 .record-experiment {
@@ -559,8 +683,8 @@ footer {
   background: var(--green);
   color: #fff;
   border-radius: 999px;
-  padding: 8px 22px;
-  font-size: 14px;
+  padding: 5px 18px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -576,7 +700,7 @@ footer {
 
 .input-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -587,7 +711,7 @@ footer {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .field-wide {
@@ -595,8 +719,9 @@ footer {
 }
 
 .field-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.5;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -621,16 +746,22 @@ footer {
   gap: 6px;
 }
 
+.field textarea {
+  max-height: 150px;
+  resize: vertical;
+}
+
 .field input[type="number"],
 .field input[type="text"],
 .field input:not([type]),
 .field select,
 .field textarea {
   width: 100%;
-  padding: 9px 12px;
+  padding: 5px 10px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
+  line-height: 1.55;
 }
 
 .field input:focus,
@@ -739,14 +870,14 @@ footer {
 
 .result-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
 }
 
 .result-card {
   background: var(--mint);
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 6px 11px;
 }
 
 .result-card.warn {
@@ -755,16 +886,17 @@ footer {
 
 .result-card span {
   display: block;
-  font-size: 11px;
+  font-size: 10.5px;
+  line-height: 1.45;
   color: var(--muted);
 }
 
 .result-card b {
   display: block;
-  font-size: 18px;
+  font-size: 17px;
   color: var(--green);
   word-break: break-all;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .result-card.warn b {
@@ -773,9 +905,10 @@ footer {
 
 .result-card small {
   display: block;
-  font-size: 11px;
+  font-size: 10.5px;
+  line-height: 1.45;
   color: var(--muted);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .calc-steps {
@@ -785,12 +918,20 @@ footer {
   align-items: stretch;
 }
 
+.calc-steps em {
+  display: block;
+  font-size: 10.5px;
+  line-height: 1.45;
+  font-style: normal;
+  color: var(--muted);
+}
+
 .calc-steps > div {
-  flex: 1 1 120px;
+  flex: 1 1 118px;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 8px 12px;
+  border-radius: 9px;
+  padding: 5px 10px;
   position: relative;
 }
 
@@ -806,12 +947,14 @@ footer {
 
 .calc-steps span {
   display: block;
-  font-size: 11px;
+  font-size: 10.5px;
+  line-height: 1.45;
   color: var(--muted);
 }
 
 .calc-steps b {
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.35;
   color: var(--green);
   word-break: break-all;
 }
@@ -820,17 +963,19 @@ footer {
   margin: 0;
   background: #fff;
   border: 1px dashed var(--green-soft);
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 14px;
+  border-radius: 9px;
+  padding: 5px 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
   color: var(--green);
   text-align: center;
 }
 
 .verdict {
+  line-height: 1.55;
   border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 14px;
+  padding: 6px 12px;
+  font-size: 13.5px;
   font-weight: 700;
 }
 
@@ -846,7 +991,8 @@ footer {
 
 .hint-line {
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
+  line-height: 1.6;
   color: var(--muted);
   padding-left: 14px;
   border-left: 3px solid var(--line);
@@ -866,7 +1012,7 @@ footer {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 6px 12px;
   font-size: 13px;
   font-weight: 700;
   color: var(--green);
@@ -911,9 +1057,9 @@ footer {
 }
 
 .hint-toggle-body {
-  padding: 0 14px 12px 42px;
-  font-size: 13px;
-  line-height: 1.9;
+  padding: 0 12px 9px 38px;
+  font-size: 12.5px;
+  line-height: 1.75;
   color: var(--ink);
 }
 
@@ -941,7 +1087,9 @@ footer {
 /* ---------- 表 ---------- */
 
 .table-scroll {
-  overflow-x: auto;
+  overflow: auto;
+  /* 行が多い表は縦にもスクロールさせ、1画面に入力と答えが収まるようにする */
+  max-height: 216px;
   border: 1px solid var(--line);
   border-radius: 10px;
 }
@@ -956,9 +1104,17 @@ footer {
 .lab-table th,
 .lab-table td {
   border-bottom: 1px solid var(--line);
-  padding: 7px 10px;
+  padding: 3px 9px;
+  line-height: 1.6;
   text-align: center;
   white-space: nowrap;
+}
+
+/* 縦スクロールしても見出しが残るようにする */
+.lab-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .lab-table th {
@@ -1310,9 +1466,13 @@ footer {
   gap: 2px;
   align-items: flex-start;
   background: #333;
-  padding: 8px;
+  padding: 6px;
   border-radius: 10px;
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 220px;
+  /* 絵の大きさに枠を合わせる（横に黒い余白が伸びないように） */
+  width: fit-content;
+  max-width: 100%;
 }
 
 .dot-art > div {
@@ -1321,8 +1481,8 @@ footer {
 }
 
 .dot-art i {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 2px;
   display: block;
 }
@@ -1350,7 +1510,7 @@ footer {
 .chart {
   width: 100%;
   min-width: 320px;
-  height: 170px;
+  height: 140px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1394,7 +1554,7 @@ footer {
 .scatter,
 .normal-curve {
   width: 100%;
-  max-width: 460px;
+  max-width: 380px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1432,12 +1592,34 @@ footer {
 .reject-wrap {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+}
+
+@media (min-width: 860px) {
+  /* 広い画面では、図の右に凡例と判定を置いて縦を節約する */
+  .reject-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 300px) minmax(220px, 1fr);
+    align-items: center;
+    gap: 6px 16px;
+  }
+
+  .reject-wrap > .reject-curve {
+    grid-row: 1 / 3;
+  }
+
+  .reject-wrap > .reject-legend {
+    align-self: end;
+  }
+
+  .reject-wrap > .verdict {
+    align-self: start;
+  }
 }
 
 .reject-curve {
   width: 100%;
-  max-width: 460px;
+  max-width: 300px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1478,9 +1660,14 @@ footer {
 .reject-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
-  font-size: 12px;
+  gap: 4px 14px;
+  font-size: 11.5px;
   color: var(--muted);
+}
+
+.reject-wrap > .verdict {
+  padding: 5px 11px;
+  font-size: 13px;
 }
 
 .reject-legend span {
@@ -1609,7 +1796,7 @@ footer {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 14px;
+  padding: 9px;
   text-align: center;
 }
 
@@ -2097,7 +2284,16 @@ footer {
 
   .experiment-heading {
     flex-direction: column;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* 縦並びのときは flex-basis が高さになってしまうので打ち消す */
+  .experiment-heading > div {
+    flex: 0 1 auto;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
   }
 }
 
@@ -2564,11 +2760,11 @@ footer {
     ". control ."
     "input memory output"
     ". alu .";
-  gap: 10px;
+  gap: 7px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 14px;
+  padding: 10px;
 }
 
 .machine .control { grid-area: control; }
@@ -2580,7 +2776,7 @@ footer {
 .unit {
   border: 2px solid var(--line);
   border-radius: 10px;
-  padding: 10px;
+  padding: 5px 8px;
   text-align: center;
   background: var(--paper);
   transition: all 0.15s ease;
@@ -2589,11 +2785,13 @@ footer {
 .unit small {
   display: block;
   font-size: 10px;
+  line-height: 1.45;
   color: var(--muted);
 }
 
 .unit b {
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .unit.from {

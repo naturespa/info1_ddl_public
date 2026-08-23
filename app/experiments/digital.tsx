@@ -81,7 +81,7 @@ const bytesRow = (bytes: number) => {
 };
 
 /**
- * 小数部に2を掛けて整数部（0か1）を拾う手順を、1段ずつ返す。
+ * 小数部に2をかけて整数部（0か1）を拾う手順を、1段ずつ返す。
  * 教科書の「小数を2進数に直す手順」をそのまま画面に出すために使う。
  */
 const fractionSteps = (value: number, maxRows = 8) => {
@@ -242,14 +242,14 @@ export function FeatureLab({ card }: LabProps) {
             </div>
           </div>
           <Formula>
-            デジタルの表示 ＝ 本当の温度 ÷ きざみ幅 を、いちばん近い整数に丸めてから、もう一度きざみ幅を掛けた値
+            デジタルの表示 ＝ 本当の温度 ÷ きざみ幅 を、いちばん近い整数に丸めてから、もう一度きざみ幅をかけた値
           </Formula>
           <Steps
             items={[
               { label: "① 本当の温度", value: `${temp.toFixed(1)} ℃` },
               { label: `② きざみ幅 ${stepSize} ℃ で割る`, value: fmt(temp / stepSize, 3) },
               { label: "③ いちばん近い整数に丸める", value: fmt(Math.round(temp / stepSize), 0), note: "ここで段階に置きかわる" },
-              { label: "④ きざみ幅を掛けて表示に戻す", value: `${digitalTemp.toFixed(gradation === "1" ? 0 : 1)} ℃` },
+              { label: "④ きざみ幅をかけて表示に戻す", value: `${digitalTemp.toFixed(gradation === "1" ? 0 : 1)} ℃` },
               { label: "⑤ 本当の温度から引く", value: `${gap.toFixed(2)} ℃`, note: "これが丸めで失われた分" }
             ]}
           />
@@ -654,7 +654,7 @@ export function BaseLab({ card }: LabProps) {
         <>
           <NumberField label="10進数(10)の小数を入力" value={fraction} onChange={setFraction} step={0.05} min={0} max={100} hint="0.1 や 0.375 を試そう" />
           <Formula>
-            小数部の2進数 ＝ 小数部に2を掛け、出てきた整数部（0か1）を上から順に並べたもの（小数部が0になるまでくり返す）
+            小数部の2進数 ＝ 小数部に2をかけ、出てきた整数部（0か1）を上から順に並べたもの（小数部が0になるまでくり返す）
           </Formula>
           <DataTable
             head={["小数点以下 何けた目", "小数部 × 2", "整数部＝このけた", "残る小数部"]}
@@ -669,7 +669,7 @@ export function BaseLab({ card }: LabProps) {
             items={[
               { label: "① 整数部を2で割って2進数にする", value: <span className="mono">{Math.floor(fraction).toString(2)}</span>, note: "小数点より左の部分" },
               {
-                label: "② 小数部に2を掛け、整数部を上から順に拾う",
+                label: "② 小数部に2をかけ、整数部を上から順に拾う",
                 value: <span className="mono">{fracRows.map((r) => r.digit).join("") || "0"}</span>,
                 note: fracRows.length >= 8 ? "8けた目までを表示（この先も続く）" : "小数部が0になったので、ここで終わり"
               },
@@ -1231,7 +1231,7 @@ export function RealLab({ card }: LabProps) {
             ))}
           </div>
           <Formula>
-            小数部の2進数 ＝ 小数部に2を掛け、出てきた整数部（0か1）を上から順に並べたもの（小数部が0になるまでくり返す）
+            小数部の2進数 ＝ 小数部に2をかけ、出てきた整数部（0か1）を上から順に並べたもの（小数部が0になるまでくり返す）
           </Formula>
           <DataTable
             head={["小数点以下 何けた目", "小数部 × 2", "整数部＝このけた", "残る小数部"]}
@@ -1247,7 +1247,7 @@ export function RealLab({ card }: LabProps) {
               { label: "① 符号を外して絶対値にする", value: fmt(Math.abs(value), 6), note: value < 0 ? "マイナスはあとで戻す" : "もともと正の数" },
               { label: "② 整数部を2で割り続けて2進数にする", value: <span className="mono">{Math.floor(Math.abs(value)).toString(2)}</span> },
               {
-                label: "③ 小数部に2を掛け、整数部を上から拾う",
+                label: "③ 小数部に2をかけ、整数部を上から拾う",
                 value: <span className="mono">{valueRows.map((r) => r.digit).join("") || "0"}</span>,
                 note: valueRows.length >= 10 ? "10けた目までを表示（この先も続く）" : "小数部が0になったので、ここで終わり"
               },
@@ -2148,7 +2148,7 @@ export function TextLab({ card }: LabProps) {
               { label: "UTF-8", value: `${utf8Bytes(sample)} B`, note: `手順③。英数字1B・日本語3B（内訳 ${utf8Breakdown}）` },
               { label: "UTF-16", value: `${utf16Bytes(sample)} B`, note: "手順⑤。おおむね一律2B。英数字でも2B使う" },
               { label: "Shift_JIS（概算）", value: `${sjisBytes(sample)} B`, note: `手順④。半角1B・全角2B（半角${sjisHalf}字・全角${sjisFull}字）` },
-              { label: "文字数", value: `${sampleChars.length} 文字`, note: "手順①。どの方式でも、掛ける相手はこの文字数" }
+              { label: "文字数", value: `${sampleChars.length} 文字`, note: "手順①。どの方式でも、かける相手はこの文字数" }
             ]}
           />
           <Hint>英語中心の文書はUTF-8が小さく、日本語だけの文書はShift_JISやUTF-16が小さくなることもあります。</Hint>
@@ -2192,7 +2192,7 @@ export function TextLab({ card }: LabProps) {
           <Steps
             items={[
               { label: "① 1文字あたりのビット数", value: `${bits} bit` },
-              { label: "② 2を、そのビット数の回数だけ掛ける", value: `2の${bits}乗`, note: "1ビット増えるごとに2倍になる" },
+              { label: "② 2を、そのビット数の回数だけかける", value: `2の${bits}乗`, note: "1ビット増えるごとに2倍になる" },
               { label: "③ 表せる文字の種類数", value: fmt(charVariations(bits), 0) },
               { label: "④ バイトに直す（÷8）", value: `${bits} ÷ 8 ＝ ${fmt(bits / 8, 3)} B` }
             ]}
@@ -2358,7 +2358,7 @@ export function AudioLab({ card }: LabProps) {
           <Steps
             items={[
               { label: "① 量子化ビット数", value: `${quantBits} bit` },
-              { label: "② 2を、そのビット数の回数だけ掛ける", value: `2の${quantBits}乗 ＝ ${fmt(levels, 0)}`, note: "これが波の高さを分ける段数" },
+              { label: "② 2を、そのビット数の回数だけかける", value: `2の${quantBits}乗 ＝ ${fmt(levels, 0)}`, note: "これが波の高さを分ける段数" },
               { label: "③ いちばん大きい音の高さを1として、段数で割る", value: `1 ÷ ${fmt(levels, 0)} ＝ ${fmt(1 / levels, 8)}`, note: "この幅より細かい変化は表せない" },
               { label: "④ 1ビット減らすと", value: `${fmt(levels / 2, 0)} 段階`, note: "段数は半分、1段階の幅は2倍になる" }
             ]}
@@ -2563,8 +2563,8 @@ export function ImageLab({ card }: LabProps) {
             items={[
               { label: "① インクの量を割合に直す", value: `C ${c / 100} ／ M ${m / 100} ／ Y ${y / 100} ／ K ${k / 100}`, note: "100%なら1、0%なら0" },
               { label: "② 残る光の割合を出す（1 − 割合）", value: `${fmt(1 - c / 100, 2)} ／ ${fmt(1 - m / 100, 2)} ／ ${fmt(1 - y / 100, 2)}`, note: "インクが多いほど、跳ね返る光が減る" },
-              { label: "③ 黒インクの分もさらに掛ける", value: `×${fmt(1 - k / 100, 2)}`, note: "Kが増えるほど、どの色も暗くなる" },
-              { label: "④ 255を掛けて画面のRGBに直す", value: `${cmyToRgb.r}, ${cmyToRgb.g}, ${cmyToRgb.b}` }
+              { label: "③ 黒インクの分もさらにかける", value: `×${fmt(1 - k / 100, 2)}`, note: "Kが増えるほど、どの色も暗くなる" },
+              { label: "④ 255をかけて画面のRGBに直す", value: `${cmyToRgb.r}, ${cmyToRgb.g}, ${cmyToRgb.b}` }
             ]}
           />
           <Results
@@ -2641,7 +2641,7 @@ export function ImageLab({ card }: LabProps) {
             <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
             <Results items={bytesRowSI(scanBytes)} />
           </details>
-          <Hint>dpiは「1インチあたり」の数なので、cmのまま掛けると答えが合いません。必ず1インチ＝2.54cmで単位をそろえてから計算します。</Hint>
+          <Hint>dpiは「1インチあたり」の数なので、cmのままかけると答えが合いません。必ず1インチ＝2.54cmで単位をそろえてから計算します。</Hint>
         </>
       )}
 
@@ -2675,7 +2675,7 @@ export function ImageLab({ card }: LabProps) {
             items={[
               { label: "① マス数を数える", value: `${monoPixels} 画素`, note: `${monoRows.length} 行ぶんの0と1を全部数えた` },
               { label: "② 1画素あたりのビット数", value: "1 bit", note: "白か黒の2通りなので、2の1乗で足りる" },
-              { label: "③ 掛けてビット数を出す", value: `${monoPixels} × 1 ＝ ${monoPixels} bit` },
+              { label: "③ かけてビット数を出す", value: `${monoPixels} × 1 ＝ ${monoPixels} bit` },
               { label: "④ バイトに直す（÷8）", value: `${fmt(monoPixels / 8, 3)} B` }
             ]}
           />
@@ -2704,7 +2704,7 @@ export function ImageLab({ card }: LabProps) {
             items={[
               { label: "① マス数を数える", value: `${colorPixels} 画素`, note: `${colorRows.length} 行ぶんの0〜7を全部数えた` },
               { label: "② 1画素あたりのビット数", value: "3 bit", note: "8色を区別したいので、2の3乗＝8で足りる" },
-              { label: "③ 掛けてビット数を出す", value: `${colorPixels} × 3 ＝ ${fmt(colorPixels * 3, 0)} bit` },
+              { label: "③ かけてビット数を出す", value: `${colorPixels} × 3 ＝ ${fmt(colorPixels * 3, 0)} bit` },
               { label: "④ バイトに直す（÷8）", value: `${fmt((colorPixels * 3) / 8, 2)} B` },
               { label: "⑤ フルカラー（24bit）にすると", value: `${colorPixels} × 24 ÷ 8 ＝ ${fmt(colorPixels * 3, 0)} B`, note: "1画素3B。8倍のデータ量になる" }
             ]}
@@ -2864,7 +2864,7 @@ export function VideoLab({ card }: LabProps) {
             <Results items={bytesRowSI(raw)} />
           </details>
           <HintButton>
-            写真1枚分の容量に、1秒あたりの枚数と秒数を掛けるだけです。ただし枚数がとても多いので、答えは一気にGB単位になります。フルHDの写真を1秒間に30枚、10分ぶん保存すると考えてみてください。だからこそ圧縮が絶対に必要になります。
+            写真1枚分の容量に、1秒あたりの枚数と秒数をかけるだけです。ただし枚数がとても多いので、答えは一気にGB単位になります。フルHDの写真を1秒間に30枚、10分ぶん保存すると考えてみてください。だからこそ圧縮が絶対に必要になります。
           </HintButton>
         </>
       )}
@@ -2881,7 +2881,7 @@ export function VideoLab({ card }: LabProps) {
           <Steps
             items={[
               { label: "① 非圧縮の容量", value: `${fmt(raw / 1024 ** 3, 2)} GB`, note: "実験2で求めた、圧縮する前の大きさ" },
-              { label: `② 圧縮後の割合を掛ける（× ${ratio} ÷ 100）`, value: `${fmt(raw / 1024 ** 3, 2)} × ${fmt(ratio / 100, 2)}` },
+              { label: `② 圧縮後の割合をかける（× ${ratio} ÷ 100）`, value: `${fmt(raw / 1024 ** 3, 2)} × ${fmt(ratio / 100, 2)}` },
               { label: "③ 圧縮後の容量", value: `${fmt(compressed / 1024 ** 3, 3)} GB` },
               { label: "④ もとの何分の1か（100 ÷ 割合）", value: `100 ÷ ${ratio} ＝ ${fmt(100 / ratio, 1)} 分の1` },
               { label: `⑤ 1分あたりに直す（÷ ${minutes}分）`, value: `${fmt(compressed / minutes / 1024 ** 2, 1)} MB` }
@@ -2937,7 +2937,7 @@ export function VideoLab({ card }: LabProps) {
           <Results
             items={[
               { label: "非圧縮での必要帯域", value: `${fmt(bandwidth / 1e6, 1)} Mbps`, note: "1コマの容量 × fps × 8。圧縮しない場合に要る速さ" },
-              { label: `圧縮後（${ratio}%）`, value: `${fmt((bandwidth * ratio) / 100 / 1e6, 2)} Mbps`, note: `非圧縮の必要帯域に、圧縮後の割合${ratio}%を掛けた値` },
+              { label: `圧縮後（${ratio}%）`, value: `${fmt((bandwidth * ratio) / 100 / 1e6, 2)} Mbps`, note: `非圧縮の必要帯域に、圧縮後の割合${ratio}%をかけた値` },
               { label: "現在の回線で足りるか", value: (bandwidth * ratio) / 100 / 1e6 <= speed ? "足りる" : "不足", warn: (bandwidth * ratio) / 100 / 1e6 > speed, note: `圧縮後の必要帯域と、実験4で決めた ${speed} Mbps を比べた` },
               { label: "画質を1段下げると", value: `${fmt((imageBytes(Math.round(width / 1.5), Math.round(height / 1.5), colorBits) * fps * 8 * ratio) / 100 / 1e6, 2)} Mbps`, note: "縦横をそれぞれ1.5分の1にしたときに要る速さ" }
             ]}
