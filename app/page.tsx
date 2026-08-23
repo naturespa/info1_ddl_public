@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ExamView } from "./exam";
 import { Experiments } from "./experiments";
+import { QuestionFigure } from "./lib/question-figures";
+import { MiniSheet } from "./lib/mini-sheet";
+import { sheetDrills } from "./lib/sheet-tasks";
 import { experimentCount, lessons, totalExperiments, totalQuestions } from "./lib/lessons";
-import type { Area, ExamRow, Lesson, QuestionResult, Submission, StudentRecord, Summary } from "./lib/types";
+import type { Area, ExamRow, Lesson, QuestionResult, Submission, StudentRecord, Summary, UnderstandingLevel } from "./lib/types";
+import { UNDERSTANDING_CHOICES } from "./lib/types";
 import type { ExamResult } from "./lib/exam-types";
 import { classOf, gradeOf, seatOf } from "./lib/exam-types";
 import { formatElapsed } from "./lib/exam-runtime";
@@ -89,6 +93,8 @@ export default function Home() {
   const [drafts, setDrafts] = useState<Record<string, number[]>>({});
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
   const [experiments, setExperiments] = useState<Record<string, boolean>>({});
+  /** 実験ごとの理解度の申告（1〜5）。生徒には点数を見せない */
+  const [understanding, setUnderstanding] = useState<Record<string, UnderstandingLevel>>({});
   const [loaded, setLoaded] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   /** 「学習を終了」を押したあとの確認中フラグ */
@@ -107,6 +113,8 @@ export default function Home() {
       let quizMax = 0;
       let experimentDone = 0;
       let experimentMax = 0;
+      let understandingScore = 0;
+      let understandingAnswered = 0;
       let completedLessons = 0;
       group.forEach((lesson) => {
         const submission = submissions[lesson.id];
@@ -120,19 +128,28 @@ export default function Home() {
         const expDone = Array.from({ length: expTotal }, (_, i) => experiments[`${lesson.id}-${i}`]).filter(Boolean).length;
         experimentMax += expTotal;
         experimentDone += expDone;
+        for (let i = 0; i < expTotal; i++) {
+          const level = understanding[`${lesson.id}-${i}`] ?? 0;
+          understandingScore += level;
+          if (level > 0) understandingAnswered += 1;
+        }
         if (submission && expDone === expTotal) completedLessons += 1;
       });
       const knowledge = quizMax ? Math.round((quizScore / quizMax) * 100) : 0;
       const thinking = experimentMax ? Math.round((experimentDone / experimentMax) * 100) : 0;
+      const attitude = experimentMax ? Math.round((understandingScore / (experimentMax * 5)) * 100) : 0;
       return {
         totalScore: Math.round(knowledge * 0.6 + thinking * 0.4),
-        perspective: { knowledge, thinking },
+        perspective: { knowledge, thinking, attitude },
         quizScore: point(quizScore),
         firstCorrect,
         secondCorrect,
         quizMax,
         experimentDone,
         experimentMax,
+        understandingScore,
+        understandingMax: experimentMax * 5,
+        understandingAnswered,
         completedLessons,
         lessonCount: group.length
       };
@@ -151,11 +168,14 @@ export default function Home() {
       quizMax: whole.quizMax,
       experimentDone: whole.experimentDone,
       experimentMax: whole.experimentMax,
+      understandingScore: whole.understandingScore,
+      understandingMax: whole.understandingMax,
+      understandingAnswered: whole.understandingAnswered,
       completedLessons: whole.completedLessons,
       lessonCount: whole.lessonCount,
       areas
     };
-  }, [submissions, experiments]);
+  }, [submissions, experiments, understanding]);
 
   /** 成績ページのダッシュボード用に、単元別・難易度別の理解度を集計する */
   const analysis = useMemo(() => {
@@ -243,7 +263,7 @@ export default function Home() {
     }
 
     return { perLesson, byLevel, weak, strong, answered, untouched, verdicts };
-  }, [submissions, experiments]);
+  }, [submissions, experiments, understanding]);
 
   // 前回この端末で確定した番号があれば、そのまま続きから始める
   useEffect(() => {
@@ -265,13 +285,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!loaded || studentCode.length !== 4) return;
-    const record: StudentRecord = { version: 4, studentCode, drafts, submissions, experiments, summary, exams: examRows, examDetails: examResults };
+    const record: StudentRecord = { version: 5, studentCode, drafts, submissions, experiments, understanding, summary, exams: examRows, examDetails: examResults };
     try {
       localStorage.setItem(`${STORAGE_PREFIX}${studentCode}`, JSON.stringify(record));
     } catch {
       /* 保存できない環境では黙って続行する */
     }
-  }, [loaded, studentCode, drafts, submissions, experiments, summary, examResults]);
+  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults]);
 
   /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
   const loadRecord = (code: string) => {
@@ -285,11 +305,13 @@ export default function Home() {
       setDrafts(saved.drafts ?? {});
       setSubmissions(restored);
       setExperiments(saved.experiments ?? {});
+      setUnderstanding(saved.understanding ?? {});
       setExamResults(loadExamResults(code));
     } catch {
       setDrafts({});
       setSubmissions({});
       setExperiments({});
+      setUnderstanding({});
     }
   };
 
@@ -387,8 +409,12 @@ export default function Home() {
     });
   };
 
-  const markExperiment = (lessonId: string, index: number) =>
-    setExperiments((prev) => ({ ...prev, [`${lessonId}-${index}`]: true }));
+  /** 理解度を選ぶと、その実験を「やった」として記録し、理解度も同時に残す */
+  const markExperiment = (lessonId: string, index: number, level: UnderstandingLevel) => {
+    const key = `${lessonId}-${index}`;
+    setExperiments((prev) => ({ ...prev, [key]: true }));
+    setUnderstanding((prev) => ({ ...prev, [key]: level }));
+  };
 
   const lessonProgress = (lesson: Lesson) =>
     Array.from({ length: experimentCount(lesson) }, (_, i) => experiments[`${lesson.id}-${i}`]).filter(Boolean).length;
@@ -396,12 +422,13 @@ export default function Home() {
   const exportJson = () => {
     if (studentCode.length !== 4) return;
     const record: StudentRecord = {
-      version: 4,
+      version: 5,
       exportedAt: new Date().toISOString(),
       studentCode,
       drafts,
       submissions,
       experiments,
+      understanding,
       summary,
       exams: examRows,
       examDetails: examResults
@@ -427,6 +454,7 @@ export default function Home() {
     setDrafts({});
     setSubmissions({});
     setExperiments({});
+    setUnderstanding({});
     setActive("home");
     try {
       localStorage.removeItem(ACTIVE_KEY);
@@ -441,6 +469,7 @@ export default function Home() {
     return (index: number, title: string, goal: string, body: ReactNode): ReactNode => {
       const key = `${lesson.id}-${index}`;
       const done = !!experiments[key];
+      const picked = understanding[key] ?? 0;
       const isMission = index === last;
       const label = isMission ? "応用" : `実験${index + 1}`;
       return (
@@ -465,6 +494,13 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+              {sheetDrills[lesson.id] && (
+                <MiniSheet
+                  data={sheetDrills[lesson.id].data}
+                  tasks={sheetDrills[lesson.id].tasks}
+                  caption={sheetDrills[lesson.id].caption}
+                />
+              )}
             </div>
           ) : (
             <div className="theory-box">
@@ -475,14 +511,26 @@ export default function Home() {
             </div>
           )}
           <div className="experiment-body">{body}</div>
-          <button
-            type="button"
-            className={`record-experiment ${done ? "recorded" : ""}`}
-            onClick={() => markExperiment(lesson.id, index)}
-            disabled={done}
-          >
-            {done ? `${label} 記録済み` : `${label}を記録する`}
-          </button>
+          <div className={`understand-bar ${done ? "recorded" : ""}`}>
+            <b>
+              {label}：どこまで分かった？
+              <em>選ぶと記録されます。あとから選び直せます</em>
+            </b>
+            <div className="understand-choices">
+              {UNDERSTANDING_CHOICES.map((choice) => (
+                <button
+                  type="button"
+                  key={choice.score}
+                  className={`understand-btn ${picked === choice.score ? "on" : ""}`}
+                  aria-pressed={picked === choice.score}
+                  onClick={() => markExperiment(lesson.id, index, choice.score)}
+                >
+                  <span>{choice.label}</span>
+                  <em>{choice.detail}</em>
+                </button>
+              ))}
+            </div>
+          </div>
         </article>
       );
     };
@@ -523,7 +571,7 @@ export default function Home() {
                   数値を打ちこみ、ビットを押し、絵を描いて確かめていきます。挑んだ記録はこのブラウザに残り、成績ページで弱点まで見えます。
                   {studentCode.length === 4
                     ? ""
-                    : "はじめに4桁番号を入れ、確認してから確定してください。確定するとこのブラウザでは番号を変えられません。"}
+                    : "はじめに4桁番号を入れ、確認してから確定してください。確定するとこのブラウザでは番号を変えられません。同じパソコン・同じブラウザなら、前に使った番号を入れ直すと前回の記録から続けられます。"}
                 </p>
                 {studentCode.length === 4 ? (
                   <div className="code-locked">
@@ -715,6 +763,7 @@ export default function Home() {
                         </span>
                       )}
                     </h3>
+                    {question.figure && <QuestionFigure name={question.figure} />}
                     {question.source && <p className="source">出典: {question.source}</p>}
                     {awaiting && (
                       <p className="retry-banner">
@@ -830,7 +879,16 @@ export default function Home() {
                   {summary.experimentDone}/{summary.experimentMax}実験
                 </small>
               </div>
+              <div className="metric">
+                <span>ふり返りの記録</span>
+                <b>{summary.understandingAnswered}</b>
+                <small>/{summary.experimentMax}実験で申告ずみ</small>
+              </div>
             </div>
+            <p className="muted small">
+              「どこまで分かった？」の申告は、主体的に学習に取り組む態度として記録され、JSONに入ります。
+              正直に選んでください。点数は画面には出しません。
+            </p>
 
             <div className="area-grid">
               {summary.areas.map((area) => (
@@ -876,6 +934,12 @@ export default function Home() {
                     <div>
                       <dt>思考・判断・表現</dt>
                       <dd>{area.perspective.thinking}</dd>
+                    </div>
+                    <div>
+                      <dt>ふり返りの申告</dt>
+                      <dd>
+                        {area.understandingAnswered} / {area.experimentMax}実験
+                      </dd>
                     </div>
                   </dl>
                 </div>

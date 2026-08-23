@@ -276,7 +276,7 @@ export function DataTable({
   rows,
   highlight
 }: {
-  head: string[];
+  head: ReactNode[];
   rows: ReactNode[][];
   highlight?: (rowIndex: number) => boolean;
 }) {
@@ -286,7 +286,7 @@ export function DataTable({
         <thead>
           <tr>
             {head.map((cell, index) => (
-              <th key={`${cell}-${index}`}>{cell}</th>
+              <th key={index}>{cell}</th>
             ))}
           </tr>
         </thead>
@@ -347,6 +347,7 @@ export function BarChart({
   height = 140,
   unit,
   highlight,
+  series,
   tone
 }: {
   values: number[];
@@ -356,6 +357,8 @@ export function BarChart({
   unit?: string;
   /** true を返した棒だけ色を変える（該当する範囲を示すときに使う） */
   highlight?: (index: number) => boolean;
+  /** 3つ以上の集団を並べるとき、棒ごとにどの集団かを 0・1・2 で返す */
+  series?: (index: number) => 0 | 1 | 2;
   /** "compare" にすると、2つの集団を並べるための配色になる（赤は使わない） */
   tone?: "compare";
 }) {
@@ -386,7 +389,7 @@ export function BarChart({
             width={barWidth * 0.7}
             height={Math.max(1, height - 4 - y(value))}
             rx="3"
-            className={highlight?.(index) ? "hot" : undefined}
+            className={series ? `s${series(index)}` : highlight?.(index) ? "hot" : undefined}
           />
         ))}
         {points && <polyline points={points} className="overlay" />}
@@ -556,23 +559,60 @@ export function RejectionCurve({
 }
 
 /** 正規分布のカーブと、指定した位置の目印 */
-export function NormalCurve({ mean, sd, marks }: { mean: number; sd: number; marks: { value: number; label: string }[] }) {
-  const from = mean - 4 * sd;
-  const to = mean + 4 * sd;
+export function NormalCurve({
+  mean,
+  sd,
+  marks,
+  domain,
+  bands
+}: {
+  mean: number;
+  sd: number;
+  marks: { value: number; label: string }[];
+  /** 横軸を固定したいときに渡す。渡すと σ を変えたとき山の太さと高さが実際に変わる */
+  domain?: [number, number];
+  /** μ±1σ・±2σ・±3σ の帯を塗る */
+  bands?: boolean;
+}) {
+  const from = domain ? domain[0] : mean - 4 * sd;
+  const to = domain ? domain[1] : mean + 4 * sd;
+  const px = (value: number) => ((value - from) / (to - from)) * 300;
+  // 横軸を固定したときは、面積が1になるように高さを決める（σが大きいほど低く広くなる）
+  const refSd = domain ? (to - from) / 8 : sd;
+  const peak = domain ? Math.min(1, refSd / sd) : 1;
   const points: string[] = [];
   for (let i = 0; i <= 120; i++) {
     const x = from + ((to - from) * i) / 120;
-    const density = Math.exp(-((x - mean) ** 2) / (2 * sd ** 2));
+    const density = peak * Math.exp(-((x - mean) ** 2) / (2 * sd ** 2));
     points.push(`${(i / 120) * 300},${130 - density * 105}`);
   }
-  const px = (value: number) => ((value - from) / (to - from)) * 300;
+  const bandDefs: [number, string][] = [
+    [3, "band3"],
+    [2, "band2"],
+    [1, "band1"]
+  ];
   return (
     <svg viewBox="0 0 300 150" className="normal-curve" role="img" aria-label="正規分布">
+      {bands &&
+        bandDefs.map(([k, cls]) => {
+          const x1 = Math.max(0, px(mean - k * sd));
+          const x2 = Math.min(300, px(mean + k * sd));
+          return x2 > x1 ? <rect key={k} x={x1} y={20} width={x2 - x1} height={110} className={cls} /> : null;
+        })}
       <polyline points={points.join(" ")} />
       <line x1="0" y1="130" x2="300" y2="130" className="axis-line" />
-      {[-2, -1, 0, 1, 2].map((k) => (
-        <line key={k} x1={px(mean + k * sd)} y1="126" x2={px(mean + k * sd)} y2="134" className="axis-line" />
-      ))}
+      {[-3, -2, -1, 0, 1, 2, 3].map((k) => {
+        const x = px(mean + k * sd);
+        if (x < 0 || x > 300) return null;
+        return (
+          <g key={k}>
+            <line x1={x} y1="126" x2={x} y2="134" className="axis-line" />
+            <text x={x} y="146" textAnchor="middle" className="axis">
+              {k === 0 ? "μ" : `${k > 0 ? "+" : "−"}${Math.abs(k)}σ`}
+            </text>
+          </g>
+        );
+      })}
       {marks.map((mark) => (
         <g key={mark.label}>
           <line x1={px(mark.value)} y1="20" x2={px(mark.value)} y2="130" className="mark" />

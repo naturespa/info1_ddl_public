@@ -696,6 +696,87 @@ footer {
   cursor: default;
 }
 
+/* ---------- 理解度（主体性）の記録 ---------- */
+
+.understand-bar {
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.understand-bar > b {
+  font-size: 12px;
+  color: var(--ink-2);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.understand-bar > b em {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.understand-bar.recorded > b {
+  color: var(--green-soft);
+}
+
+.understand-choices {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.understand-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 9px;
+  padding: 6px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.understand-btn span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.understand-btn em {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.understand-btn:hover {
+  border-color: var(--green);
+}
+
+.understand-btn.on {
+  border-color: var(--green);
+  background: var(--mint);
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+
+.understand-btn.on span {
+  color: var(--green);
+}
+
+@media (max-width: 720px) {
+  .understand-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* ---------- 入力部品 ---------- */
 
 .input-row {
@@ -1554,7 +1635,7 @@ footer {
 .scatter,
 .normal-curve {
   width: 100%;
-  max-width: 380px;
+  max-width: 560px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -3661,4 +3742,777 @@ footer {
   .lesson-name {
     flex: 1 1 100%;
   }
+}
+
+/* ---------- D0 実験4：ビット数の早見表 ---------- */
+
+.bit-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bit-scale-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.bit-scale-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.bit-scale-grid b {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: #fff;
+  min-width: 0;
+}
+
+.bit-scale-grid b span {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.bit-scale-grid b em {
+  font-style: normal;
+  font-size: 9.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.bit-scale-grid b.enough {
+  background: var(--mint);
+}
+
+.bit-scale-grid b.on {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.bit-scale-grid b.on span,
+.bit-scale-grid b.on em {
+  color: #fff;
+}
+
+.bit-scale-note {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .bit-scale-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* ---------- D2 実験2：1の補数→2の補数のつながり ---------- */
+
+.complement-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: var(--surface-2, #fafbfc);
+}
+
+.complement-chain .chain-step {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.complement-chain .chain-step.accent {
+  border-left: 3px solid var(--green);
+  padding-left: 8px;
+  margin-left: -8px;
+}
+
+.complement-chain .chain-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.complement-chain .chain-step em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.complement-chain .chain-arrow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0 2px 14px;
+  position: relative;
+}
+
+.complement-chain .chain-arrow::before {
+  content: "↓";
+  position: absolute;
+  left: 0;
+  color: var(--green);
+  font-weight: 700;
+}
+
+.complement-chain .chain-arrow b {
+  font-size: 11.5px;
+  color: var(--green);
+}
+
+.complement-chain .chain-arrow i {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- D4 実験1：7種類の電気回路を横ならび ---------- */
+
+.circuit-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.circuit-mini {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 5px 3px 4px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.circuit-mini > span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.circuit-mini > em {
+  font-style: normal;
+  font-size: 9.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.circuit-mini > b {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.circuit-mini.on {
+  border-color: var(--green);
+  background: var(--mint);
+}
+
+.circuit-mini.on > b {
+  color: var(--green);
+}
+
+.circuit-mini.picked {
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+
+.mini-circuit {
+  width: 100%;
+  height: auto;
+}
+
+.mini-circuit .rail {
+  stroke: #9aa4ae;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.mini-circuit .rail.thick {
+  stroke-width: 2.6;
+}
+
+.mini-circuit .pin {
+  fill: #9aa4ae;
+}
+
+.mini-circuit .lever {
+  stroke: #c2c9d0;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.mini-circuit .lever.closed {
+  stroke: var(--green);
+}
+
+.mini-circuit .pin-label {
+  font-size: 8px;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.mini-circuit .notbox {
+  fill: #fff;
+  stroke: #9aa4ae;
+  stroke-width: 1.2;
+}
+
+.mini-circuit .notbox-label {
+  font-size: 6.5px;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.mini-circuit .bulb {
+  fill: #eef1f4;
+  stroke: #9aa4ae;
+  stroke-width: 1.4;
+}
+
+.mini-circuit .bulb-x {
+  stroke: #9aa4ae;
+  stroke-width: 1.1;
+}
+
+.mini-circuit.on .bulb {
+  fill: #ffe9a8;
+  stroke: #d9a400;
+}
+
+.mini-circuit.on .bulb-x {
+  stroke: #d9a400;
+}
+
+@media (max-width: 900px) {
+  .circuit-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .circuit-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- D4 実験3・4：加算器の回路図 ---------- */
+
+.logic-diagram {
+  width: 100%;
+  height: auto;
+  max-height: 190px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 4px;
+}
+
+.logic-diagram .wire {
+  fill: none;
+  stroke: #c2c9d0;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.logic-diagram .wire.on {
+  stroke: var(--green);
+  stroke-width: 2.2;
+}
+
+.logic-diagram .gate-body {
+  fill: #fff;
+  stroke: #8e979f;
+  stroke-width: 1.4;
+}
+
+.logic-diagram .gate.on .gate-body {
+  fill: var(--mint);
+  stroke: var(--green);
+}
+
+.logic-diagram .gate-arc {
+  fill: none;
+  stroke: #8e979f;
+  stroke-width: 1.4;
+}
+
+.logic-diagram .gate.on .gate-arc {
+  stroke: var(--green);
+}
+
+.logic-diagram .gate-label {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--ink-2);
+  text-anchor: middle;
+}
+
+.logic-diagram .gate.on .gate-label {
+  fill: var(--green);
+}
+
+.logic-diagram .port {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--ink-2);
+}
+
+.logic-diagram .port.warn {
+  fill: var(--state-bad);
+}
+
+.logic-diagram .port-note {
+  font-size: 8.5px;
+  fill: var(--muted);
+}
+
+.logic-diagram .wire-value {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--muted);
+}
+
+.logic-diagram .wire-value.on {
+  fill: var(--green);
+}
+
+/* ---------- D5 実験2：CPUのブロック図 ---------- */
+
+.cpu-diagram {
+  width: 100%;
+  height: auto;
+  max-height: 210px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 4px;
+}
+
+.cpu-diagram .cpu-outer {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 3;
+}
+
+.cpu-diagram .cpu-group {
+  fill: #f6f8f9;
+  stroke: none;
+}
+
+.cpu-diagram .cpu-box {
+  fill: #fff;
+  stroke: #8e979f;
+  stroke-width: 1.3;
+}
+
+.cpu-diagram .cpu-box.on {
+  fill: var(--mint);
+  stroke: var(--green);
+  stroke-width: 2;
+}
+
+.cpu-diagram .cpu-title {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--ink-2);
+  text-anchor: middle;
+}
+
+.cpu-diagram .cpu-label {
+  font-size: 8.4px;
+  fill: var(--ink-2);
+  text-anchor: middle;
+}
+
+.cpu-diagram .cpu-note {
+  font-size: 8.5px;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.cpu-diagram .cpu-arrow {
+  fill: none;
+  stroke: #c2c9d0;
+  stroke-width: 1.6;
+}
+
+.cpu-diagram .cpu-arrow.on {
+  stroke: var(--green);
+  stroke-width: 2.2;
+}
+
+.cpu-diagram .cpu-head {
+  fill: #c2c9d0;
+}
+
+.cpu-diagram .cpu-arrow.on + * {
+  fill: var(--green);
+}
+
+/* ---------- 確認問題の図 ---------- */
+
+.q-figure {
+  width: 100%;
+  max-width: 460px;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 4px;
+  margin: 2px 0 6px;
+}
+
+.q-figure .qf-cell {
+  fill: #fff;
+  stroke: #8e979f;
+  stroke-width: 1.2;
+}
+
+.q-figure .qf-cell.addr {
+  fill: #f2f5f7;
+}
+
+.q-figure .qf-cell.now {
+  fill: var(--mint);
+  stroke: var(--green);
+  stroke-width: 1.8;
+}
+
+.q-figure .qf-text {
+  font-size: 10px;
+  fill: var(--ink-2);
+  text-anchor: middle;
+}
+
+.q-figure .qf-text.mono {
+  font-family: var(--mono, ui-monospace, monospace);
+}
+
+.q-figure .qf-title,
+.q-figure .qf-note {
+  font-size: 9px;
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.q-figure .qf-line {
+  stroke: #9aa4ae;
+  stroke-width: 1.3;
+  fill: none;
+}
+
+.q-figure .qf-head {
+  fill: #9aa4ae;
+}
+
+.broken-cell {
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* ---------- D7 実験1：音階のボタン ---------- */
+
+.scale-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scale-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.scale-keys {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.scale-keys button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.scale-keys button b {
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.scale-keys button em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.scale-keys button.on {
+  border-color: var(--green);
+  background: var(--mint);
+}
+
+.scale-keys button.on b {
+  color: var(--green);
+}
+
+.scale-note {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- D8・D10 実験4：0と1の入力と絵を横ならびに ---------- */
+
+.art-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.art-source,
+.art-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.art-caption {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.art-preview .dot-art {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .art-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.normal-curve .band1 {
+  fill: rgba(52, 143, 102, 0.18);
+}
+
+.normal-curve .band2 {
+  fill: rgba(52, 143, 102, 0.11);
+}
+
+.normal-curve .band3 {
+  fill: rgba(52, 143, 102, 0.06);
+}
+
+/* ---------- 応用ミッションの表計算練習 ---------- */
+
+.mini-sheet {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sheet-head b {
+  font-size: 13px;
+  color: var(--green);
+}
+
+.sheet-head span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sheet-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: auto;
+  min-width: 240px;
+}
+
+.mini-sheet .table-scroll {
+  max-height: 240px;
+}
+
+.sheet-table th {
+  background: #eef1f4;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #d6dbe0;
+  padding: 2px 6px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+}
+
+.sheet-table tbody th {
+  position: static;
+  width: 26px;
+}
+
+.sheet-table td {
+  border: 1px solid #d6dbe0;
+  padding: 2px 10px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  min-width: 72px;
+}
+
+.sheet-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-table td.sheet-label {
+  background: #f7f9fa;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sheet-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet-task {
+  border-left: 3px solid var(--line);
+  padding-left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sheet-task.ok {
+  border-left-color: var(--green);
+}
+
+.sheet-task.wrong,
+.sheet-task.error {
+  border-left-color: var(--state-bad);
+}
+
+.sheet-task.nofunc {
+  border-left-color: var(--state-warn, #c98a00);
+}
+
+.sheet-ask {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.sheet-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sheet-input input {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 13px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.sheet-value {
+  min-width: 84px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--green);
+  background: #f4f8f6;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.sheet-msg {
+  margin: 0;
+  font-size: 11.5px;
+}
+
+.sheet-msg.ok {
+  color: var(--green);
+}
+
+.sheet-msg.ng {
+  color: var(--state-bad);
+}
+
+.sheet-msg.warn {
+  color: #a06a00;
+}
+
+.sheet-msg.sample code,
+.sheet-foot code {
+  font-family: var(--mono, ui-monospace, monospace);
+  background: #eef1f4;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.sheet-foot {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* 3集団を並べるとき（配色は検証ずみ：ΔE 9.2 以上／通常視 17.5 以上） */
+.chart-compare rect.s0 {
+  fill: #348f66;
+}
+
+.chart-compare rect.s1 {
+  fill: #8f5bd6;
+}
+
+.chart-compare rect.s2 {
+  fill: #b06a12;
 }

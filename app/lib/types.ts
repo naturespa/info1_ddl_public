@@ -12,7 +12,12 @@ export type Question = {
   level: QuestionLevel;
   /** IPA過去問などの出典。オリジナル問題は undefined */
   source?: string;
+  /** 問題文に図が必要なとき、その図の名前。app/lib/question-figures.tsx に対応する図がある */
+  figure?: QuestionFigureName;
 };
+
+/** 確認問題に添える図の名前 */
+export type QuestionFigureName = "memory-fetch";
 
 export type Term = {
   word: string;
@@ -95,7 +100,24 @@ export type Perspective = {
   knowledge: number;
   /** 思考・判断・表現：実験の実施率 */
   thinking: number;
+  /** 主体的に学習に取り組む態度：実験ごとの理解度申告の平均（％）。生徒には点数を出さない */
+  attitude: number;
 };
+
+/**
+ * 実験ごとの理解度の申告。生徒には点数を見せない。
+ * 5=完全に理解しテストで解ける / 4=8割程度 / 3=半分 / 2=3割程度 / 1=理解できていない / 0=未申告
+ */
+export type UnderstandingLevel = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** 理解度ボタンの並び。label だけを画面に出し、score は出さない */
+export const UNDERSTANDING_CHOICES: { score: 1 | 2 | 3 | 4 | 5; label: string; detail: string }[] = [
+  { score: 5, label: "完全に理解した", detail: "テストで出ても自分で解ける" },
+  { score: 4, label: "だいたい分かった", detail: "8割ぐらいは説明できる" },
+  { score: 3, label: "半分ぐらい", detail: "分かった所と、あやしい所が半々" },
+  { score: 2, label: "少しだけ", detail: "3割ぐらい。まだ人に説明できない" },
+  { score: 1, label: "まだ分からない", detail: "もう一度やり直したい" }
+];
 
 /** 分野ごとの成績。デジタル分野・データ活用分野をそれぞれ100点満点で出す */
 export type AreaScore = {
@@ -111,6 +133,12 @@ export type AreaScore = {
   secondCorrect: number;
   experimentDone: number;
   experimentMax: number;
+  /** 理解度の申告点の合計（1実験あたり最大5点。未申告は0点） */
+  understandingScore: number;
+  /** 理解度の満点＝実験数×5 */
+  understandingMax: number;
+  /** 理解度を申告した実験の数 */
+  understandingAnswered: number;
   completedLessons: number;
   lessonCount: number;
 };
@@ -131,6 +159,12 @@ export type Summary = {
   quizMax: number;
   experimentDone: number;
   experimentMax: number;
+  /** 理解度の申告点の合計（1実験あたり最大5点。未申告は0点） */
+  understandingScore: number;
+  /** 理解度の満点＝実験数×5 */
+  understandingMax: number;
+  /** 理解度を申告した実験の数 */
+  understandingAnswered: number;
   completedLessons: number;
   lessonCount: number;
   /** 分野ごとの成績（それぞれ100点満点） */
@@ -157,12 +191,14 @@ export type ExamRow = {
 };
 
 export type StudentRecord = {
-  version: 4;
+  version: 5;
   exportedAt?: string;
   studentCode: string;
   drafts: Record<string, number[]>;
   submissions: Record<string, Submission>;
   experiments: Record<string, boolean>;
+  /** 実験ごとの理解度の申告（1〜5）。キーは experiments と同じ `${lessonId}-${index}` */
+  understanding: Record<string, UnderstandingLevel>;
   summary: Summary;
   /** 分野別テストの結果。成績処理はまずこの exams を見れば足りる */
   exams: ExamRow[];

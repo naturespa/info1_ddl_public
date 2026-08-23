@@ -65,6 +65,7 @@ import {
   Toggle,
   Verdict
 } from "../lib/ui";
+import { MOJIBAKE_ENCODINGS, mojibakeSamples } from "../lib/mojibake-data";
 
 export type CardRenderer = (index: number, title: string, goal: string, body: ReactNode) => ReactNode;
 export type LabProps = { card: CardRenderer };
@@ -106,6 +107,388 @@ const bytesRowSI = (bytes: number) => {
     { label: "メガバイト", value: `${fmt(s.mb, 3)} MB`, note: "÷1,000²" },
     { label: "ギガバイト", value: `${fmt(s.gb, 4)} GB`, note: "÷1,000³" }
   ];
+};
+
+/* ------------------------------------------------------------------
+ * 電気回路のミニ図（D4 実験1）
+ * スイッチのつなぎ方だけでゲートと同じ働きになることを、7種類ならべて見せる
+ * ---------------------------------------------------------------- */
+
+type WiringKind = "single-not" | "series" | "parallel" | "series-not" | "parallel-not" | "cross" | "cross-not";
+
+/** 開いた／閉じたスイッチ。closed のとき電気が通る */
+const SwitchMark = ({ x, y, closed, label }: { x: number; y: number; closed: boolean; label: string }) => (
+  <g>
+    <circle cx={x} cy={y} r={2.2} className="pin" />
+    <circle cx={x + 18} cy={y} r={2.2} className="pin" />
+    <line
+      x1={x}
+      y1={y}
+      x2={closed ? x + 18 : x + 16}
+      y2={closed ? y : y - 9}
+      className={`lever ${closed ? "closed" : ""}`}
+    />
+    <text x={x + 9} y={y + 13} className="pin-label">
+      {label}
+    </text>
+  </g>
+);
+
+const NotBox = ({ x, y }: { x: number; y: number }) => (
+  <g>
+    <rect x={x} y={y - 7} width={17} height={14} rx={3} className="notbox" />
+    <text x={x + 8.5} y={y + 4} className="notbox-label">
+      NOT
+    </text>
+  </g>
+);
+
+const MiniCircuit = ({ kind, a, b, on }: { kind: WiringKind; a: boolean; b: boolean; on: boolean }) => (
+  <svg viewBox="0 0 130 76" className={`mini-circuit ${on ? "on" : ""}`} role="img">
+    {/* 電池と外枠 */}
+    <line x1={10} y1={20} x2={10} y2={56} className="rail" />
+    <line x1={6} y1={32} x2={14} y2={32} className="rail thick" />
+    <line x1={7.5} y1={40} x2={12.5} y2={40} className="rail" />
+    <line x1={10} y1={20} x2={26} y2={20} className="rail" />
+    <line x1={10} y1={56} x2={112} y2={56} className="rail" />
+    <line x1={112} y1={56} x2={112} y2={38} className="rail" />
+
+    {kind === "single-not" && (
+      <>
+        <line x1={26} y1={20} x2={112} y2={20} className="rail" />
+        <line x1={112} y1={20} x2={112} y2={26} className="rail" />
+        {/* ランプと並列に入ったスイッチ。閉じるとランプを素通りして消える */}
+        <line x1={52} y1={20} x2={52} y2={38} className="rail" />
+        <line x1={52} y1={38} x2={112} y2={38} className="rail" />
+        <SwitchMark x={58} y={38} closed={a} label="A" />
+      </>
+    )}
+
+    {kind !== "single-not" && kind !== "parallel" && kind !== "parallel-not" && kind !== "cross" && kind !== "cross-not" && (
+      <>
+        <SwitchMark x={30} y={20} closed={a} label="A" />
+        <line x1={48} y1={20} x2={58} y2={20} className="rail" />
+        <SwitchMark x={58} y={20} closed={b} label="B" />
+        {kind === "series" ? (
+          <line x1={76} y1={20} x2={112} y2={20} className="rail" />
+        ) : (
+          <>
+            <line x1={76} y1={20} x2={86} y2={20} className="rail" />
+            <NotBox x={86} y={20} />
+            <line x1={103} y1={20} x2={112} y2={20} className="rail" />
+          </>
+        )}
+        <line x1={112} y1={20} x2={112} y2={26} className="rail" />
+      </>
+    )}
+
+    {(kind === "parallel" || kind === "parallel-not") && (
+      <>
+        <line x1={26} y1={20} x2={26} y2={40} className="rail" />
+        <line x1={26} y1={12} x2={30} y2={12} className="rail" />
+        <line x1={26} y1={12} x2={26} y2={40} className="rail" />
+        <SwitchMark x={30} y={12} closed={a} label="A" />
+        <SwitchMark x={30} y={40} closed={b} label="B" />
+        <line x1={48} y1={12} x2={70} y2={12} className="rail" />
+        <line x1={48} y1={40} x2={70} y2={40} className="rail" />
+        <line x1={70} y1={12} x2={70} y2={40} className="rail" />
+        {kind === "parallel" ? (
+          <line x1={70} y1={20} x2={112} y2={20} className="rail" />
+        ) : (
+          <>
+            <line x1={70} y1={20} x2={86} y2={20} className="rail" />
+            <NotBox x={86} y={20} />
+            <line x1={103} y1={20} x2={112} y2={20} className="rail" />
+          </>
+        )}
+        <line x1={112} y1={20} x2={112} y2={26} className="rail" />
+      </>
+    )}
+
+    {(kind === "cross" || kind === "cross-not") && (
+      <>
+        {/* 三路スイッチ2つ。上下どちらの線でつながるかが入力で変わる */}
+        <circle cx={30} cy={20} r={2.2} className="pin" />
+        <line x1={30} y1={20} x2={48} y2={a ? 12 : 30} className={`lever closed`} />
+        <line x1={48} y1={12} x2={64} y2={12} className="rail" />
+        <line x1={48} y1={30} x2={64} y2={30} className="rail" />
+        <circle cx={48} cy={12} r={2} className="pin" />
+        <circle cx={48} cy={30} r={2} className="pin" />
+        <circle cx={64} cy={12} r={2} className="pin" />
+        <circle cx={64} cy={30} r={2} className="pin" />
+        <line x1={64} y1={b ? 30 : 12} x2={82} y2={20} className={`lever closed`} />
+        <circle cx={82} cy={20} r={2.2} className="pin" />
+        <text x={39} y={45} className="pin-label">
+          A
+        </text>
+        <text x={73} y={45} className="pin-label">
+          B
+        </text>
+        {kind === "cross" ? (
+          <line x1={82} y1={20} x2={112} y2={20} className="rail" />
+        ) : (
+          <>
+            <line x1={82} y1={20} x2={86} y2={20} className="rail" />
+            <NotBox x={86} y={20} />
+            <line x1={103} y1={20} x2={112} y2={20} className="rail" />
+          </>
+        )}
+        <line x1={112} y1={20} x2={112} y2={26} className="rail" />
+      </>
+    )}
+
+    {/* ランプ */}
+    <circle cx={112} cy={32} r={6} className="bulb" />
+    <line x1={108} y1={28} x2={116} y2={36} className="bulb-x" />
+    <line x1={116} y1={28} x2={108} y2={36} className="bulb-x" />
+  </svg>
+);
+
+/** 周波数から、いちばん近い音階の名前と、そこからのずれ（セント）を求める */
+const NOTE_NAMES = ["ド", "ド♯", "レ", "レ♯", "ミ", "ファ", "ファ♯", "ソ", "ソ♯", "ラ", "ラ♯", "シ"];
+const NOTE_ALPHA = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const noteOf = (freq: number) => {
+  // ラ（A4, 440Hz）を基準に、半音いくつ離れているかを数える
+  const semitones = 12 * Math.log2(freq / 440);
+  const nearest = Math.round(semitones);
+  const cents = Math.round((semitones - nearest) * 100);
+  // A4 は MIDI 69。そこから半音数を足す
+  const midi = 69 + nearest;
+  const index = ((midi % 12) + 12) % 12;
+  const octave = Math.floor(midi / 12) - 1;
+  return {
+    name: `${NOTE_NAMES[index]}（${NOTE_ALPHA[index]}${octave}）`,
+    exact: 440 * 2 ** (nearest / 12),
+    cents,
+    octave
+  };
+};
+
+/* ------------------------------------------------------------------
+ * CPUのブロック図（D5 実験2）
+ * 取出し→解読→実行→次の命令へ　の1周を、光る場所で示す
+ * ---------------------------------------------------------------- */
+
+const CpuDiagram = ({ step, address, instruction }: { step: number; address: string; instruction: string }) => {
+  const cls = (n: number) => (step === n ? "cpu-box on" : "cpu-box");
+  const arrow = (n: number) => (step === n ? "cpu-arrow on" : "cpu-arrow");
+  return (
+    <svg viewBox="0 0 480 176" className="cpu-diagram" role="img">
+      {/* 主記憶 */}
+      <rect x={8} y={30} width={104} height={116} rx={8} className="cpu-outer" />
+      <text x={60} y={22} className="cpu-title">主記憶</text>
+      <rect x={18} y={44} width={84} height={26} rx={5} className={cls(0)} />
+      <text x={60} y={61} className="cpu-label">{address}番地の命令</text>
+      <text x={60} y={90} className="cpu-note">{instruction}</text>
+      <rect x={18} y={100} width={84} height={34} rx={5} className={cls(2)} />
+      <text x={60} y={121} className="cpu-label">データ</text>
+
+      {/* CPU の外枠 */}
+      <rect x={150} y={14} width={322} height={148} rx={10} className="cpu-outer" />
+      <text x={311} y={30} className="cpu-title">CPU（中央処理装置）</text>
+
+      {/* 制御装置 */}
+      <rect x={162} y={40} width={298} height={62} rx={8} className="cpu-group" />
+      <text x={311} y={54} className="cpu-note">制御装置</text>
+      <rect x={174} y={60} width={82} height={32} rx={5} className={cls(0)} />
+      <text x={215} y={80} className="cpu-label">プログラムカウンタ</text>
+      <rect x={268} y={60} width={82} height={32} rx={5} className={cls(0)} />
+      <text x={309} y={80} className="cpu-label">命令レジスタ</text>
+      <rect x={362} y={60} width={86} height={32} rx={5} className={cls(1)} />
+      <text x={405} y={80} className="cpu-label">デコーダ（解読）</text>
+
+      {/* 演算装置 */}
+      <rect x={268} y={114} width={180} height={34} rx={6} className={cls(2)} />
+      <text x={358} y={135} className="cpu-label">演算装置（計算する）</text>
+
+      {/* 線 */}
+      <polyline points="112,57 174,57 174,60" className={arrow(0)} markerEnd="url(#cpuhead)" />
+      <polyline points="256,76 268,76" className={arrow(0)} markerEnd="url(#cpuhead)" />
+      <polyline points="350,76 362,76" className={arrow(1)} markerEnd="url(#cpuhead)" />
+      <polyline points="405,92 405,131 448,131" className={arrow(2)} />
+      <polyline points="112,117 268,131" className={arrow(2)} markerEnd="url(#cpuhead)" />
+      <polyline points="215,92 215,158 405,158 405,148" className={arrow(3)} markerEnd="url(#cpuhead)" />
+      <text x={311} y={172} className="cpu-note">④ 次の命令の番地へ進める</text>
+      <defs>
+        <marker id="cpuhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" className="cpu-head" />
+        </marker>
+      </defs>
+    </svg>
+  );
+};
+
+/* ------------------------------------------------------------------
+ * 加算器の回路図（D4 実験3・実験4）
+ * 入力のボタンを押すと、線の0と1がその場で変わる
+ * ---------------------------------------------------------------- */
+
+const B = (v: boolean | number) => (typeof v === "number" ? v : Number(v));
+const live = (v: boolean | number) => (B(v) ? "wire on" : "wire");
+
+/** MIL記号のゲート。type で形が変わる。幅28・高さ24 */
+const GateSymbol = ({ x, y, type, on }: { x: number; y: number; type: "AND" | "OR" | "XOR"; on: boolean }) => (
+  <g transform={`translate(${x} ${y})`} className={on ? "gate on" : "gate"}>
+    {type === "AND" ? (
+      <path d="M0,0 H16 A12,12 0 0 1 16,24 H0 Z" className="gate-body" />
+    ) : (
+      <path d="M0,0 Q14,12 0,24 Q22,22 28,12 Q22,2 0,0 Z" className="gate-body" />
+    )}
+    {type === "XOR" && <path d="M-5,0 Q9,12 -5,24" className="gate-arc" />}
+    <text x={type === "AND" ? 11 : 12} y={15} className="gate-label">
+      {type}
+    </text>
+  </g>
+);
+
+/** 値つきの箱（半加算器・全加算器のブロック） */
+const BlockSymbol = ({ x, y, w, h, label, on }: { x: number; y: number; w: number; h: number; label: string; on?: boolean }) => (
+  <g className={on ? "gate on" : "gate"}>
+    <rect x={x} y={y} width={w} height={h} rx={6} className="gate-body" />
+    <text x={x + w / 2} y={y + h / 2 + 4} className="gate-label">
+      {label}
+    </text>
+  </g>
+);
+
+/** 線の途中に出す0/1 */
+const WireValue = ({ x, y, v }: { x: number; y: number; v: boolean | number }) => (
+  <text x={x} y={y} className={B(v) ? "wire-value on" : "wire-value"}>
+    {B(v)}
+  </text>
+);
+
+/** 半加算器：XORが和、ANDがくり上がり */
+const HalfAdderDiagram = ({ a, b, s, c }: { a: boolean; b: boolean; s: boolean; c: boolean }) => (
+  <svg viewBox="0 0 250 92" className="logic-diagram" role="img">
+    <text x={6} y={24} className="port">A</text>
+    <text x={6} y={72} className="port">B</text>
+    <WireValue x={20} y={24} v={a} />
+    <WireValue x={20} y={72} v={b} />
+
+    {/* Aの線：XORの上入力とANDの上入力へ */}
+    <polyline points="30,20 46,20 46,64 100,64" className={live(a)} />
+    <polyline points="46,20 100,20" className={live(a)} />
+    {/* Bの線：XORの下入力とANDの下入力へ */}
+    <polyline points="30,68 60,68 60,32 100,32" className={live(b)} />
+    <polyline points="60,68 100,68" className={live(b)} />
+
+    <GateSymbol x={100} y={14} type="XOR" on={s} />
+    <GateSymbol x={100} y={52} type="AND" on={c} />
+
+    <polyline points="128,26 210,26" className={live(s)} />
+    <polyline points="128,64 210,64" className={live(c)} />
+    <WireValue x={196} y={22} v={s} />
+    <WireValue x={196} y={60} v={c} />
+    <text x={216} y={30} className="port">S</text>
+    <text x={216} y={68} className="port">C</text>
+    <text x={216} y={42} className="port-note">和</text>
+    <text x={216} y={80} className="port-note">くり上がり</text>
+  </svg>
+);
+
+/** 全加算器：半加算器2つとORでできている */
+const FullAdderDiagram = ({
+  a,
+  b,
+  ci,
+  s1,
+  c1,
+  s,
+  c2,
+  co
+}: {
+  a: boolean;
+  b: boolean;
+  ci: boolean;
+  s1: boolean;
+  c1: boolean;
+  s: boolean;
+  c2: boolean;
+  co: boolean;
+}) => (
+  <svg viewBox="0 0 330 120" className="logic-diagram" role="img">
+    <text x={4} y={22} className="port">A</text>
+    <text x={4} y={44} className="port">B</text>
+    <text x={4} y={92} className="port">Ci</text>
+    <WireValue x={18} y={22} v={a} />
+    <WireValue x={18} y={44} v={b} />
+    <WireValue x={22} y={92} v={ci} />
+
+    <polyline points="28,18 62,18" className={live(a)} />
+    <polyline points="28,40 62,40" className={live(b)} />
+    <BlockSymbol x={62} y={8} w={58} h={42} label="半加算器①" on={s1 || c1} />
+
+    {/* ①のS → ②へ */}
+    <polyline points="120,20 150,20" className={live(s1)} />
+    <WireValue x={132} y={16} v={s1} />
+    {/* ①のC → ORへ */}
+    <polyline points="120,40 136,40 136,104 236,104" className={live(c1)} />
+    <WireValue x={186} y={100} v={c1} />
+
+    {/* Ci → ②へ */}
+    <polyline points="30,88 150,88 150,42" className={live(ci)} />
+
+    <BlockSymbol x={150} y={8} w={58} h={42} label="半加算器②" on={s || c2} />
+    <polyline points="208,20 300,20" className={live(s)} />
+    <WireValue x={286} y={16} v={s} />
+    <text x={306} y={24} className="port">S</text>
+
+    {/* ②のC → ORへ */}
+    <polyline points="208,40 222,40 222,80 236,80" className={live(c2)} />
+    <WireValue x={214} y={76} v={c2} />
+
+    <GateSymbol x={236} y={80} type="OR" on={co} />
+    <polyline points="264,92 300,92" className={live(co)} />
+    <WireValue x={286} y={88} v={co} />
+    <text x={306} y={96} className="port">Co</text>
+    <text x={236} y={114} className="port-note">2つのくり上がりのどちらかが1なら、上のけたへ送る</text>
+  </svg>
+);
+
+/** 4ビットの並列加算器：全加算器を4つ並べ、Coを次のCiへ渡す */
+const RippleDiagram = ({
+  stages,
+  carryOut
+}: {
+  stages: { x: number; y: number; ci: number; s: number; co: number }[];
+  carryOut: boolean;
+}) => {
+  // stages は上位けたから並んでいる。図では下位けたを右に置く
+  const cells = stages.slice().reverse();
+  const W = 74;
+  const left = (i: number) => 300 - i * W;
+  return (
+    <svg viewBox="0 0 330 128" className="logic-diagram" role="img">
+      {cells.map((stage, i) => {
+        const x = left(i) - 56;
+        return (
+          <g key={i}>
+            <text x={x + 28} y={12} className="port-note">
+              {i + 1}けた目
+            </text>
+            <polyline points={`${x + 14},22 ${x + 14},42`} className={live(stage.x)} />
+            <polyline points={`${x + 42},22 ${x + 42},42`} className={live(stage.y)} />
+            <text x={x + 14} y={34} className="port-note">A</text>
+            <text x={x + 42} y={34} className="port-note">B</text>
+            <WireValue x={x + 6} y={20} v={stage.x} />
+            <WireValue x={x + 34} y={20} v={stage.y} />
+            <BlockSymbol x={x} y={42} w={56} h={34} label="全加算器" on={!!stage.s || !!stage.co} />
+            <polyline points={`${x + 28},76 ${x + 28},96`} className={live(stage.s)} />
+            <WireValue x={x + 24} y={110} v={stage.s} />
+            {/* Co（左へ） */}
+            <polyline points={`${x},59 ${x - 18},59`} className={live(stage.co)} />
+            <WireValue x={x - 14} y={55} v={stage.co} />
+          </g>
+        );
+      })}
+      <text x={4} y={62} className={carryOut ? "port warn" : "port"}>
+        {carryOut ? "あふれ" : "0"}
+      </text>
+      <text x={306} y={62} className="port">Ci</text>
+      <text x={314} y={100} className="port-note">和</text>
+    </svg>
+  );
 };
 
 /* ========================================================================
@@ -185,10 +568,14 @@ export function FeatureLab({ card }: LabProps) {
     ["天気 15種類", 15],
     ["色鉛筆 50色", 50],
     ["ひらがな 46字", 46],
-    ["英字 大小52字", 52],
+    ["半角文字 256種", 256],
     ["常用漢字 2,136字", 2136],
-    ["半角文字 256種", 256]
+    ["JIS第1・第2水準 6,879字", 6879],
+    ["1色ぶん 256階調", 256],
+    ["フルカラー 16,777,216色", 16777216]
   ];
+  /** 1〜24ビットの早見表。24ビット＝フルカラーまで一気に見渡せるようにする */
+  const bitTable = Array.from({ length: 24 }, (_, i) => i + 1);
 
   /* --- 応用: デジタル化の3段階 --- */
   const stages: [string, string, string, string][] = [
@@ -434,7 +821,7 @@ export function FeatureLab({ card }: LabProps) {
               </button>
             ))}
           </div>
-          <NumberField label="区別したいものの数" value={kinds} onChange={setKinds} min={2} max={100000} unit="種類" />
+          <NumberField label="区別したいものの数" value={kinds} onChange={setKinds} min={2} max={16777216} unit="種類" />
           <Formula>2 の（必要なビット数）乗 ≧ 区別したいものの数</Formula>
           <Results
             items={[
@@ -453,8 +840,23 @@ export function FeatureLab({ card }: LabProps) {
               [neededBits - 2, neededBits - 1, neededBits, neededBits + 1].filter((n) => n >= 1)[index] === neededBits
             }
           />
+          <div className="bit-scale">
+            <span className="bit-scale-label">1〜24ビットの早見表（今の答えは色つき）</span>
+            <div className="bit-scale-grid">
+              {bitTable.map((n) => (
+                <b key={n} className={n === neededBits ? "on" : 2 ** n >= safeKinds ? "enough" : ""}>
+                  <span>{n}bit</span>
+                  <em>{fmt(2 ** n, 0)}</em>
+                </b>
+              ))}
+            </div>
+            <em className="bit-scale-note">
+              24ビット＝16,777,216通り。光の3原色を各8ビット（256階調）で表すと8×3＝24ビットになり、これが「フルカラー」です。
+            </em>
+          </div>
           <Hint>
-            必要なビット数は「その数以上になる最小の2のn乗」を探すことで求まります。15種類なら4ビット（16通り）、50色なら6ビット（64通り）です。
+            必要なビット数は「その数以上になる最小の2のn乗」を探すことで求まります。15種類なら4ビット（16通り）、50色なら6ビット（64通り）、
+            1,677万色なら24ビット（16,777,216通り）です。ビットを1つ増やすたびに、表せる数は2倍になります。
           </Hint>
         </>
       )}
@@ -498,11 +900,9 @@ export function FeatureLab({ card }: LabProps) {
  * D1 基数変換・加算・シフト
  * ====================================================================== */
 export function BaseLab({ card }: LabProps) {
-  const [baseTab, setBaseTab] = useState("compare");
   const [decimal, setDecimal] = useState(45);
   const [ladderValue, setLadderValue] = useState(36);
   const [bitInput, setBitInput] = useState("00101101");
-  const [hexInput, setHexInput] = useState("2F");
   const [fraction, setFraction] = useState(0.1);
   const [addA, setAddA] = useState("11001011");
   const [addB, setAddB] = useState("11110110");
@@ -517,7 +917,6 @@ export function BaseLab({ card }: LabProps) {
   const ladder = divisionLadder(ladderValue);
   const bits = padBits(parseBits(bitInput) || "0", 8);
   const bitValue = parseInt(bits, 2);
-  const hexValue = fromBase(hexInput, 16);
   const fracBinary = toBase(fraction, 2, 20);
   const fracBack = fromBase(fracBinary, 2) ?? 0;
   const fracRows = fractionSteps(fraction, 8);
@@ -539,18 +938,8 @@ export function BaseLab({ card }: LabProps) {
       {card(
         0,
         "同じ数を2進数・10進数・16進数で見比べる",
-        "同じ値が、表記を変えても同じ数であることを確かめます。2つの見方をタブで切り替えましょう。",
+        "同じ値が、表記を変えても同じ数であることを確かめます。ビットのボタンを押して確かめましょう。",
         <>
-          <Tabs
-            value={baseTab}
-            onChange={setBaseTab}
-            options={[
-              { value: "compare", label: "10進数・2進数・16進数を見比べる" },
-              { value: "hex", label: "4けたずつ区切って16進数にする" }
-            ]}
-          />
-          {baseTab === "compare" ? (
-            <>
               <Row>
                 <NumberField label="10進数(10)（ふだん使う数）を入力" value={decimal} onChange={(v) => { setDecimal(clamp(v, 0, 255)); setBitInput(padBits(clamp(v, 0, 255).toString(2), 8)); }} min={0} max={255} />
                 <TextField label="2進数(2)を直接入力" value={bitInput} onChange={(v) => { setBitInput(v); const parsed = parseInt(parseBits(v) || "0", 2); setDecimal(parsed); }} mono hint="0と1だけ・8けた" />
@@ -564,27 +953,7 @@ export function BaseLab({ card }: LabProps) {
                   { label: "8進数(8)", value: bitValue.toString(8), note: "同じ値を、右から3けたずつ区切って書き直したもの" }
                 ]}
               />
-              <Hint>ビットのボタンを押すと0と1が入れかわります。1が立っているけたの重みを足すと10進数になります。</Hint>
-            </>
-          ) : (
-            <>
-              <TextField label="16進数(16)を入力" value={hexInput} onChange={setHexInput} mono hint="0〜9とA〜F" />
-              {hexValue === null ? (
-                <Verdict ok={false}>16進数として読めません。0〜9とA〜Fだけで入力してください。</Verdict>
-              ) : (
-                <>
-                  <Steps
-                    items={[
-                      { label: "16進数(16)", value: hexInput.toUpperCase() },
-                      { label: "1けたずつ2進4けたに", value: hexInput.toUpperCase().replace(/[^0-9A-Fa-f]/g, "").split("").map((c) => parseInt(c, 16).toString(2).padStart(4, "0")).join(" ") },
-                      { label: "10進数(10)", value: fmt(hexValue, 4) }
-                    ]}
-                  />
-                  <Hint>2進数4けたは0000〜1111の16通り。16進数1けたとちょうど同じ数なので、機械的に置き換えられます。</Hint>
-                </>
-              )}
-            </>
-          )}
+              <Hint>ビットのボタンを押すと0と1が入れかわります。1が立っているけたの重みを足すと10進数になります。16進数は「右から4けたずつ区切って書き直したもの」で、上の表のとおり同じ値です。</Hint>
         </>
       )}
 
@@ -951,63 +1320,77 @@ export function NegativeLab({ card }: LabProps) {
 
       {card(
         1,
-        "1の補数をつくる",
-        "0と1をすべて反転させます。機械にとって最も簡単な操作です。",
+        "1の補数から2の補数までを、ひと続きで作る",
+        "1つのビット列に、反転（1の補数）と＋1（2の補数）を続けて行い、元の数と足すと0になることまで確かめます。",
         <>
           <TextField label="元のビット列(2)（8けた）" value={source} onChange={setSource} mono hint="0と1だけ・8けた" />
-          <Formula>1の補数 ＝ すべてのけたの0と1を入れかえた並び（0は1へ、1は0へ）</Formula>
-          <BitStrip bits={bits} />
-          <div className="shift-arrow">すべて反転（NOT）</div>
-          <BitStrip bits={ones} />
+          <div className="preset-row">
+            {["00000101", "00000001", "00001010", "01111111", "10000000"].map((v) => (
+              <button type="button" key={v} onClick={() => setSource(v)}>
+                <span className="mono">{v}</span>
+              </button>
+            ))}
+          </div>
+          <Formula>1の補数 ＝ すべてのけたの0と1を入れかえた並び　／　2の補数 ＝ 1の補数 ＋ 1</Formula>
+
+          <div className="complement-chain">
+            <div className="chain-step">
+              <span className="chain-tag">① 元のビット列</span>
+              <BitStrip bits={bits} />
+              <em>符号なしで読むと {parseInt(bits, 2)}</em>
+            </div>
+            <div className="chain-arrow">
+              <b>すべて反転（NOT）</b>
+              <i>0は1へ、1は0へ</i>
+            </div>
+            <div className="chain-step">
+              <span className="chain-tag">② 1の補数</span>
+              <BitStrip bits={ones} />
+              <em>①と②を足すと必ず 11111111（＝{parseInt(bits, 2)} ＋ {parseInt(ones, 2)} ＝ 255）</em>
+            </div>
+            <div className="chain-arrow">
+              <b>＋1 する</b>
+              <i>ここが1の補数と2の補数のちがい</i>
+            </div>
+            <div className="chain-step accent">
+              <span className="chain-tag">③ 2の補数</span>
+              <BitStrip bits={twos.result} />
+              <em>10進で読むと {signedValue(twos.result)}。これが「元の数のマイナス版」</em>
+            </div>
+          </div>
+
           <Steps
             items={[
               { label: "① 元のビット列(2)", value: <span className="mono">{bits}</span>, note: `符号なしで読むと ${parseInt(bits, 2)}` },
-              { label: "② けたごとに0と1を入れかえる", value: <span className="mono">{ones}</span>, note: "機械はNOTを8個並べるだけでできる" },
-              { label: "③ 元と①②を足すと", value: <span className="mono">11111111</span>, note: "どのけたも必ず0と1の組になるため" }
+              { label: "② けたごとに0と1を入れかえる（1の補数）", value: <span className="mono">{ones}</span>, note: "機械はNOTを8個並べるだけでできる" },
+              { label: "③ ②に1を足す（2の補数）", value: <span className="mono">{twos.result}</span>, note: "1の補数より、ちょうど1だけ大きい" },
+              { label: "④ ①と③を足して確かめる", value: <span className="mono">{check.full}</span>, note: `8けたからあふれた1を捨てると ${check.sum}` }
             ]}
           />
           <Results
             items={[
               { label: "元の値（符号なし）", value: parseInt(bits, 2), note: "1が立ったけたの重みを足した値" },
-              { label: "1の補数", value: <span className="mono">{ones}</span>, note: "手順②。0と1を入れかえただけの並び" },
-              { label: "1の補数の値（符号なし）", value: parseInt(ones, 2), note: "元の値と足すと必ず255（＝11111111）になる" }
+              { label: "1の補数", value: <span className="mono">{ones}</span>, note: "手順②。足すと255（11111111）になる相手" },
+              { label: "2の補数", value: <span className="mono">{twos.result}</span>, note: "手順③。1の補数＋1。足すと256になり、8けたでは0になる相手" },
+              { label: "2の補数を符号つきで読むと", value: signedValue(twos.result), note: "元の値の符号を反転した数になっていれば正しい" }
             ]}
           />
+          <Verdict ok={check.sum === "00000000"}>
+            {check.sum === "00000000"
+              ? `${parseInt(bits, 2)} + (${signedValue(twos.result)}) = 0 が成り立ちました。引き算をせずに、足し算とけた捨てだけで求められています。`
+              : "0になりません。元の値が0のときは、2の補数も0になります（0に符号はないため）。"}
+          </Verdict>
           <HintButton>
-            1の補数は、0と1をぜんぶ入れかえるだけです。オセロの盤面をまるごと裏返すのと同じで、白は黒に、黒は白になります。機械にとってはこれがいちばん簡単な操作なので、引き算の第一歩に使われます。
+            1の補数は、オセロの盤面をまるごと裏返すのと同じで、0と1を入れかえるだけです。足すと必ず 11111111（255）になります。
+            そこにもう1だけ足したものが2の補数で、足すと 100000000（256）になります。8けたしかない機械では、いちばん上のけたは捨てられるので、
+            残るのは 00000000＝0 です。つまり2の補数は「足すと0になる相手」＝マイナスの値そのものになります。
+            1の補数で止めると255にしかならないので、0にするための最後の＋1が要る、というつながりです。
           </HintButton>
         </>
       )}
 
       {card(
         2,
-        "2の補数をつくって検算する",
-        "1の補数に1を足し、元の数と足すと0になることを確かめます。",
-        <>
-          <Steps
-            items={[
-              { label: "元の値", value: <span className="mono">{bits}</span> },
-              { label: "反転（1の補数）", value: <span className="mono">{twos.flipped}</span> },
-              { label: "1を足す（2の補数）", value: <span className="mono">{twos.result}</span> },
-              { label: "10進で読むと", value: signedValue(twos.result) }
-            ]}
-          />
-          <Formula>
-            {bits} + {twos.result} = {check.full}（8けたからあふれた1を捨てると {check.sum}）
-          </Formula>
-          <Verdict ok={check.sum === "00000000"}>
-            {check.sum === "00000000"
-              ? `${parseInt(bits, 2)} + (${signedValue(twos.result)}) = 0 が成り立ちました。`
-              : "0になりません。元の値が0のときは補数も0になります。"}
-          </Verdict>
-          <HintButton>
-            反転して1を足した数は、もとの数と足すとちょうど0になります。つまりこの数は、もとの数の「マイナス版」です。時計の針を9時間もどす代わりに3時間すすめても同じ時刻になるのと同じで、足し算だけで引き算と同じ結果にたどりつけます。だから機械は引き算の回路を持たなくてすみます。
-          </HintButton>
-        </>
-      )}
-
-      {card(
-        3,
         "10進数を、マイナスも表せるビットの並びにする",
         "負の数を入力して、表現できる範囲の外に出るとどうなるかを見ます。",
         <>
@@ -1056,7 +1439,7 @@ export function NegativeLab({ card }: LabProps) {
       )}
 
       {card(
-        4,
+        3,
         "表現できる範囲を比べる",
         "符号なしと符号ありで、範囲がどう変わるかを確かめます。",
         <>
@@ -1086,7 +1469,7 @@ export function NegativeLab({ card }: LabProps) {
       )}
 
       {card(
-        5,
+        4,
         "購買部の在庫を数える仕組みを設計する",
         "いちばん大きい数といちばん小さい数から、何ビット使うか、マイナスを表せるようにするかを決めます。",
         <>
@@ -1409,6 +1792,16 @@ export function LogicLab({ card }: LabProps) {
   const [stairPlan, setStairPlan] = useState("");
 
   const gates: Gate[] = ["NOT", "AND", "OR", "NAND", "NOR", "XOR", "XNOR"];
+  /** 電気回路で見るとき、どのつなぎ方がどのゲートに当たるか */
+  const wirings: { gate: Gate; kind: WiringKind; wiring: string }[] = [
+    { gate: "NOT", kind: "single-not", wiring: "ランプと並列" },
+    { gate: "AND", kind: "series", wiring: "直列" },
+    { gate: "OR", kind: "parallel", wiring: "並列" },
+    { gate: "NAND", kind: "series-not", wiring: "直列＋反転" },
+    { gate: "NOR", kind: "parallel-not", wiring: "並列＋反転" },
+    { gate: "XOR", kind: "cross", wiring: "三路（階段）" },
+    { gate: "XNOR", kind: "cross-not", wiring: "三路＋反転" }
+  ];
   const half = halfAdder(hx, hy);
   const full = fullAdder(fx, fy, fc);
   const ripple = rippleAdder(ra, rb, 4);
@@ -1469,25 +1862,24 @@ export function LogicLab({ card }: LabProps) {
           )}
           {gateView === "circuit" && (
             <>
-              <div className="circuit-pair">
-                <div className={`circuit ${a && b ? "on" : ""}`}>
-                  <span>直列（AND）</span>
-                  <div className="wire">
-                    <i className={a ? "closed" : ""} />
-                    <i className={b ? "closed" : ""} />
-                  </div>
-                  <b>{a && b ? "点灯" : "消灯"}</b>
-                </div>
-                <div className={`circuit ${a || b ? "on" : ""}`}>
-                  <span>並列（OR）</span>
-                  <div className="wire parallel">
-                    <i className={a ? "closed" : ""} />
-                    <i className={b ? "closed" : ""} />
-                  </div>
-                  <b>{a || b ? "点灯" : "消灯"}</b>
-                </div>
+              <div className="circuit-row">
+                {wirings.map((w) => {
+                  const lit = gateOutput(w.gate, a, b);
+                  return (
+                    <div className={`circuit-mini ${lit ? "on" : ""} ${w.gate === gate ? "picked" : ""}`} key={w.gate}>
+                      <span>{w.gate}</span>
+                      <MiniCircuit kind={w.kind} a={a} b={b} on={lit} />
+                      <em>{w.wiring}</em>
+                      <b>{lit ? "点灯" : "消灯"}</b>
+                    </div>
+                  );
+                })}
               </div>
-              <Hint>ANDは直列つなぎ、ORは並列つなぎと同じ動きをします。上のスイッチAとBを動かして確かめましょう。</Hint>
+              <Hint>
+                上のスイッチAとBを動かすと、7つの回路が同時に変わります。ANDは直列つなぎ、ORは並列つなぎ。
+                NANDとNORはその出口に反転（NOT）を足したもの、XORは階段の照明と同じ三路スイッチのつなぎ方です。
+                NOTはランプと並列にスイッチを入れ、閉じると電気がランプを素通りするので消えます。
+              </Hint>
             </>
           )}
           <HintButton>
@@ -1531,7 +1923,7 @@ export function LogicLab({ card }: LabProps) {
       {card(
         2,
         "半加算器と全加算器を組み立てて、ちがいを見る",
-        "XORが和、ANDがくり上がりになることを確かめ、下のけたからのくり上がりを足せる形へ広げます。",
+        "回路図の線の0と1は、入力A・B・Ciのボタンを押すとその場で変わります。XORが和、ANDがくり上がりになることを確かめましょう。",
         <>
           <Tabs
             value={adderTab}
@@ -1547,6 +1939,7 @@ export function LogicLab({ card }: LabProps) {
                 <Toggle label="入力 A" on={hx} onChange={setHx} />
                 <Toggle label="入力 B" on={hy} onChange={setHy} />
               </div>
+              <HalfAdderDiagram a={hx} b={hy} s={half.s} c={half.c} />
               <div className="adder-view">
                 <div><small>XOR → 和 S</small><b>{Number(half.s)}</b></div>
                 <div><small>AND → くり上がり C</small><b>{Number(half.c)}</b></div>
@@ -1570,6 +1963,16 @@ export function LogicLab({ card }: LabProps) {
                 <Toggle label="入力 B" on={fy} onChange={setFy} />
                 <Toggle label="下のけたから来たくり上がり（Ci）" on={fc} onChange={setFc} />
               </div>
+              <FullAdderDiagram
+                a={fx}
+                b={fy}
+                ci={fc}
+                s1={full.inner.first.s}
+                c1={full.inner.first.c}
+                s={full.s}
+                c2={full.inner.second.c}
+                co={full.co}
+              />
               <div className="adder-view">
                 <div><small>1つ目の半加算器 S</small><b>{Number(full.inner.first.s)}</b></div>
                 <div><small>2つ目の半加算器 S → 和</small><b>{Number(full.s)}</b></div>
@@ -1589,7 +1992,7 @@ export function LogicLab({ card }: LabProps) {
       {card(
         3,
         "全加算器を並べて4ビットを足す",
-        "くり上がりが右のけたから左のけたへ、順番に受け渡されていく様子を追います。",
+        "回路図で、くり上がりが右のけたから左のけたへ順番に受け渡されていく様子を追います。値を変えると図も変わります。",
         <>
           <Row>
             <TextField label="4ビットの値 A" value={ra} onChange={setRa} mono />
@@ -1598,6 +2001,7 @@ export function LogicLab({ card }: LabProps) {
           <Formula>
             各けたの全加算器：A ＋ B ＋ Ci（下のけたから受け取る） ＝ S（和） ＋ Co（上のけたへ送る）×2　／　あるけたのCoが、そのまま次のけたのCiになる
           </Formula>
+          <RippleDiagram stages={ripple.stages} carryOut={ripple.carryOut} />
           <DataTable
             head={["けた", "A", "B", "Ci（下のけたから受け取る）", "S（和）", "Co（上のけたへ送る）"]}
             rows={ripple.stages.map((stage, index) => [4 - index, stage.x, stage.y, stage.ci, stage.s, stage.co])}
@@ -1904,7 +2308,7 @@ export function ComputerLab({ card }: LabProps) {
       {card(
         1,
         "CPUの中で命令が回る順番",
-        "取出し→解読→実行の1周を、順に確かめます。",
+        "取出し→解読→実行の1周を、CPUの図の上で順に確かめます。タブを押すと、働いている場所が光ります。",
         <>
           <Tabs value={String(step)} onChange={(v) => setStep(Number(v))} options={cycle.map((s, i) => ({ value: String(i), label: `${i + 1} ${s[0]}` }))} />
           <Results
@@ -1913,9 +2317,10 @@ export function ComputerLab({ card }: LabProps) {
               { label: "この段階で働くもの", value: step === 0 ? "プログラムカウンタ・命令レジスタ" : step === 1 ? "デコーダ" : step === 2 ? "演算装置" : "プログラムカウンタ", note: "下の並びで、色がついている部分" }
             ]}
           />
+          <CpuDiagram step={step} address={`${100 + step}`} instruction="ADD 5, 3" />
           <Verdict ok>
             見分け方は「その段階で命令がどこにあるか」です。主記憶から運んでくるのが取出し、中身を読み解くのが解読、実際に計算するのが実行。
-            いまは「{cycle[step][0]}」の段階です。
+            いまは「{cycle[step][0]}」の段階です。上の図で色がついている場所が、その段階で働いている部分です。
           </Verdict>
           <div className="registers">
             <span className={step === 0 ? "active" : ""}>プログラムカウンタ</span>
@@ -2045,6 +2450,7 @@ export function TextLab({ card }: LabProps) {
   const [sample, setSample] = useState("情報AI 2026");
   const [saveEnc, setSaveEnc] = useState("UTF-8");
   const [readEnc, setReadEnc] = useState("UTF-8");
+  const [mojiIndex, setMojiIndex] = useState(0);
   const [bits, setBits] = useState(8);
   const [chars, setChars] = useState(40);
   const [lines, setLines] = useState(40);
@@ -2063,7 +2469,9 @@ export function TextLab({ card }: LabProps) {
     []
   );
   const totalBytes = chars * lines * bytesPerChar;
-  const mojibake = saveEnc === readEnc ? sample : "諠・ｱAI 2026";
+  const moji = mojibakeSamples[mojiIndex];
+  const mojibake = moji.pairs[`${saveEnc}>${readEnc}`] ?? "（読めません）";
+  const mojiBytes = moji.bytes[saveEnc];
 
   /* --- 実験2: 方式ごとの内訳（1文字あたりのバイト数 × その文字数） --- */
   const sampleChars = Array.from(sample);
@@ -2111,7 +2519,15 @@ export function TextLab({ card }: LabProps) {
           />
           <Hint>A は65、a は97。大文字と小文字は32（2進数で1けた分）だけ離れています。</Hint>
           <DataTable
-            head={["下位4bit ＼ 上位4bit", "2", "3", "4", "5", "6", "7"]}
+            head={[
+              "下位4bit ＼ 上位4bit",
+              ...[2, 3, 4, 5, 6, 7].map((col) => (
+                <span key={col} className="mono">
+                  {col.toString(2).padStart(4, "0")}
+                  <br />（{col}）
+                </span>
+              ))
+            ]}
             rows={table.map((row, index) => [
               <span key="h" className="mono">{index.toString(2).padStart(4, "0")}（{index.toString(16).toUpperCase()}）</span>,
               ...row.map((cell) => (
@@ -2158,23 +2574,55 @@ export function TextLab({ card }: LabProps) {
       {card(
         2,
         "文字化けを再現する",
-        "保存したときの方式と読み込むときの方式を食い違わせます。",
+        "UTF-8・Shift_JIS・EUC-JP・UTF-16の4方式で、保存したときと読むときを食い違わせます。",
         <>
           <Row>
-            <SelectField label="保存するときの方式" value={saveEnc} onChange={setSaveEnc} options={["UTF-8", "Shift_JIS"].map((value) => ({ value, label: value }))} />
-            <SelectField label="読み込むときの方式" value={readEnc} onChange={setReadEnc} options={["UTF-8", "Shift_JIS"].map((value) => ({ value, label: value }))} />
+            <SelectField
+              label="ためす文字列"
+              value={String(mojiIndex)}
+              onChange={(v) => setMojiIndex(Number(v))}
+              options={mojibakeSamples.map((row, i) => ({ value: String(i), label: row.text }))}
+            />
+            <SelectField label="保存するときの方式" value={saveEnc} onChange={setSaveEnc} options={MOJIBAKE_ENCODINGS.map((value) => ({ value, label: value }))} />
+            <SelectField label="読み込むときの方式" value={readEnc} onChange={setReadEnc} options={MOJIBAKE_ENCODINGS.map((value) => ({ value, label: value }))} />
           </Row>
           <div className="encoding-flow">
-            <span>{sample}</span>
-            <i>{saveEnc} で保存</i>
-            <span className="mono">{Array.from(new TextEncoder().encode(sample)).slice(0, 8).map((b) => b.toString(16).toUpperCase().padStart(2, "0")).join(" ")}…</span>
+            <span>{moji.text}</span>
+            <i>{saveEnc} で保存（{mojiBytes.bytes}B）</i>
+            <span className="mono">{mojiBytes.hex}</span>
             <i>{readEnc} で読込</i>
             <strong className={saveEnc === readEnc ? "" : "broken"}>{mojibake}</strong>
           </div>
+          <DataTable
+            head={["保存した方式 ＼ 読んだ方式", ...MOJIBAKE_ENCODINGS]}
+            rows={MOJIBAKE_ENCODINGS.map((sv) => [
+              <b key={sv}>{sv}</b>,
+              ...MOJIBAKE_ENCODINGS.map((rd) => (
+                <span key={rd} className={sv === rd ? "hot" : "broken-cell"}>
+                  {moji.pairs[`${sv}>${rd}`]}
+                </span>
+              ))
+            ])}
+            highlight={(index) => MOJIBAKE_ENCODINGS[index] === saveEnc}
+          />
+          <Results
+            items={MOJIBAKE_ENCODINGS.map((name) => ({
+              label: `${name} で保存したときの大きさ`,
+              value: `${moji.bytes[name].bytes} B`,
+              note:
+                name === "UTF-8"
+                  ? "世界中の文字を1つの表に入れた方式（Unicode）の代表。日本語は3B、英数字は1B"
+                  : name === "UTF-16"
+                    ? "同じくUnicodeの方式。日本語も英数字もおおむね2Bずつ使う"
+                    : name === "EUC-JP"
+                      ? "UNIXで使われてきた日本語の方式。全角2B・半角1B"
+                      : "Windowsで長く使われてきた日本語の方式。全角2B・半角1B"
+            }))}
+          />
           <Verdict ok={saveEnc === readEnc}>
             {saveEnc === readEnc
-              ? "方式が一致しているので正しく読めます。"
-              : "保存する方式と読む方式がちがうと文字化けします。ファイルの中の数字の並びは壊れていないので、正しい方式で開き直せば元に戻ります。"}
+              ? `${saveEnc} で保存して ${readEnc} で読んだので、正しく読めます。表の対角線（色のついたところ）だけが、もとの文字列に戻る組み合わせです。`
+              : `${saveEnc} で保存したものを ${readEnc} で読んだので、文字化けしました。ファイルの中のバイトの並び（上の16進数）は壊れていません。壊れているのは「読み方の決まり」のほうなので、${saveEnc} で開き直せば元に戻ります。`}
           </Verdict>
           <HintButton>
             文字化けが起きても、ファイルの中身は壊れていません。壊れているのは「読み方の決まり」のほうです。同じ数字の並びでも、日本語の表で読むか英語の表で読むかで別の文字になる。暗号を間違った鍵で開けたようなもので、正しい方式で開き直せば元どおりになります。
@@ -2273,6 +2721,19 @@ export function AudioLab({ card }: LabProps) {
   };
   const [pRate, pBits, pCh, pNote] = presets[preset] ?? presets.CD;
 
+  /* --- 実験1: 音階 --- */
+  const note = noteOf(freq);
+  /** ド〜シ＋1オクターブ上のド。1Hz刻みのつまみに合わせて、四捨五入した値を使う */
+  const scaleKeys = useMemo(
+    () =>
+      [0, 2, 4, 5, 7, 9, 11, 12].map((semi) => {
+        // C4（ド）は A4 から9半音下
+        const n = semi - 9;
+        return { label: NOTE_NAMES[(semi + 12) % 12], freq: Math.round(440 * 2 ** (n / 12)) };
+      }),
+    []
+  );
+
   return (
     <>
       {card(
@@ -2280,7 +2741,7 @@ export function AudioLab({ card }: LabProps) {
         "周波数と音の高さ",
         "1秒間の波の数を変えて、波の形がどう変わるかを見ます。",
         <>
-          <SliderField label="周波数" value={freq} onChange={setFreq} min={110} max={1760} step={10} unit=" Hz" />
+          <SliderField label="周波数" value={freq} onChange={setFreq} min={110} max={1760} step={1} unit=" Hz" />
           <div className="wave">
             {wave.map((v, i) => (
               <i key={i} style={{ height: `${20 + (v + 1) * 35}%` }} />
@@ -2302,9 +2763,37 @@ export function AudioLab({ card }: LabProps) {
               { label: "周波数", value: `${freq} Hz`, note: "1秒間に波が何回くり返すか" },
               { label: "1周期の長さ", value: `${fmt(1000 / freq, 3)} ms`, note: "手順③。波1つ分にかかる時間" },
               { label: "音の高さ", value: freq < 262 ? "低い" : freq < 880 ? "中くらい" : "高い", note: "周波数が大きいほど高い音になる" },
+              {
+                label: "いちばん近い音階",
+                value: note.name,
+                note:
+                  Math.abs(note.cents) <= 3
+                    ? `ちょうど ${fmt(note.exact, 1)} Hz の音（ずれ ${note.cents} セント）`
+                    : `本来は ${fmt(note.exact, 1)} Hz。いまは ${note.cents > 0 ? "少し高い" : "少し低い"}（ずれ ${note.cents} セント）`
+              },
               { label: "基準音との比較", value: freq === 440 ? "ラ（A4）ちょうど" : `ラの音（440Hz）の ${fmt(freq / 440, 2)} 倍`, note: "手順④。2倍なら1オクターブ上、半分なら1オクターブ下" }
             ]}
           />
+          <div className="scale-row">
+            <span className="scale-label">音階のボタン（押すとその音の周波数になる）</span>
+            <div className="scale-keys">
+              {scaleKeys.map((k) => (
+                <button
+                  type="button"
+                  key={k.label}
+                  className={freq === k.freq ? "on" : ""}
+                  onClick={() => setFreq(k.freq)}
+                >
+                  <b>{k.label}</b>
+                  <em>{k.freq} Hz</em>
+                </button>
+              ))}
+            </div>
+            <em className="scale-note">
+              1オクターブ上がると周波数はちょうど2倍。ラ（A4）440Hz の1つ上のラ（A5）は880Hzです。
+              半音1つぶんは 2 の 12分の1 乗（約1.0595）倍になっています。
+            </em>
+          </div>
         </>
       )}
 
@@ -2648,7 +3137,7 @@ export function ImageLab({ card }: LabProps) {
       {card(
         3,
         "ドット絵を描いて、色数とデータ量の関係を見る",
-        "1画素に何ビット使うかで、表せる色数とデータ量がどう変わるかをタブで見比べます。",
+        "左に数字を打ち込むと、右に絵が出ます。1画素に何ビット使うかで、色数とデータ量がどう変わるかを見比べます。",
         <>
           <Tabs
             value={artTab}
@@ -2660,15 +3149,22 @@ export function ImageLab({ card }: LabProps) {
           />
           {artTab === "mono" ? (
           <>
-          <AreaField label="0と1で描く（改行で行を分ける）" value={monoArt} onChange={setMonoArt} rows={8} hint="0＝白 / 1＝黒" />
-          <div className="dot-art">
-            {monoRows.map((row, ri) => (
-              <div key={ri}>
-                {row.split("").map((cell, ci) => (
-                  <i key={ci} style={{ background: cell === "1" ? "#111111" : "#ffffff" }} />
+          <div className="art-split">
+            <div className="art-source">
+              <AreaField label="0と1で描く（改行で行を分ける）" value={monoArt} onChange={setMonoArt} rows={8} hint="0＝白 / 1＝黒" />
+            </div>
+            <div className="art-preview">
+              <span className="art-caption">この0と1が、そのままこの絵になる</span>
+              <div className="dot-art">
+                {monoRows.map((row, ri) => (
+                  <div key={ri}>
+                    {row.split("").map((cell, ci) => (
+                      <i key={ci} style={{ background: cell === "1" ? "#111111" : "#ffffff" }} />
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
+            </div>
           </div>
           <Formula>データ量 ＝ マス数（総画素数） × 1画素あたりのビット数 ÷ 8</Formula>
           <Steps
@@ -2689,15 +3185,22 @@ export function ImageLab({ card }: LabProps) {
           </>
           ) : (
           <>
-          <AreaField label="0〜7で描く（改行で行を分ける）" value={colorArt} onChange={setColorArt} rows={10} hint="0黒 1赤 2黄 3マゼンタ 4緑 5シアン 6青 7白" />
-          <div className="dot-art">
-            {colorRows.map((row, ri) => (
-              <div key={ri}>
-                {row.split("").map((cell, ci) => (
-                  <i key={ci} style={{ background: palette[Number(cell)] }} />
+          <div className="art-split">
+            <div className="art-source">
+              <AreaField label="0〜7で描く（改行で行を分ける）" value={colorArt} onChange={setColorArt} rows={10} hint="0黒 1赤 2黄 3マゼンタ 4緑 5シアン 6青 7白" />
+            </div>
+            <div className="art-preview">
+              <span className="art-caption">数字を変えると、右の絵もその場で変わる</span>
+              <div className="dot-art">
+                {colorRows.map((row, ri) => (
+                  <div key={ri}>
+                    {row.split("").map((cell, ci) => (
+                      <i key={ci} style={{ background: palette[Number(cell)] }} />
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
+            </div>
           </div>
           <Formula>データ量 ＝ マス数（総画素数） × 1画素あたりのビット数 ÷ 8</Formula>
           <Steps
@@ -3099,17 +3602,24 @@ export function CompressLab({ card }: LabProps) {
       {card(
         3,
         "白黒の絵をランレングス法で圧縮する",
-        "0と1で絵を描くと、圧縮率がその場で変わります。",
+        "左に0と1を打ち込むと、右の絵と圧縮率がその場で変わります。",
         <>
-          <AreaField label="0と1で絵を描く（0＝白 / 1＝黒）" value={art} onChange={setArt} rows={8} hint="改行で行を分ける" />
-          <div className="dot-art">
-            {artRows.map((row, y) => (
-              <div key={y}>
-                {row.split("").map((cell, x) => (
-                  <i key={x} style={{ background: cell === "1" ? "#111111" : "#ffffff" }} />
+          <div className="art-split">
+            <div className="art-source">
+              <AreaField label="0と1で絵を描く（0＝白 / 1＝黒）" value={art} onChange={setArt} rows={8} hint="改行で行を分ける" />
+            </div>
+            <div className="art-preview">
+              <span className="art-caption">左の0と1が、そのままこの絵になる</span>
+              <div className="dot-art">
+                {artRows.map((row, y) => (
+                  <div key={y}>
+                    {row.split("").map((cell, x) => (
+                      <i key={x} style={{ background: cell === "1" ? "#111111" : "#ffffff" }} />
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
+            </div>
           </div>
           <Steps
             items={[

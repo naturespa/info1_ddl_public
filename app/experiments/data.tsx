@@ -801,6 +801,9 @@ export function SpreadLab({ card }: LabProps) {
   const [raw, setRaw] = useState("62,68,71,72,75,78,81,95");
   const [groupA, setGroupA] = useState("48,49,50,51,52");
   const [groupB, setGroupB] = useState("30,40,50,60,70");
+  const [groupC, setGroupC] = useState("50,50,50,50,50");
+  /** 2クラスで比べるか、3クラスで比べるか */
+  const [classCount, setClassCount] = useState("2");
   const [score, setScore] = useState(80);
   const [mean, setMean] = useState(60);
   const [sd, setSd] = useState(10);
@@ -816,6 +819,8 @@ export function SpreadLab({ card }: LabProps) {
   const s = summarize(raw);
   const a = summarize(groupA);
   const b = summarize(groupB);
+  const c = summarize(groupC);
+  const three = classCount === "3";
   const z = zScore(score, mean, sd);
   const jz = zScore(jScore, jMean, jSd);
   const mz = zScore(mScore, mMean, mSd);
@@ -825,31 +830,52 @@ export function SpreadLab({ card }: LabProps) {
       {card(
         0,
         "同じ平均なのに、まるで様子が違う2クラス",
-        "平均点が同じ2つのクラス。数字を書きかえて、平均では見えない違いを探します。",
+        "平均点が同じクラス同士を比べます。タブで2クラス・3クラスを切り替え、数字を書きかえて、平均では見えない違いを探します。",
         <>
+          <Tabs
+            value={classCount}
+            onChange={setClassCount}
+            options={[
+              { value: "2", label: "2クラスで比べる" },
+              { value: "3", label: "3クラスで比べる" }
+            ]}
+          />
           <Row>
             <TextField label="1組の得点" value={groupA} onChange={setGroupA} />
             <TextField label="2組の得点" value={groupB} onChange={setGroupB} />
+            {three && <TextField label="3組の得点" value={groupC} onChange={setGroupC} />}
           </Row>
-          {a && b && (
+          {a && b && (!three || c) && (
             <>
               <BarChart
-                values={[...a.values, ...b.values]}
-                labels={[...a.values.map(() => "1組"), ...b.values.map(() => "2組")]}
+                values={three && c ? [...a.values, ...b.values, ...c.values] : [...a.values, ...b.values]}
+                labels={
+                  three && c
+                    ? [...a.values.map(() => "1組"), ...b.values.map(() => "2組"), ...c.values.map(() => "3組")]
+                    : [...a.values.map(() => "1組"), ...b.values.map(() => "2組")]
+                }
                 highlight={(index) => index >= a.values.length}
+                series={
+                  three && c
+                    ? (index) => (index < a.values.length ? 0 : index < a.values.length + b.values.length ? 1 : 2)
+                    : undefined
+                }
                 tone="compare"
-                unit="点（左が1組・右が2組。同じものさしで並べています）"
+                unit={three ? "点（左から1組・2組・3組。同じものさしで並べています）" : "点（左が1組・右が2組。同じものさしで並べています）"}
               />
               <DataTable
                 head={["", "平均", "いちばん低い〜高い", "分散", "標準偏差"]}
                 rows={[
                   ["1組", fmt(a.mean, 2), `${a.min}〜${a.max}`, fmt(a.variance, 2), fmt(a.sd, 3)],
-                  ["2組", fmt(b.mean, 2), `${b.min}〜${b.max}`, fmt(b.variance, 2), fmt(b.sd, 3)]
+                  ["2組", fmt(b.mean, 2), `${b.min}〜${b.max}`, fmt(b.variance, 2), fmt(b.sd, 3)],
+                  ...(three && c ? [["3組", fmt(c.mean, 2), `${c.min}〜${c.max}`, fmt(c.variance, 2), fmt(c.sd, 3)]] : [])
                 ]}
               />
-              <Verdict ok={Math.abs(a.mean - b.mean) < 0.001}>
-                {Math.abs(a.mean - b.mean) < 0.001
-                  ? `平均はどちらも ${fmt(a.mean, 2)} 点。それでも1組は ${a.min}〜${a.max} 点に収まり、2組は ${b.min}〜${b.max} 点まで開いています。この「散らばり具合」を1つの数で表したのが標準偏差で、${fmt(a.sd, 2)} と ${fmt(b.sd, 2)} で ${fmt(b.sd / (a.sd || 1), 1)} 倍の差があります。`
+              <Verdict ok={Math.abs(a.mean - b.mean) < 0.001 && (!three || !c || Math.abs(a.mean - c.mean) < 0.001)}>
+                {Math.abs(a.mean - b.mean) < 0.001 && (!three || !c || Math.abs(a.mean - c.mean) < 0.001)
+                  ? three && c
+                    ? `平均は3クラスとも ${fmt(a.mean, 2)} 点。それでも1組は ${a.min}〜${a.max} 点、2組は ${b.min}〜${b.max} 点、3組は ${c.min}〜${c.max} 点で、開き方がまるでちがいます。標準偏差はそれぞれ ${fmt(a.sd, 2)} ／ ${fmt(b.sd, 2)} ／ ${fmt(c.sd, 2)} です。3組のように全員が同じ点なら、標準偏差は0になります。`
+                    : `平均はどちらも ${fmt(a.mean, 2)} 点。それでも1組は ${a.min}〜${a.max} 点に収まり、2組は ${b.min}〜${b.max} 点まで開いています。この「散らばり具合」を1つの数で表したのが標準偏差で、${fmt(a.sd, 2)} と ${fmt(b.sd, 2)} で ${fmt(b.sd / (a.sd || 1), 1)} 倍の差があります。`
                   : "まず平均をそろえてみましょう。平均が同じでも中身が違うことが、この単元の出発点です。"}
               </Verdict>
               <Hint>
@@ -1117,119 +1143,90 @@ export function NormalLab({ card }: LabProps) {
 
       {card(
         1,
-        "正規分布の位置と広がりを変える",
-        "平均と標準偏差だけで、分布が完全に決まることを確かめます。",
+        "μとσで山を動かし、その山の上で自分の位置を求める",
+        "平均μと標準偏差σを動かすと、山の位置と太さが変わります。同じ山の上で、自分の得点が上位何%かまで一気に求めます。",
         <>
           <Row>
-            <NumberField label="平均 μ" value={mean} onChange={setMean} />
-            <NumberField label="標準偏差 σ" value={sd} onChange={setSd} min={0.5} step={0.5} />
+            <NumberField label="平均 μ" value={mean} onChange={(v) => setMean(clamp(Math.round(v), 10, 90))} min={10} max={90} hint="山の位置" />
+            <NumberField label="標準偏差 σ" value={sd} onChange={(v) => setSd(clamp(v, 2, 25))} min={2} max={25} step={0.5} hint="山の広がり" />
+            <NumberField label="自分の得点" value={target} onChange={(v) => setTarget(clamp(Math.round(v), 0, 100))} min={0} max={100} unit="点" />
+            <NumberField label="学年の人数" value={population} onChange={setPopulation} min={1} max={5000} unit="人" />
           </Row>
-          <NormalCurve mean={mean} sd={sd} marks={[{ value: mean, label: `μ=${mean}` }]} />
+          <div className="preset-row">
+            {[
+              ["ふつう μ50 σ10", 50, 10],
+              ["山が右へ μ70 σ10", 70, 10],
+              ["ばらつきが小さい μ50 σ4", 50, 4],
+              ["ばらつきが大きい μ50 σ20", 50, 20]
+            ].map(([label, m, d]) => (
+              <button type="button" key={label as string} onClick={() => { setMean(m as number); setSd(d as number); }}>
+                {label as string}
+              </button>
+            ))}
+          </div>
+          <NormalCurve
+            mean={mean}
+            sd={sd}
+            domain={[0, 100]}
+            bands
+            marks={[{ value: clamp(target, 2, 98), label: `${target}点` }]}
+          />
+          <p className="muted small">
+            横軸は0〜100点で固定しています。μを動かすと山ごと左右にずれ、σを大きくすると山は低く広く、小さくすると高く細くなります。
+            色の濃い帯が μ±1σ、その外側が ±2σ、いちばん薄いところが ±3σ です。
+          </p>
           <Formula>
-            μ（ミュー）は平均で山の位置、σ（シグマ）は標準偏差で山の広がり。μ ± kσ ＝ 平均 ± 標準偏差k個ぶん
+            μは山の位置、σは山の広がり　／　z ＝ (自分の得点 − μ) ÷ σ　／　上位の割合 ＝ zより右側の面積　／　順位の目安 ＝ 上位の割合 × 人数
           </Formula>
           <Steps
             items={[
-              { label: "① 山の位置（平均 μ）を読む", value: mean },
-              { label: "② 山の広がり（標準偏差 σ）を読む", value: sd },
-              { label: "③ 標準偏差1個ぶん左へ", value: `${mean} − ${sd} ＝ ${fmt(mean - sd, 1)}` },
-              { label: "④ 標準偏差1個ぶん右へ", value: `${mean} ＋ ${sd} ＝ ${fmt(mean + sd, 1)}` },
-              { label: "⑤ 2個ぶんならσを2倍する", value: `${sd} × 2 ＝ ${fmt(2 * sd, 1)}`, note: `${fmt(mean - 2 * sd, 1)} 〜 ${fmt(mean + 2 * sd, 1)}` }
+              { label: "① 山の位置と広がりを読む", value: `μ＝${mean} ／ σ＝${sd}`, note: "この2つだけで、山の形は完全に決まる" },
+              { label: "② 標準偏差1個ぶんの幅", value: `${fmt(mean - sd, 1)} 〜 ${fmt(mean + sd, 1)}`, note: `μ ± ${sd}。ここに約68%が入る` },
+              { label: "③ 得点から平均を引く", value: `${target} − ${mean} ＝ ${fmt(target - mean, 2)}`, note: "平均から何点はなれているか" },
+              { label: "④ 標準偏差で割る（z得点）", value: `${fmt(target - mean, 2)} ÷ ${sd} ＝ ${fmt(z, 3)}`, note: "「標準偏差いくつ分」に言いかえた値" },
+              { label: "⑤ カーブのzより右側の面積を読む", value: `${fmt(upper * 100, 2)} %`, note: "これが上位の割合" },
+              { label: "⑥ 学年の人数をかける", value: `${fmt(upper * 100, 2)} % × ${population} 人 ＝ ${fmt(Math.max(1, upper * population), 1)} 位`, note: "だいたい何番目か" }
             ]}
           />
           <Results
             items={[
-              {
-                label: "カーブのてっぺんの高さ",
-                value: fmt(normalPdf(mean, mean, sd), 5),
-                note: "確率そのものではなく、平均のところのカーブの高さ"
-              },
               { label: "μ ± 1σ", value: `${fmt(mean - sd, 1)} 〜 ${fmt(mean + sd, 1)}`, note: `${mean} ± ${sd}。この間に約68%が入る` },
-              {
-                label: "μ ± 2σ",
-                value: `${fmt(mean - 2 * sd, 1)} 〜 ${fmt(mean + 2 * sd, 1)}`,
-                note: `${mean} ± ${fmt(2 * sd, 1)}。この間に約95%が入る`
-              },
-              {
-                label: "μ ± 3σ",
-                value: `${fmt(mean - 3 * sd, 1)} 〜 ${fmt(mean + 3 * sd, 1)}`,
-                note: `${mean} ± ${fmt(3 * sd, 1)}。この間に約99.7%が入る`
-              }
+              { label: "μ ± 2σ", value: `${fmt(mean - 2 * sd, 1)} 〜 ${fmt(mean + 2 * sd, 1)}`, note: `${mean} ± ${fmt(2 * sd, 1)}。この間に約95%が入る` },
+              { label: "μ ± 3σ", value: `${fmt(mean - 3 * sd, 1)} 〜 ${fmt(mean + 3 * sd, 1)}`, note: `${mean} ± ${fmt(3 * sd, 1)}。この間に約99.7%が入る` },
+              { label: "z得点", value: fmt(z, 3), note: "手順④。平均から標準偏差いくつ分はなれているか" },
+              { label: "偏差値", value: fmt(50 + 10 * z, 2), note: "50 ＋ 10 × z に置きなおした値" },
+              { label: "上位", value: `${fmt(upper * 100, 2)} %`, note: "手順⑤。カーブの、自分より右側の面積の割合" },
+              { label: "順位の目安", value: `${fmt(Math.max(1, upper * population), 1)} 位`, note: `手順⑥。上位 ${fmt(upper * 100, 2)} % × ${population} 人` }
             ]}
           />
+          <DataTable
+            head={["範囲", "この得点の間に入る", "含まれる割合", "外側の割合", "偏差値でいえば"]}
+            rows={[1, 2, 3].map((k) => [
+              `μ ± ${k}σ`,
+              `${fmt(mean - k * sd, 1)} 〜 ${fmt(mean + k * sd, 1)}`,
+              `${fmt((normalCdf(k) - normalCdf(-k)) * 100, 2)} %`,
+              `${fmt((1 - (normalCdf(k) - normalCdf(-k))) * 100, 2)} %`,
+              `${50 - 10 * k} 〜 ${50 + 10 * k}`
+            ])}
+            highlight={(index) => Math.abs(z) <= index + 1 && Math.abs(z) > index}
+          />
           <HintButton>
-            μ（ミュー）を変えると山が左右に動き、σ（シグマ）を変えると山の太さが変わります。テントの位置を移すのがμ、テントを広げたり狭めたりするのがσです。この2つだけで形が全部決まる、というのがこの分布の便利なところです。
+            μ（ミュー）を変えると山が左右に動き、σ（シグマ）を変えると山の太さが変わります。テントの位置を移すのがμ、テントを広げたり狭めたりするのがσです。
+            山の下の面積は、どんな形でも必ず1（＝全員）なので、σを大きくして横に広げると、そのぶん山は低くなります。
+            自分の位置は「点数」ではなく「μから σ 何個ぶん離れているか」で測ります。それがz得点で、10倍して50を足すと、いつもの偏差値になります。
+            上位◯%というのは、カーブの右側の面積の割合のこと。学年300人のうち上位2.3%なら、だいたい7位ということになります。
           </HintButton>
         </>
       )}
 
       {card(
         2,
-        "平均のまわりに、どれだけ集まるか",
-        "平均から標準偏差いくつ分の範囲に、どれだけ入るかを計算します。",
-        <>
-          <DataTable
-            head={["範囲", "含まれる割合", "外側の割合", "偏差値でいえば何点〜何点か"]}
-            rows={[1, 2, 3].map((k) => [
-              `μ ± ${k}σ`,
-              `${fmt((normalCdf(k) - normalCdf(-k)) * 100, 2)} %`,
-              `${fmt((1 - (normalCdf(k) - normalCdf(-k))) * 100, 2)} %`,
-              `${50 - 10 * k} 〜 ${50 + 10 * k}`
-            ])}
-          />
-          <Hint>偏差値40〜60に約68%、30〜70に約95%が入ります。偏差値70以上は上位約2.3%です。</Hint>
-        </>
-      )}
-
-      {card(
-        3,
-        "自分の位置を確率で求める",
-        "得点を入力して、上位何%にあたるかを計算します。",
-        <>
-          <Row>
-            <NumberField label="自分の得点" value={target} onChange={setTarget} />
-            <NumberField label="学年の人数" value={population} onChange={setPopulation} min={1} max={5000} unit="人" />
-          </Row>
-          <NormalCurve mean={mean} sd={sd} marks={[{ value: clamp(target, mean - 3.8 * sd, mean + 3.8 * sd), label: `${target}点` }]} />
-          <Formula>
-            z ＝ (自分の得点 − 平均) ÷ 標準偏差　→　上位の割合 ＝ zより右側の面積　→　順位の目安 ＝ 上位の割合 × 学年の人数
-          </Formula>
-          <Steps
-            items={[
-              { label: "① 得点から平均を引く", value: `${target} − ${mean} ＝ ${fmt(target - mean, 2)}`, note: `平均 μ＝${mean} は実験2で入れた値` },
-              { label: "② 標準偏差で割る", value: `÷ ${sd}`, note: `標準偏差 σ＝${sd} も実験2で入れた値` },
-              { label: "③ z得点", value: fmt(z, 3) },
-              { label: "④ カーブのzより右側の面積を読む", value: `${fmt(upper * 100, 2)} %`, note: "これが上位の割合" },
-              { label: "⑤ 学年の人数をかける", value: `${fmt(upper * 100, 2)} % × ${population} 人` },
-              { label: "⑥ 順位の目安", value: `${fmt(Math.max(1, upper * population), 1)} 位` }
-            ]}
-          />
-          <Results
-            items={[
-              { label: "z得点", value: fmt(z, 3), note: "平均から標準偏差いくつ分はなれているか" },
-              { label: "偏差値", value: fmt(50 + 10 * z, 2), note: "50 ＋ 10 × z に置きなおした値" },
-              { label: "上位", value: `${fmt(upper * 100, 2)} %`, note: "カーブの、自分より右側の面積の割合" },
-              {
-                label: "順位の目安",
-                value: `${fmt(Math.max(1, upper * population), 1)} 位`,
-                note: `上位 ${fmt(upper * 100, 2)} % × ${population} 人。だいたい何番目か`
-              }
-            ]}
-          />
-          <HintButton>
-            ここで使っている平均と標準偏差は、ひとつ前の実験で入れた値です。上位◯%というのは、カーブの右側の面積の割合のこと。学年300人のうち上位2.3%なら、だいたい7位ということになります。テストの点そのものではなく「何人ぶん上か」に翻訳している、と考えてください。
-          </HintButton>
-        </>
-      )}
-
-      {card(
-        4,
         "カーブの「高さ」と「面積」のちがい",
         "確率になるのは「高さ」ではなく「面積」のほうだ、ということを確かめます。",
         <>
           <Row>
-            <NumberField label="平均 μ（実験2と共通）" value={mean} onChange={setMean} />
-            <NumberField label="標準偏差 σ（実験2と共通）" value={sd} onChange={setSd} min={0.5} step={0.5} />
+            <NumberField label="平均 μ（実験2と共通）" value={mean} onChange={(v) => setMean(clamp(Math.round(v), 10, 90))} min={10} max={90} />
+            <NumberField label="標準偏差 σ（実験2と共通）" value={sd} onChange={(v) => setSd(clamp(v, 2, 25))} min={2} max={25} step={0.5} />
           </Row>
           <DataTable
             head={["値", "カーブの高さ（NORM.DIST の最後を FALSE にした値）", "そこまでの面積（NORM.DIST の最後を TRUE にした値）"]}
@@ -1244,7 +1241,7 @@ export function NormalLab({ card }: LabProps) {
       )}
 
       {card(
-        5,
+        3,
         "校内テストの位置づけを説明する",
         "計算結果を使って、自分の位置を言葉で説明します。",
         <AreaField
@@ -2293,7 +2290,7 @@ export function TimeseriesLab({ card }: LabProps) {
   const [raw, setRaw] = useState(TEMPS);
   const [startYear, setStartYear] = useState(1980);
   const [windowSize, setWindowSize] = useState(5);
-  const [maView, setMaView] = useState("slider");
+  const [maView, setMaView] = useState("raw");
   const [thisYear, setThisYear] = useState(1200);
   const [lastYear, setLastYear] = useState(1000);
   const [lastMonth, setLastMonth] = useState(1500);
@@ -2311,70 +2308,88 @@ export function TimeseriesLab({ card }: LabProps) {
     <>
       {card(
         0,
-        "時系列データを並べて見る",
-        "時間順のデータを入力して、変化の様子を確かめます。",
+        "時系列データを、並べる→ならす→直線にする",
+        "1つのデータを、3つの見方で順に扱います。タブを左から順に押すと、生の値・移動平均・トレンド直線がつながって理解できます。",
         <>
           <AreaField label="時系列データ（古い順）" value={raw} onChange={setRaw} rows={3} />
-          <NumberField label="最初の年" value={startYear} onChange={setStartYear} min={1900} max={2100} unit="年" />
-          <BarChart values={values} labels={labels} />
-          <Formula>全体の変化 ＝ 最後の値 − 最初の値　　並べた順番を崩さずに、両端を見くらべます</Formula>
-          <Steps
-            items={[
-              { label: "① 時間順に並べる", value: `${startYear}年 から ${startYear + Math.max(0, values.length - 1)}年`, note: `${values.length} 期間ぶん` },
-              { label: "② いちばん古い値を読む", value: fmt(values[0] ?? 0, 2) },
-              { label: "③ いちばん新しい値を読む", value: fmt(values.at(-1) ?? 0, 2) },
-              { label: "④ 新しいほうから古いほうを引く", value: `${fmt(values.at(-1) ?? 0, 2)} − ${fmt(values[0] ?? 0, 2)}` },
-              { label: "⑤ 全体の変化", value: fmt((values.at(-1) ?? 0) - (values[0] ?? 0), 2) }
-            ]}
-          />
-          <Results
-            items={[
-              { label: "期間の数", value: `${values.length} 期間`, note: "並んでいるデータの個数" },
-              { label: "最初の値", value: fmt(values[0] ?? 0, 2), note: `${startYear}年の値` },
-              {
-                label: "最後の値",
-                value: fmt(values.at(-1) ?? 0, 2),
-                note: `${startYear + Math.max(0, values.length - 1)}年の値`
-              },
-              {
-                label: "全体の変化",
-                value: fmt((values.at(-1) ?? 0) - (values[0] ?? 0), 2),
-                note: "最後の値 − 最初の値。途中の上下は見ていない、両端だけの差"
-              }
-            ]}
-          />
-          <HintButton>
-            時系列データは、並んでいる順番そのものが情報です。読むときは、長期的なトレンド・周期的な季節性・短期的な不規則変動の3つに分けて考えます。テストの点なら並べ替えても中身は変わりませんが、気温の記録を並べ替えたら「上がってきている」という一番大事な事実が消えてしまいます。マンガのコマを入れ替えたら話が分からなくなるのと同じで、順番を崩してはいけないデータです。
-          </HintButton>
-        </>
-      )}
-
-      {card(
-        1,
-        "移動平均でならす ― 何年ぶんを平均するか",
-        "平均する年数を変えて、なめらかさと、変化への気づきやすさを比べます。",
-        <>
+          <Row>
+            <NumberField label="最初の年" value={startYear} onChange={setStartYear} min={1900} max={2100} unit="年" />
+            <SliderField label="何年ぶんを平均するか" value={windowSize} onChange={setWindowSize} min={3} max={11} step={2} unit=" 期間" />
+          </Row>
           <Tabs
             value={maView}
             onChange={setMaView}
             options={[
-              { value: "slider", label: "動かして見る" },
-              { value: "table", label: "一覧で比べる" }
+              { value: "raw", label: "① そのまま並べる" },
+              { value: "slider", label: "② 移動平均でならす" },
+              { value: "table", label: "③ 平均する年数を比べる" },
+              { value: "trend", label: "④ トレンドを直線にする" }
             ]}
           />
-          {maView === "slider" ? (
+
+          {maView === "raw" && (
             <>
-              <SliderField label="何年ぶんを平均するか" value={windowSize} onChange={setWindowSize} min={3} max={11} step={2} unit=" 期間" />
+              <BarChart values={values} labels={labels} />
+              <Formula>全体の変化 ＝ 最後の値 − 最初の値　　並べた順番を崩さずに、両端を見くらべます</Formula>
+              <Steps
+                items={[
+                  { label: "① 時間順に並べる", value: `${startYear}年 から ${startYear + Math.max(0, values.length - 1)}年`, note: `${values.length} 期間ぶん` },
+                  { label: "② いちばん古い値を読む", value: fmt(values[0] ?? 0, 2) },
+                  { label: "③ いちばん新しい値を読む", value: fmt(values.at(-1) ?? 0, 2) },
+                  { label: "④ 新しいほうから古いほうを引く", value: `${fmt(values.at(-1) ?? 0, 2)} − ${fmt(values[0] ?? 0, 2)}` },
+                  { label: "⑤ 全体の変化", value: fmt((values.at(-1) ?? 0) - (values[0] ?? 0), 2) }
+                ]}
+              />
+              <Results
+                items={[
+                  { label: "期間の数", value: `${values.length} 期間`, note: "並んでいるデータの個数" },
+                  { label: "最初の値", value: fmt(values[0] ?? 0, 2), note: `${startYear}年の値` },
+                  { label: "最後の値", value: fmt(values.at(-1) ?? 0, 2), note: `${startYear + Math.max(0, values.length - 1)}年の値` },
+                  {
+                    label: "全体の変化",
+                    value: fmt((values.at(-1) ?? 0) - (values[0] ?? 0), 2),
+                    note: "最後の値 − 最初の値。途中の上下は見ていない、両端だけの差"
+                  }
+                ]}
+              />
+              <Hint>
+                まずは生の値のまま並べます。ここでは「上がっているのか下がっているのか」が、年ごとの上下にじゃまされて読みにくいはずです。
+                そこで次のタブで、その上下をならします。
+              </Hint>
+            </>
+          )}
+
+          {maView === "slider" && (
+            <>
               <BarChart values={values} labels={labels} overlay={ma} />
+              <Formula>
+                移動平均 ＝ その年をふくむ {windowSize} 期間ぶんの値を足して、{windowSize} で割った値
+              </Formula>
               <DataTable
                 head={["年", "実測値", `${windowSize}期間移動平均`, "差"]}
                 rows={values
                   .map((v, i) => [startYear + i, fmt(v, 2), ma[i] === null ? "-" : fmt(ma[i]!, 3), ma[i] === null ? "-" : fmt(v - ma[i]!, 3)])
                   .filter((_, i) => i % 3 === 0)}
               />
+              <Results
+                items={[
+                  { label: "平均する期間", value: `${windowSize} 期間`, note: "つまみで決めた値。この本数ぶんを足して割る" },
+                  { label: "計算できた期間", value: `${ma.filter((v) => v !== null).length} 期間`, note: `両端の ${windowSize - 1} 期間は、前後がそろわないので計算できない` },
+                  {
+                    label: "ならした後のばらつき",
+                    value: (() => {
+                      const stat = summarize(ma.filter((v): v is number => v !== null));
+                      return stat ? fmt(stat.sd, 4) : "-";
+                    })(),
+                    note: "移動平均だけを取り出して標準偏差を求めた値。生の値より小さくなる"
+                  }
+                ]}
+              />
               <Hint>折れ線が移動平均です。年ごとの上下がならされ、長期の傾向が見えやすくなります。</Hint>
             </>
-          ) : (
+          )}
+
+          {maView === "table" && (
             <>
               <DataTable
                 head={["何年ぶんを平均するか", "計算できる期間数", "値の標準偏差", "特徴"]}
@@ -2388,27 +2403,22 @@ export function TimeseriesLab({ card }: LabProps) {
                     w <= 3 ? "急な変化にすぐ反応する" : w <= 7 ? "バランスがよい" : "長い目で流れを見たいとき向き"
                   ];
                 })}
+                highlight={(index) => [3, 5, 7, 11][index] === windowSize}
               />
               <Hint>平均する年数を広げるほど標準偏差は小さくなります（＝なめらか）。そのぶん、端の期間で計算できなくなります。</Hint>
             </>
           )}
-        </>
-      )}
 
-      {card(
-        2,
-        "トレンドを直線で表す",
-        "点のまん中を通る直線を引いて、1年あたりどれだけ変わったかを数字にします。",
-        <>
-          {trend && (
+          {maView === "trend" && trend && (
             <>
               <Formula>
                 値 ＝ {fmt(trend.a, 5)} × 経過年数 {trend.b >= 0 ? "+" : "−"} {fmt(Math.abs(trend.b), 3)}
               </Formula>
+              <Scatter xs={values.map((_, i) => startYear + i)} ys={values} line={{ a: trend.a, b: trend.b - trend.a * startYear }} />
               <Results
                 items={[
                   { label: "1年あたりの変化", value: fmt(trend.a, 5), note: "直線の傾き。1年たつと値がこれだけ変わる" },
-                  { label: "10年あたりの変化", value: fmt(trend.a * 10, 4), note: `傾き × 10。読みやすい単位に言い直した値` },
+                  { label: "10年あたりの変化", value: fmt(trend.a * 10, 4), note: "傾き × 10。読みやすい単位に言い直した値" },
                   {
                     label: `${values.length}年間の変化`,
                     value: fmt(trend.a * (values.length - 1), 3),
@@ -2422,15 +2432,24 @@ export function TimeseriesLab({ card }: LabProps) {
                   }
                 ]}
               />
-              <Scatter xs={values.map((_, i) => startYear + i)} ys={values} line={trend ? { a: trend.a, b: trend.b - trend.a * startYear } : null} />
-              <Hint>R²が小さいときは、直線では説明しきれない変動（季節性や不規則変動）が大きいということです。</Hint>
+              <Hint>
+                移動平均が「見やすくする」だけなのに対し、トレンド直線は「1年あたり何ずつ変わるか」を1つの数にします。
+                R²が小さいときは、直線では説明しきれない変動（季節性や不規則変動）が大きいということです。
+              </Hint>
             </>
           )}
+
+          <HintButton>
+            時系列データは、並んでいる順番そのものが情報です。読むときは、長期的なトレンド・周期的な季節性・短期的な不規則変動の3つに分けて考えます。
+            テストの点なら並べ替えても中身は変わりませんが、気温の記録を並べ替えたら「上がってきている」という一番大事な事実が消えてしまいます。
+            ①そのまま並べると全部が混ざって見え、②移動平均をとると短期の不規則変動が消え、④直線にすると長期のトレンドだけが1つの数（傾き）になります。
+            見えなくするのではなく、見たいものだけを残していく作業だと考えてください。
+          </HintButton>
         </>
       )}
 
       {card(
-        3,
+        1,
         "前月比と前年同月比を比べる",
         "季節性のあるデータでは、比べる相手を選ぶ必要があります。",
         <>
@@ -2482,7 +2501,7 @@ export function TimeseriesLab({ card }: LabProps) {
       )}
 
       {card(
-        4,
+        2,
         "AIへの依頼文を具体化する",
         "指示に何を書くと、出力を検証できるようになるかを確かめます。",
         <>
@@ -2523,7 +2542,7 @@ export function TimeseriesLab({ card }: LabProps) {
       )}
 
       {card(
-        5,
+        3,
         "AIの分析を公開前に監査する",
         "再計算・匿名化・根拠・限界の4点を確認する手順書を作ります。",
         <AreaField
