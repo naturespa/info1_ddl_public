@@ -10,7 +10,8 @@ import { experimentCount, lessons, totalExperiments, totalQuestions } from "./li
 import type { Area, ExamRow, Lesson, QuestionResult, Submission, StudentRecord, Summary, UnderstandingLevel } from "./lib/types";
 import { COIN, DIFFICULTY, attitudeScore, levelOf, part } from "./lib/progress";
 import { WordQuiz, gradeWords, type WordSubmission } from "./lib/word-quiz";
-import { WORDS_PER_LESSON, wordsOf } from "./lib/words";
+import { WORDS_PER_LESSON, words, wordsOf } from "./lib/words";
+import { hintList } from "./lib/hint-list";
 import { UNDERSTANDING_CHOICES } from "./lib/types";
 import type { ExamResult } from "./lib/exam-types";
 import { classOf, gradeOf, seatOf } from "./lib/exam-types";
@@ -113,6 +114,8 @@ export default function Home() {
   const [missionNotes, setMissionNotes] = useState<Record<string, string>>({});
   /** 買ったヒント。キーは `${lessonId}-${実験番号}-${そのカードの中の何番目か}` */
   const [boughtHints, setBoughtHints] = useState<Record<string, boolean>>({});
+  /** 最後に開いた単元。「つづきから」で戻る先 */
+  const [lastLesson, setLastLesson] = useState("");
 
   const current = lessons.find((lesson) => lesson.id === active);
 
@@ -362,6 +365,7 @@ export default function Home() {
     wordSubmissions,
     missionNotes,
     boughtHints,
+    lastLesson,
     coins: {
       earned: summary.earned,
       spent: summary.spent,
@@ -397,7 +401,7 @@ export default function Home() {
       /* 保存できない環境では黙って続行する */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints]);
+  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints, lastLesson]);
 
   /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
   const loadRecord = (code: string) => {
@@ -421,6 +425,7 @@ export default function Home() {
       setWordSubmissions(restoredWords);
       setMissionNotes(saved.missionNotes ?? {});
       setBoughtHints(saved.boughtHints ?? {});
+      setLastLesson(saved.lastLesson ?? "");
       setExamResults(loadExamResults(code));
     } catch {
       setDrafts({});
@@ -431,6 +436,7 @@ export default function Home() {
       setWordSubmissions({});
       setMissionNotes({});
       setBoughtHints({});
+      setLastLesson("");
     }
   };
 
@@ -549,6 +555,17 @@ export default function Home() {
     setUnderstanding((prev) => ({ ...prev, [key]: level }));
   };
 
+  /** 用語集にある語の総数 */
+  const allTermCount = lessons.reduce((sum, lesson) => sum + lesson.terms.length, 0);
+  /** 買ったヒントの数 */
+  const boughtCount = Object.values(boughtHints).filter(Boolean).length;
+
+  /** 画面を切りかえる。単元なら「最後に開いた単元」としておぼえる */
+  const openView = (id: string) => {
+    if (lessons.some((lesson) => lesson.id === id)) setLastLesson(id);
+    setActive(id);
+  };
+
   /** その単元を討伐したか（実験ぜんぶ＋確認問題も語句も2回目まで終えた） */
   const clearedLesson = (lesson: Lesson) => {
     const expTotal = experimentCount(lesson);
@@ -599,6 +616,7 @@ export default function Home() {
     setWordSubmissions({});
     setMissionNotes({});
     setBoughtHints({});
+    setLastLesson("");
     setActive("home");
     try {
       localStorage.removeItem(ACTIVE_KEY);
@@ -715,14 +733,14 @@ export default function Home() {
       <div className="shell">
         {active === "home" && (
           <>
-            <section className="board-hero">
+            <section className="board">
               <div className="board-title">
                 <span className="board-eyebrow">依頼掲示板</span>
-                <h1>受けたい依頼を選べ。</h1>
-                <p>
-                  依頼は全部で{lessons.length}件。実験{totalExperiments}個・確認問題{totalQuestions}問・重要語句{lessons.length * WORDS_PER_LESSON}語。
-                  読むだけの依頼はひとつもない。数値を打ちこみ、ビットを押し、絵を描いて確かめていけ。
-                </p>
+                <h1>
+                  受けたい依頼を選べ。
+                  <em>残り {lessons.length - summary.completedLessons} 件</em>
+                </h1>
+                <p>討伐すると報酬が出る。★が多いほど手ごわいが、実入りもいい。</p>
                 {studentCode.length === 4 ? (
                   <div className="board-card-me">
                     <span className="me-code">No.{studentCode}</span>
@@ -778,13 +796,12 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </section>
 
-            {(["デジタル", "データ活用"] as const).map((area) => {
+              {(["デジタル", "データ活用"] as const).map((area) => {
               const areaLessons = lessons.filter((lesson) => lesson.area === area);
               const cleared = areaLessons.filter((lesson) => clearedLesson(lesson)).length;
               return (
-                <section className="board-area" key={area}>
+                <div className="board-area" key={area}>
                   <div className="board-area-head">
                     <h2>{area}分野の依頼</h2>
                     <span>
@@ -809,40 +826,40 @@ export default function Home() {
                         <button
                           className={`quest ${done ? "done" : started ? "doing" : ""}`}
                           key={lesson.id}
-                          onClick={() => setActive(lesson.id)}
+                          onClick={() => openView(lesson.id)}
                         >
                           <span className="quest-pin" aria-hidden="true" />
                           <div className="quest-head">
                             <b className="quest-no">{lesson.no}</b>
+                            <span className="quest-sep" aria-hidden="true">／</span>
+                            <span className={`quest-state ${done ? "done" : started ? "doing" : ""}`}>
+                              {done ? "討伐済" : started ? "受注中" : "受注可"}
+                            </span>
+                          </div>
+                          <h3>{lesson.title}</h3>
+                          <div className="quest-meta">
                             <span className="quest-star" aria-label={`手ごわさ ${star}`}>
                               {"★".repeat(star)}
                               <i>{"★".repeat(3 - star)}</i>
                             </span>
+                            <span className="quest-reward">報酬 {reward}G</span>
                           </div>
-                          <h3>{lesson.title}</h3>
-                          <p>{lesson.subtitle}</p>
                           <div className="quest-meter">
-                            <span>実験</span>
                             <div className="quest-bar">
                               <i style={{ width: `${(expDone / expTotal) * 100}%` }} />
                             </div>
                             <em>
-                              {expDone}/{expTotal}
+                              実験 {expDone}/{expTotal}
                             </em>
-                          </div>
-                          <div className="quest-foot">
-                            <span className={`quest-state ${done ? "done" : started ? "doing" : ""}`}>
-                              {done ? "討伐ずみ" : started ? "挑戦中" : "未着手"}
-                            </span>
-                            <span className="quest-reward">報酬 最大 {reward}G</span>
                           </div>
                         </button>
                       );
                     })}
                   </div>
-                </section>
-              );
-            })}
+                </div>
+                );
+              })}
+            </section>
           </>
         )}
 
@@ -1035,6 +1052,104 @@ export default function Home() {
           </section>
         )}
 
+        {active === "terms" && (
+          <section className="workspace">
+            <button className="back" onClick={() => setActive("results")}>
+              ステータスへ戻る
+            </button>
+            <h1>そうび ── 重要語句</h1>
+            <p className="muted">
+              全{allTermCount}語。<b>★のついた{words.length}語</b>が、各単元の重要語句テストに出ます。
+              単元名を押すと、その単元へ移動します。
+            </p>
+            {lessons.map((lesson) => {
+              const testWords = new Set(wordsOf(lesson.id).map((w) => w.answer));
+              return (
+                <div className="term-block" key={lesson.id}>
+                  <button className="term-head" type="button" onClick={() => openView(lesson.id)}>
+                    <b>{lesson.no}</b>
+                    <span>{lesson.title}</span>
+                    <em>
+                      {lesson.terms.length}語（うちテスト{wordsOf(lesson.id).length}語）
+                    </em>
+                  </button>
+                  <dl className="term-list">
+                    {lesson.terms.map((term) => {
+                      // かっこ書きを外した見出し語でも照合する
+                      // 「母平均 μ」「帰無仮説 H0」のように、うしろに記号がついた見出し語でも照合する
+                      const bare = term.word
+                        .replace(/[(（].*?[)）]/g, "")
+                        .replace(/\s+[A-Za-zμσα-ωΑ-Ω][A-Za-z0-9]*\s*$/, "")
+                        .trim();
+                      const onTest = testWords.has(term.word) || testWords.has(bare);
+                      return (
+                        <div key={term.word} className={onTest ? "on-test" : ""}>
+                          <dt>
+                            {onTest && <i aria-label="テストに出ます">★</i>}
+                            {term.word}
+                          </dt>
+                          <dd>{term.meaning}</dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                </div>
+              );
+            })}
+          </section>
+        )}
+
+        {active === "hintshop" && (
+          <section className="workspace">
+            <button className="back" onClick={() => setActive("results")}>
+              ステータスへ戻る
+            </button>
+            <h1>ヒントを買う</h1>
+            <p className="muted">
+              ヒントは全部で{hintList.length}個。1つ<b>{COIN.hint}G</b>です。
+              一度買えば、そのあとはいつでも見られます。いま <b>{balance}G</b> 持っています
+              （買えるのは {Math.floor(balance / COIN.hint)}個）。
+            </p>
+            <p className="muted small">
+              中身はここでは出しません。買うと、その実験の中で開けるようになります。
+              実験の見出しを押すと、その単元へ移動します。
+            </p>
+            <div className="shop-grid">
+              {hintList.map((hint) => {
+                const lesson = lessons.find((l) => l.id === hint.lessonId);
+                if (!lesson) return null;
+                const last = lesson.theory.length;
+                const label = hint.index === last ? "応用" : `実験${hint.index + 1}`;
+                const owned = !!boughtHints[hint.id];
+                const short = COIN.hint - balance;
+                return (
+                  <div className={`shop-row ${owned ? "owned" : ""}`} key={hint.id}>
+                    <button type="button" className="shop-where" onClick={() => openView(lesson.id)}>
+                      <b>
+                        {lesson.no} {label}
+                      </b>
+                      <span>{hint.title}</span>
+                    </button>
+                    {owned ? (
+                      <span className="shop-owned">開放ずみ</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="shop-buy"
+                        onClick={() => buyHint(hint.id)}
+                        disabled={short > 0}
+                        title={short > 0 ? `あと ${short}G 足りません` : ""}
+                      >
+                        {COIN.hint}G で開く
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {active === "exam" && studentCode.length === 4 && (
           <ExamView studentCode={studentCode} onResult={acceptExamResult} />
         )}
@@ -1050,56 +1165,88 @@ export default function Home() {
                 <span className="board-eyebrow">ステータス</span>
                 <h1>
                   レベル {level.level}。
-                  {level.maxed ? "最高レベルに到達している。" : `次のレベルまであと ${level.toNext}G。`}
+                  {level.maxed ? "最高レベルに到達している。" : `つぎのレベルまで あと ${level.toNext}G。`}
                 </h1>
+                <p className="status-lead">
+                  実験をやると「かしこさ」が、確認問題と重要語句に正解すると「ちから」が、
+                  ふり返りと討伐で「こころ」が上がります。
+                </p>
                 <div className="status-lvbar">
                   <i style={{ width: `${Math.round(level.ratio * 100)}%` }} />
                 </div>
-                <p className="muted small">
-                  No.{studentCode || "----"} ／ かせいだ {summary.earned}G ・ つかった {summary.spent}G ・ のこり{" "}
-                  <b>{balance}G</b>
-                </p>
               </div>
-              <div className="status-purse">
-                <span>もちもの</span>
-                <strong>{balance}</strong>
-                <em>G</em>
-                <small>ヒント {Object.values(boughtHints).filter(Boolean).length} 個 開放ずみ</small>
-              </div>
-            </div>
 
-            <div className="gauges">
-              <div className="gauge">
-                <span className="gauge-name">ちから</span>
-                <div className="gauge-bar">
-                  <i style={{ width: `${summary.perspective.knowledge}%` }} />
+              <div className="status-window">
+                <div className="status-window-head">
+                  <b>{studentCode || "----"} のステータス</b>
+                  <span>Lv.{level.level}</span>
+                  <span className="status-coin">{balance} G</span>
                 </div>
-                <b>{summary.perspective.knowledge}</b>
-                <em>
-                  知識・技能　確認問題 {summary.quizScore}/{summary.quizMax}点 ＋ 重要語句 {summary.wordScore}/
-                  {summary.wordMax}点
-                </em>
-              </div>
-              <div className="gauge">
-                <span className="gauge-name">かしこさ</span>
-                <div className="gauge-bar">
-                  <i style={{ width: `${summary.perspective.thinking}%` }} />
+                <div className="gauges">
+                  <div className="gauge g-power">
+                    <span className="gauge-name">ちから</span>
+                    <div className="gauge-bar">
+                      <i style={{ width: `${summary.perspective.knowledge}%` }} />
+                    </div>
+                    <b>
+                      {summary.perspective.knowledge} <em>/ 100</em>
+                    </b>
+                    <small>
+                      知識・技能　確認問題 {summary.quizScore}/{summary.quizMax}点 ＋ 重要語句 {summary.wordScore}/
+                      {summary.wordMax}点
+                    </small>
+                  </div>
+                  <div className="gauge g-wisdom">
+                    <span className="gauge-name">かしこさ</span>
+                    <div className="gauge-bar">
+                      <i style={{ width: `${summary.perspective.thinking}%` }} />
+                    </div>
+                    <b>
+                      {summary.perspective.thinking} <em>/ 100</em>
+                    </b>
+                    <small>
+                      思考・判断・表現　実験 {summary.experimentDone}/{summary.experimentMax}個
+                    </small>
+                  </div>
+                  <div className="gauge g-heart">
+                    <span className="gauge-name">こころ</span>
+                    <div className="gauge-bar">
+                      <i style={{ width: `${summary.perspective.attitude}%` }} />
+                    </div>
+                    <b>
+                      {summary.perspective.attitude} <em>/ 100</em>
+                    </b>
+                    <small>
+                      主体性　単元の討伐 {summary.clear.done}/{summary.clear.max} ・ ふり返り {summary.reflection.done}/
+                      {summary.reflection.max}
+                    </small>
+                  </div>
                 </div>
-                <b>{summary.perspective.thinking}</b>
-                <em>
-                  思考・判断・表現　実験 {summary.experimentDone}/{summary.experimentMax}個
-                </em>
-              </div>
-              <div className="gauge">
-                <span className="gauge-name">こころ</span>
-                <div className="gauge-bar">
-                  <i style={{ width: `${summary.perspective.attitude}%` }} />
+                <div className="command-window">
+                  <button type="button" className="command" onClick={() => openView(lastLesson || lessons[0].id)}>
+                    <span>つづきから</span>
+                    <em>{lessons.find((l) => l.id === (lastLesson || lessons[0].id))?.no ?? "D0"}</em>
+                  </button>
+                  <button type="button" className="command" onClick={() => setActive("home")}>
+                    <span>たたかう</span>
+                    <em>残り {lessons.length - summary.completedLessons}件</em>
+                  </button>
+                  <button type="button" className="command" onClick={() => setActive("terms")}>
+                    <span>そうび</span>
+                    <em>用語 {allTermCount}</em>
+                  </button>
+                  <button type="button" className="command" onClick={() => setActive("hintshop")}>
+                    <span>ヒントを買う</span>
+                    <em>
+                      のこり {hintList.length - boughtCount}個 ／ {COIN.hint}G
+                    </em>
+                  </button>
                 </div>
-                <b>{summary.perspective.attitude}</b>
-                <em>
-                  主体性　単元の討伐 {summary.clear.done}/{summary.clear.max} ・ ふり返り {summary.reflection.done}/
-                  {summary.reflection.max}
-                </em>
+
+                <p className="status-purse-line">
+                  かせいだ {summary.earned}G ・ つかった {summary.spent}G ・ のこり <b>{balance}G</b>　／　ヒント{" "}
+                  {Object.values(boughtHints).filter(Boolean).length} 個 開放ずみ
+                </p>
               </div>
             </div>
 
@@ -1247,7 +1394,7 @@ export default function Home() {
                           return (
                             <div className="level-row" key={row.key}>
                               {lesson ? (
-                                <button className="lesson-name link" onClick={() => setActive(lesson.id)}>
+                                <button className="lesson-name link" onClick={() => openView(lesson.id)}>
                                   {row.label}
                                 </button>
                               ) : (

@@ -1,18 +1,31 @@
 :root {
-  --ink: #17241f;
-  --green: #18543d;
-  --green-soft: #2b7a5b;
-  --mint: #e5f3eb;
-  --paper: #f5f6f1;
+  /* 文字と地。緑みのグレーから、紺みのグレーへ */
+  --ink: #172033;
+  --ink-2: #3d4a63;
+  --paper: #f2f4f8;
   --card: #ffffff;
-  --line: #d9dfda;
-  --muted: #68766e;
-  --lime: #d8ef72;
+  --line: #d7dde8;
+  --muted: #66738a;
+
+  /* 主役の色。ステータス画面や依頼掲示板の紺にそろえた */
+  --accent: #1f3566;
+  --accent-soft: #2f5aa8;
+  --accent-bg: #e7ecf7;
+
+  /* 状態を表す色（良い・注意・悪い）は、下の「理解度ダッシュボード」の節で検証ずみの値を入れている */
   --red: #b94b42;
   --amber: #b5811f;
-  --blue: #2f6f9e;
+  --blue: #2f5aa8;
+
+  /* 依頼掲示板とGの金色 */
+  --gold: #8a6712;
+  --gold-soft: #c0a960;
+
+  /* 回路の点灯 */
+  --lamp: #ffd84d;
+
   --radius: 14px;
-  --shadow: 0 1px 2px rgba(23, 36, 31, 0.06), 0 8px 24px rgba(23, 36, 31, 0.05);
+  --shadow: 0 1px 2px rgba(23, 32, 51, 0.06), 0 8px 24px rgba(23, 32, 51, 0.05);
 }
 
 * {
@@ -77,7 +90,7 @@ button {
 .brand {
   border: 0;
   background: transparent;
-  color: var(--green);
+  color: var(--accent);
   font-weight: 900;
   font-size: 18px;
   padding: 0;
@@ -99,8 +112,8 @@ button {
 }
 
 .nav button:hover {
-  border-color: var(--green-soft);
-  color: var(--green);
+  border-color: var(--accent-soft);
+  color: var(--accent);
 }
 
 .shell {
@@ -128,7 +141,7 @@ footer {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 24px;
   align-items: center;
-  background: linear-gradient(135deg, var(--mint), #fff);
+  background: linear-gradient(135deg, var(--accent-bg), #fff);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 28px;
@@ -137,7 +150,7 @@ footer {
 .hero h1 {
   margin: 0 0 10px;
   font-size: clamp(22px, 3.4vw, 32px);
-  color: var(--green);
+  color: var(--accent);
 }
 
 .hero p {
@@ -182,7 +195,7 @@ footer {
 
 .code-confirm {
   background: #fff;
-  border: 2px solid var(--green);
+  border: 2px solid var(--accent);
   border-radius: 14px;
   padding: 14px 16px;
   display: flex;
@@ -199,7 +212,7 @@ footer {
 
 .code-ask b {
   font-size: 26px;
-  color: var(--green);
+  color: var(--accent);
   letter-spacing: 0.18em;
   margin-right: 4px;
 }
@@ -243,8 +256,8 @@ footer {
 }
 
 .code-actions .ghost:hover {
-  border-color: var(--green-soft);
-  color: var(--green);
+  border-color: var(--accent-soft);
+  color: var(--accent);
 }
 
 .code-locked {
@@ -252,21 +265,21 @@ footer {
   align-items: baseline;
   gap: 12px;
   flex-wrap: wrap;
-  background: var(--mint);
-  border: 1px solid var(--green);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
   border-radius: 999px;
   padding: 7px 18px;
 }
 
 .code-locked b {
   font-size: 19px;
-  color: var(--green);
+  color: var(--accent);
   letter-spacing: 0.14em;
 }
 
 .code-locked span {
   font-size: 12px;
-  color: var(--green-soft);
+  color: var(--accent-soft);
 }
 
 .nav button.danger {
@@ -302,7 +315,7 @@ footer {
   height: 132px;
   border-radius: 50%;
   background: #fff;
-  border: 8px solid var(--green);
+  border: 8px solid var(--accent);
   display: grid;
   place-content: center;
   text-align: center;
@@ -311,7 +324,7 @@ footer {
 .score-ring strong {
   font-size: 40px;
   line-height: 1;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .score-ring span {
@@ -344,7 +357,7 @@ footer {
 
 .perspective b {
   font-size: 18px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .section-heading {
@@ -358,7 +371,7 @@ footer {
 .section-heading h2 {
   margin: 0;
   font-size: 20px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .lesson-grid {
@@ -382,17 +395,17 @@ footer {
 
 .lesson-card:hover {
   transform: translateY(-2px);
-  border-color: var(--green-soft);
+  border-color: var(--accent-soft);
 }
 
 .lesson-card.done {
-  border-color: var(--green);
-  background: linear-gradient(180deg, var(--mint), #fff);
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--accent-bg), #fff);
 }
 
 .lesson-card b {
   font-size: 12px;
-  color: var(--green-soft);
+  color: var(--accent-soft);
   letter-spacing: 0.1em;
 }
 
@@ -410,7 +423,7 @@ footer {
 
 .lesson-card strong {
   font-size: 12px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .tags {
@@ -421,8 +434,8 @@ footer {
 
 .tags span {
   font-size: 11px;
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
   border-radius: 999px;
   padding: 2px 9px;
 }
@@ -458,7 +471,7 @@ footer {
 .lesson-hero h1 {
   margin: 0 0 6px;
   font-size: clamp(20px, 3vw, 27px);
-  color: var(--green);
+  color: var(--accent);
 }
 
 .lesson-hero p {
@@ -475,8 +488,8 @@ footer {
 }
 
 .lesson-status span {
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
   border-radius: 999px;
   padding: 4px 14px;
   font-size: 13px;
@@ -486,7 +499,7 @@ footer {
 .steps-box {
   background: var(--card);
   border: 1px solid var(--line);
-  border-left: 4px solid var(--green);
+  border-left: 4px solid var(--accent);
   border-radius: var(--radius);
   padding: 18px 22px;
 }
@@ -494,7 +507,7 @@ footer {
 .steps-box h2 {
   margin: 0 0 8px;
   font-size: 16px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .steps-box ol {
@@ -516,7 +529,7 @@ footer {
 .terms-toggle {
   border: 0;
   background: transparent;
-  color: var(--green);
+  color: var(--accent);
   font-weight: 700;
   padding: 0;
 }
@@ -537,7 +550,7 @@ footer {
 
 .terms-box dt {
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .terms-box dd {
@@ -566,7 +579,7 @@ footer {
 }
 
 .experiment-card.application-card {
-  border-color: var(--green);
+  border-color: var(--accent);
   background: linear-gradient(180deg, #fffdf3, #fff);
 }
 
@@ -578,7 +591,7 @@ footer {
 }
 
 .experiment-heading > span {
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   border-radius: 8px;
   padding: 3px 10px;
@@ -612,7 +625,7 @@ footer {
 
 .theory-box,
 .mission-box {
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 12px;
   padding: 9px 13px;
 }
@@ -625,7 +638,7 @@ footer {
 .mission-box b {
   display: block;
   font-size: 11px;
-  color: var(--green);
+  color: var(--accent);
   margin-bottom: 2px;
 }
 
@@ -664,7 +677,7 @@ footer {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   display: grid;
   place-content: center;
@@ -679,8 +692,8 @@ footer {
 
 .record-experiment {
   align-self: flex-start;
-  border: 1px solid var(--green);
-  background: var(--green);
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: #fff;
   border-radius: 999px;
   padding: 5px 18px;
@@ -691,7 +704,7 @@ footer {
 .record-experiment.recorded,
 .record-experiment:disabled {
   background: #fff;
-  color: var(--green-soft);
+  color: var(--accent-soft);
   border-style: dashed;
   cursor: default;
 }
@@ -723,7 +736,7 @@ footer {
 }
 
 .understand-bar.recorded > b {
-  color: var(--green-soft);
+  color: var(--accent-soft);
 }
 
 .understand-choices {
@@ -758,17 +771,17 @@ footer {
 }
 
 .understand-btn:hover {
-  border-color: var(--green);
+  border-color: var(--accent);
 }
 
 .understand-btn.on {
-  border-color: var(--green);
-  background: var(--mint);
-  box-shadow: inset 0 0 0 1px var(--green);
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .understand-btn.on span {
-  color: var(--green);
+  color: var(--accent);
 }
 
 @media (max-width: 720px) {
@@ -818,7 +831,7 @@ footer {
 
 .field-value {
   margin-left: auto;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .field-input {
@@ -848,7 +861,7 @@ footer {
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  outline: 2px solid var(--green-soft);
+  outline: 2px solid var(--accent-soft);
   outline-offset: 1px;
 }
 
@@ -866,7 +879,7 @@ footer {
 
 .field input[type="range"] {
   width: 100%;
-  accent-color: var(--green);
+  accent-color: var(--accent);
 }
 
 .toggle {
@@ -892,12 +905,12 @@ footer {
 }
 
 .toggle.on {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .toggle.on b {
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
 }
 
@@ -922,8 +935,8 @@ footer {
 }
 
 .tabs button.active {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -935,9 +948,9 @@ footer {
 
 .preset-row button,
 .apply-preset {
-  border: 1px dashed var(--green-soft);
+  border: 1px dashed var(--accent-soft);
   background: #fff;
-  color: var(--green);
+  color: var(--accent);
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 12px;
@@ -956,7 +969,7 @@ footer {
 }
 
 .result-card {
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 10px;
   padding: 6px 11px;
 }
@@ -975,7 +988,7 @@ footer {
 .result-card b {
   display: block;
   font-size: 17px;
-  color: var(--green);
+  color: var(--accent);
   word-break: break-all;
   line-height: 1.3;
 }
@@ -1036,19 +1049,19 @@ footer {
 .calc-steps b {
   font-size: 14px;
   line-height: 1.35;
-  color: var(--green);
+  color: var(--accent);
   word-break: break-all;
 }
 
 .formula {
   margin: 0;
   background: #fff;
-  border: 1px dashed var(--green-soft);
+  border: 1px dashed var(--accent-soft);
   border-radius: 9px;
   padding: 5px 12px;
   font-size: 13.5px;
   line-height: 1.55;
-  color: var(--green);
+  color: var(--accent);
   text-align: center;
 }
 
@@ -1061,8 +1074,8 @@ footer {
 }
 
 .verdict.ok {
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .verdict.ng {
@@ -1082,7 +1095,7 @@ footer {
 /* ---------- 押して開くヒント ---------- */
 
 .hint-toggle {
-  border: 1px dashed var(--green-soft);
+  border: 1px dashed var(--accent-soft);
   border-radius: 12px;
   background: #fff;
 }
@@ -1096,7 +1109,7 @@ footer {
   padding: 6px 12px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent);
   border-radius: 12px;
 }
 
@@ -1109,8 +1122,8 @@ footer {
   height: 20px;
   flex: none;
   border-radius: 50%;
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
   display: grid;
   place-content: center;
   font-size: 12px;
@@ -1129,11 +1142,11 @@ footer {
 }
 
 .hint-toggle > summary:hover {
-  background: var(--mint);
+  background: var(--accent-bg);
 }
 
 .hint-toggle > summary:focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -1160,7 +1173,7 @@ footer {
 }
 
 .code-block code {
-  color: var(--lime);
+  color: var(--lamp);
   font-family: "SFMono-Regular", "Consolas", monospace;
   font-size: 15px;
 }
@@ -1199,8 +1212,8 @@ footer {
 }
 
 .lab-table th {
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 12px;
 }
 
@@ -1244,8 +1257,8 @@ footer {
 }
 
 .bit-strip button.on {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -1324,7 +1337,7 @@ footer {
 }
 
 .float-bits .exponent {
-  background: var(--mint);
+  background: var(--accent-bg);
 }
 
 .float-bits .mantissa {
@@ -1367,7 +1380,7 @@ footer {
 }
 
 .lamp.on {
-  background: var(--lime);
+  background: var(--lamp);
 }
 
 .circuit-pair {
@@ -1385,8 +1398,8 @@ footer {
 }
 
 .circuit.on {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .circuit span {
@@ -1397,7 +1410,7 @@ footer {
 .circuit b {
   display: block;
   margin-top: 6px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .circuit .wire {
@@ -1421,7 +1434,7 @@ footer {
 }
 
 .circuit .wire i.closed {
-  background: var(--green);
+  background: var(--accent);
 }
 
 .adder-view {
@@ -1431,7 +1444,7 @@ footer {
 }
 
 .adder-view > div {
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 10px;
   padding: 10px 14px;
   text-align: center;
@@ -1445,7 +1458,7 @@ footer {
 
 .adder-view b {
   font-size: 24px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 /* ---------- コンピュータの構成 ---------- */
@@ -1467,8 +1480,8 @@ footer {
 
 .five-units span.active,
 .registers span.active {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -1496,7 +1509,7 @@ footer {
   font-style: normal;
   font-size: 11px;
   color: var(--muted);
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 999px;
   padding: 2px 10px;
 }
@@ -1518,7 +1531,7 @@ footer {
 
 .wave i {
   flex: 1;
-  background: var(--green-soft);
+  background: var(--accent-soft);
   border-radius: 2px 2px 0 0;
   display: block;
 }
@@ -1577,7 +1590,7 @@ footer {
 .frame-strip i {
   width: 16px;
   height: 22px;
-  background: var(--green-soft);
+  background: var(--accent-soft);
   border-radius: 2px;
   display: block;
 }
@@ -1598,7 +1611,7 @@ footer {
 }
 
 .chart rect {
-  fill: var(--green-soft);
+  fill: var(--accent-soft);
 }
 
 .chart rect.hot {
@@ -1607,11 +1620,11 @@ footer {
 
 /* 2つの集団を並べて比べるとき。状態色（赤＝悪い）と混同させないための配色 */
 .chart-compare rect {
-  fill: #348f66;
+  fill: #2f5aa8;
 }
 
 .chart-compare rect.hot {
-  fill: #8f5bd6;
+  fill: #b06a12;
 }
 
 .chart .overlay {
@@ -1642,7 +1655,7 @@ footer {
 }
 
 .scatter circle {
-  fill: var(--green-soft);
+  fill: var(--accent-soft);
   opacity: 0.8;
 }
 
@@ -1658,7 +1671,7 @@ footer {
 
 .normal-curve polyline {
   fill: none;
-  stroke: var(--green);
+  stroke: var(--accent);
   stroke-width: 2;
 }
 
@@ -1794,13 +1807,13 @@ footer {
 }
 
 .boxplot .box {
-  fill: var(--mint);
-  stroke: var(--green);
+  fill: var(--accent-bg);
+  stroke: var(--accent);
   stroke-width: 0.6;
 }
 
 .boxplot .median {
-  stroke: var(--green);
+  stroke: var(--accent);
   stroke-width: 1.4;
 }
 
@@ -1825,7 +1838,7 @@ footer {
 
 .box-row > span {
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent);
   width: 24px;
 }
 
@@ -1844,8 +1857,8 @@ footer {
 }
 
 .sorted-values span.hot {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -1861,11 +1874,11 @@ footer {
 }
 
 .monte-canvas .quarter {
-  fill: var(--mint);
+  fill: var(--accent-bg);
 }
 
 .monte-canvas .in {
-  fill: var(--green);
+  fill: var(--accent);
 }
 
 .monte-canvas .out {
@@ -1910,7 +1923,7 @@ footer {
 }
 
 .cause-map .branches span {
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 13px;
@@ -1925,7 +1938,7 @@ footer {
 .two-column h4 {
   margin: 0 0 6px;
   font-size: 14px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .two-column > div {
@@ -1953,7 +1966,7 @@ footer {
 .quiz h2 {
   margin: 0;
   font-size: 18px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .question {
@@ -1977,8 +1990,8 @@ footer {
   padding: 1px 8px;
   margin-right: 8px;
   vertical-align: middle;
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .level-ITパスポート {
@@ -2018,13 +2031,13 @@ footer {
 }
 
 .choices button.selected {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .choices button.correct {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
   font-weight: 700;
 }
 
@@ -2075,8 +2088,8 @@ footer {
 }
 
 .result-tag.first {
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .result-tag.second {
@@ -2136,7 +2149,7 @@ footer {
 
 .area-head b {
   font-size: 15px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .area-head span {
@@ -2153,7 +2166,7 @@ footer {
 .area-score strong {
   font-size: 38px;
   line-height: 1;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .area-score span {
@@ -2171,7 +2184,7 @@ footer {
 .area-bar i {
   display: block;
   height: 100%;
-  background: var(--green-soft);
+  background: var(--accent-soft);
   border-radius: 999px;
 }
 
@@ -2203,7 +2216,7 @@ footer {
 
 .primary {
   border: 0;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   border-radius: 999px;
   padding: 11px 26px;
@@ -2218,7 +2231,7 @@ footer {
 }
 
 .notice {
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 12px;
   padding: 14px 16px;
   font-size: 14px;
@@ -2267,7 +2280,7 @@ footer {
 .metric b {
   display: block;
   font-size: 34px;
-  color: var(--green);
+  color: var(--accent);
   line-height: 1.2;
 }
 
@@ -2294,7 +2307,7 @@ footer {
 }
 
 .unit-results span {
-  color: var(--green-soft);
+  color: var(--accent-soft);
   font-size: 12px;
   font-weight: 700;
 }
@@ -2400,7 +2413,7 @@ footer {
 .thermo-title {
   font-size: 12px;
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .thermo-tube {
@@ -2424,7 +2437,7 @@ footer {
 }
 
 .thermo-tube.stepped i {
-  background: linear-gradient(180deg, #3f8f6e, var(--green));
+  background: linear-gradient(180deg, #3f8f6e, var(--accent));
   transition: none;
 }
 
@@ -2447,7 +2460,7 @@ footer {
 }
 
 .thermo-read.digital {
-  color: var(--green);
+  color: var(--accent);
   font-family: "SFMono-Regular", "Consolas", monospace;
 }
 
@@ -2479,7 +2492,7 @@ footer {
 .copy-lab > div > span {
   font-size: 12px;
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .copy-lab small {
@@ -2493,7 +2506,7 @@ footer {
 }
 
 .copy-lab small.good {
-  color: var(--green);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -2532,8 +2545,8 @@ footer {
 
 .tier-label {
   display: block;
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 12px;
   font-weight: 700;
   padding: 6px 14px;
@@ -2565,7 +2578,7 @@ footer {
 
 .tier-cell b {
   font-size: 18px;
-  color: var(--green);
+  color: var(--accent);
   word-break: break-all;
   line-height: 1.4;
   display: block;
@@ -2588,11 +2601,11 @@ footer {
 }
 
 .byte-groups b {
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 5px;
   padding: 1px 6px;
   font-size: 13px;
-  color: var(--green);
+  color: var(--accent);
   letter-spacing: 0.06em;
 }
 
@@ -2615,26 +2628,26 @@ footer {
 }
 
 .stage-card.active {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .stage-step {
   font-size: 10px;
   font-weight: 700;
-  color: var(--green-soft);
+  color: var(--accent-soft);
   letter-spacing: 0.1em;
 }
 
 .stage-card b {
   font-size: 16px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .stage-card i {
   font-style: normal;
   font-size: 12px;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   border-radius: 999px;
   padding: 2px 10px;
@@ -2666,7 +2679,7 @@ footer {
 .scale-bar i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, var(--green-soft), var(--green));
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent));
   transition: width 0.2s ease;
 }
 
@@ -2774,14 +2787,14 @@ footer {
   align-items: center;
   flex-wrap: wrap;
   background: #fff;
-  border: 1px dashed var(--green-soft);
+  border: 1px dashed var(--accent-soft);
   border-radius: 10px;
   padding: 10px 14px;
 }
 
 .premise b {
   font-size: 12px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .premise span {
@@ -2791,8 +2804,8 @@ footer {
 }
 
 .premise .ok {
-  background: var(--mint);
-  color: var(--green);
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .premise .ng {
@@ -2820,7 +2833,7 @@ footer {
 }
 
 .drop-digit .kept {
-  color: var(--green);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -2876,8 +2889,8 @@ footer {
 }
 
 .unit.from {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
   box-shadow: 0 0 0 3px rgba(24, 84, 61, 0.12);
 }
 
@@ -2893,7 +2906,7 @@ footer {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 10px;
   padding: 10px 14px;
 }
@@ -2904,7 +2917,7 @@ footer {
 
 .flow-line span {
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .flow-line i {
@@ -2956,7 +2969,7 @@ footer {
 .compress-flow .bar {
   height: 26px;
   border-radius: 6px;
-  background: var(--green-soft);
+  background: var(--accent-soft);
   transition: width 0.2s ease;
 }
 
@@ -2972,7 +2985,7 @@ footer {
   display: block;
   margin-top: 4px;
   font-size: 13px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .compress-flow > i {
@@ -2992,7 +3005,7 @@ footer {
   display: inline-flex;
   align-items: baseline;
   gap: 2px;
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 6px;
   padding: 3px 10px;
 }
@@ -3000,7 +3013,7 @@ footer {
 .run-view b {
   font-family: "SFMono-Regular", "Consolas", monospace;
   font-size: 15px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .run-view i {
@@ -3014,7 +3027,7 @@ footer {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 10px;
   padding: 10px 14px;
 }
@@ -3026,7 +3039,7 @@ footer {
 
 .ladder-result b {
   font-size: 22px;
-  color: var(--green);
+  color: var(--accent);
   letter-spacing: 0.08em;
 }
 
@@ -3052,7 +3065,7 @@ footer {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   display: grid;
   place-content: center;
@@ -3074,7 +3087,7 @@ footer {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: linear-gradient(180deg, var(--mint), #fff 120px);
+  background: linear-gradient(180deg, var(--accent-bg), #fff 120px);
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 22px;
@@ -3090,13 +3103,13 @@ footer {
 .dash-head h2 {
   margin: 0;
   font-size: 19px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .verdict-box {
   background: #fff;
   border: 1px solid var(--line);
-  border-left: 4px solid var(--green);
+  border-left: 4px solid var(--accent);
   border-radius: 12px;
   padding: 14px 18px;
 }
@@ -3131,7 +3144,7 @@ footer {
 .dash-panel h3 {
   margin: 0 0 2px;
   font-size: 15px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .dash-panel > .muted {
@@ -3152,7 +3165,7 @@ footer {
   display: block;
   height: 100%;
   border-radius: 5px;
-  background: var(--green-soft);
+  background: var(--accent-soft);
   transition: width 0.25s ease;
 }
 
@@ -3203,14 +3216,14 @@ footer {
 }
 
 .map-row:hover {
-  border-color: var(--green-soft);
+  border-color: var(--accent-soft);
   background: var(--paper);
 }
 
 .map-no {
   font-size: 11px;
   font-weight: 700;
-  color: var(--green-soft);
+  color: var(--accent-soft);
 }
 
 .map-title {
@@ -3330,7 +3343,7 @@ footer {
   height: 19px;
   margin-top: 2px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   display: grid;
   place-content: center;
@@ -3379,7 +3392,7 @@ footer {
   cursor: pointer;
   font-size: 14px;
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .review-lesson {
@@ -3389,7 +3402,7 @@ footer {
 .review-lesson h4 {
   margin: 0 0 6px;
   font-size: 14px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .review-item {
@@ -3478,7 +3491,7 @@ footer {
 .exam-head h1 {
   margin: 0;
   font-size: clamp(20px, 3vw, 26px);
-  color: var(--green);
+  color: var(--accent);
 }
 
 .exam-who {
@@ -3510,19 +3523,19 @@ footer {
   align-items: baseline;
   gap: 12px;
   flex-wrap: wrap;
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 10px;
   padding: 10px 14px;
 }
 
 .exam-badge b {
   font-size: 18px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .exam-badge span {
   font-size: 13px;
-  color: var(--green-soft);
+  color: var(--accent-soft);
 }
 
 .exam-rules {
@@ -3559,13 +3572,13 @@ footer {
 .exam-progress i {
   display: block;
   height: 100%;
-  background: var(--green-soft);
+  background: var(--accent-soft);
   border-radius: 999px;
   transition: width 0.2s ease;
 }
 
 .exam-bar b {
-  color: var(--green);
+  color: var(--accent);
   font-size: 15px;
 }
 
@@ -3576,7 +3589,7 @@ footer {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  background: var(--green);
+  background: var(--accent);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -3622,14 +3635,14 @@ footer {
 }
 
 .exam-pages button.filled {
-  border-color: var(--green-soft);
-  background: var(--mint);
-  color: var(--green);
+  border-color: var(--accent-soft);
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .exam-pages button.active {
-  border-color: var(--green);
-  background: var(--green);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #fff;
   font-weight: 700;
 }
@@ -3652,8 +3665,8 @@ footer {
 }
 
 .exam-score {
-  background: linear-gradient(135deg, var(--mint), #fff);
-  border: 1px solid var(--green);
+  background: linear-gradient(135deg, var(--accent-bg), #fff);
+  border: 1px solid var(--accent);
   border-radius: var(--radius);
   padding: 18px 20px;
   display: flex;
@@ -3670,14 +3683,14 @@ footer {
 
 .exam-score-main span {
   font-size: 14px;
-  color: var(--green-soft);
+  color: var(--accent-soft);
   font-weight: 700;
 }
 
 .exam-score-main strong {
   font-size: 46px;
   line-height: 1;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .exam-score-main em {
@@ -3716,7 +3729,7 @@ footer {
 .lesson-name.link {
   border: 0;
   background: transparent;
-  color: var(--green);
+  color: var(--accent);
   text-decoration: underline;
   padding: 0;
 }
@@ -3793,12 +3806,12 @@ footer {
 }
 
 .bit-scale-grid b.enough {
-  background: var(--mint);
+  background: var(--accent-bg);
 }
 
 .bit-scale-grid b.on {
-  border-color: var(--green);
-  background: var(--green);
+  border-color: var(--accent);
+  background: var(--accent);
 }
 
 .bit-scale-grid b.on span,
@@ -3837,7 +3850,7 @@ footer {
 }
 
 .complement-chain .chain-step.accent {
-  border-left: 3px solid var(--green);
+  border-left: 3px solid var(--accent);
   padding-left: 8px;
   margin-left: -8px;
 }
@@ -3866,13 +3879,13 @@ footer {
   content: "↓";
   position: absolute;
   left: 0;
-  color: var(--green);
+  color: var(--accent);
   font-weight: 700;
 }
 
 .complement-chain .chain-arrow b {
   font-size: 11.5px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .complement-chain .chain-arrow i {
@@ -3920,16 +3933,16 @@ footer {
 }
 
 .circuit-mini.on {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .circuit-mini.on > b {
-  color: var(--green);
+  color: var(--accent);
 }
 
 .circuit-mini.picked {
-  box-shadow: inset 0 0 0 1px var(--green);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .mini-circuit {
@@ -3958,7 +3971,7 @@ footer {
 }
 
 .mini-circuit .lever.closed {
-  stroke: var(--green);
+  stroke: var(--accent);
 }
 
 .mini-circuit .pin-label {
@@ -4032,7 +4045,7 @@ footer {
 }
 
 .logic-diagram .wire.on {
-  stroke: var(--green);
+  stroke: var(--accent);
   stroke-width: 2.2;
 }
 
@@ -4043,8 +4056,8 @@ footer {
 }
 
 .logic-diagram .gate.on .gate-body {
-  fill: var(--mint);
-  stroke: var(--green);
+  fill: var(--accent-bg);
+  stroke: var(--accent);
 }
 
 .logic-diagram .gate-arc {
@@ -4054,7 +4067,7 @@ footer {
 }
 
 .logic-diagram .gate.on .gate-arc {
-  stroke: var(--green);
+  stroke: var(--accent);
 }
 
 .logic-diagram .gate-label {
@@ -4065,7 +4078,7 @@ footer {
 }
 
 .logic-diagram .gate.on .gate-label {
-  fill: var(--green);
+  fill: var(--accent);
 }
 
 .logic-diagram .port {
@@ -4090,7 +4103,7 @@ footer {
 }
 
 .logic-diagram .wire-value.on {
-  fill: var(--green);
+  fill: var(--accent);
 }
 
 /* ---------- D5 実験2：CPUのブロック図 ---------- */
@@ -4124,8 +4137,8 @@ footer {
 }
 
 .cpu-diagram .cpu-box.on {
-  fill: var(--mint);
-  stroke: var(--green);
+  fill: var(--accent-bg);
+  stroke: var(--accent);
   stroke-width: 2;
 }
 
@@ -4155,7 +4168,7 @@ footer {
 }
 
 .cpu-diagram .cpu-arrow.on {
-  stroke: var(--green);
+  stroke: var(--accent);
   stroke-width: 2.2;
 }
 
@@ -4164,7 +4177,7 @@ footer {
 }
 
 .cpu-diagram .cpu-arrow.on + * {
-  fill: var(--green);
+  fill: var(--accent);
 }
 
 /* ---------- 確認問題の図 ---------- */
@@ -4191,8 +4204,8 @@ footer {
 }
 
 .q-figure .qf-cell.now {
-  fill: var(--mint);
-  stroke: var(--green);
+  fill: var(--accent-bg);
+  stroke: var(--accent);
   stroke-width: 1.8;
 }
 
@@ -4272,12 +4285,12 @@ footer {
 }
 
 .scale-keys button.on {
-  border-color: var(--green);
-  background: var(--mint);
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .scale-keys button.on b {
-  color: var(--green);
+  color: var(--accent);
 }
 
 .scale-note {
@@ -4320,15 +4333,15 @@ footer {
 }
 
 .normal-curve .band1 {
-  fill: rgba(52, 143, 102, 0.18);
+  fill: rgba(47, 90, 168, 0.20);
 }
 
 .normal-curve .band2 {
-  fill: rgba(52, 143, 102, 0.11);
+  fill: rgba(47, 90, 168, 0.12);
 }
 
 .normal-curve .band3 {
-  fill: rgba(52, 143, 102, 0.06);
+  fill: rgba(47, 90, 168, 0.07);
 }
 
 /* ---------- 応用ミッションの表計算練習 ---------- */
@@ -4353,7 +4366,7 @@ footer {
 
 .sheet-head b {
   font-size: 13px;
-  color: var(--green);
+  color: var(--accent);
 }
 
 .sheet-head span {
@@ -4426,7 +4439,7 @@ footer {
 }
 
 .sheet-task.ok {
-  border-left-color: var(--green);
+  border-left-color: var(--accent);
 }
 
 .sheet-task.wrong,
@@ -4467,7 +4480,7 @@ footer {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: 13px;
-  color: var(--green);
+  color: var(--accent);
   background: #f4f8f6;
   border-radius: 6px;
   padding: 3px 8px;
@@ -4479,7 +4492,7 @@ footer {
 }
 
 .sheet-msg.ok {
-  color: var(--green);
+  color: var(--accent);
 }
 
 .sheet-msg.ng {
@@ -4506,22 +4519,22 @@ footer {
 
 /* 3集団を並べるとき（配色は検証ずみ：ΔE 9.2 以上／通常視 17.5 以上） */
 .chart-compare rect.s0 {
-  fill: #348f66;
+  fill: #2f5aa8;
 }
 
 .chart-compare rect.s1 {
-  fill: #8f5bd6;
+  fill: #b06a12;
 }
 
 .chart-compare rect.s2 {
-  fill: #b06a12;
+  fill: #348f66;
 }
 
 /* ============================================================
  * 依頼掲示板（トップ）
  * ========================================================== */
 
-.board-hero {
+.board {
   background: linear-gradient(160deg, #16203a 0%, #0f1729 60%, #131c31 100%);
   border: 1px solid #26324e;
   border-radius: var(--radius);
@@ -4531,7 +4544,7 @@ footer {
   overflow: hidden;
 }
 
-.board-hero::after {
+.board::after {
   content: "";
   position: absolute;
   inset: 8px;
@@ -4555,7 +4568,7 @@ footer {
   font-weight: 700;
 }
 
-.board-hero h1 {
+.board h1 {
   font-size: clamp(26px, 4vw, 38px);
   line-height: 1.25;
   margin: 0;
@@ -4563,7 +4576,7 @@ footer {
   letter-spacing: 0.02em;
 }
 
-.board-hero p {
+.board p {
   color: #b8bdcb;
   font-size: 13px;
   line-height: 1.85;
@@ -4611,22 +4624,22 @@ footer {
 }
 
 /* 掲示板の中の番号入力は、暗い背景に合わせる */
-.board-hero .code-entry label,
-.board-hero .status-pill {
+.board .code-entry label,
+.board .status-pill {
   color: #b8bdcb;
 }
 
-.board-hero .code-confirm {
+.board .code-confirm {
   background: rgba(10, 16, 30, 0.72);
   border-color: #2f3d5c;
 }
 
-.board-hero .code-ask,
-.board-hero .code-note {
+.board .code-ask,
+.board .code-note {
   color: #e7dfca;
 }
 
-.board-hero .code-warn {
+.board .code-warn {
   color: #e0b98a;
 }
 
@@ -4676,7 +4689,7 @@ footer {
 }
 
 .quest:hover {
-  border-color: var(--green);
+  border-color: var(--accent);
   transform: translateY(-1px);
 }
 
@@ -4754,7 +4767,7 @@ footer {
 .quest-bar i {
   display: block;
   height: 100%;
-  background: var(--green);
+  background: var(--accent);
 }
 
 .quest-meter em {
@@ -4789,8 +4802,8 @@ footer {
 
 .quest-state.done {
   color: #fff;
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .quest-reward {
@@ -4824,8 +4837,8 @@ footer {
 .purse-lv {
   font-size: 11px;
   font-weight: 700;
-  color: var(--green);
-  background: var(--mint);
+  color: var(--accent);
+  background: var(--accent-bg);
   border-radius: 999px;
   padding: 2px 9px;
 }
@@ -4969,14 +4982,14 @@ footer {
 .gauge-bar i {
   display: block;
   height: 100%;
-  background: var(--green);
+  background: var(--accent);
   border-radius: 999px;
 }
 
 .gauge > b {
   font-size: 19px;
   text-align: right;
-  color: var(--green);
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 
@@ -5059,8 +5072,8 @@ footer {
 .hint-owned {
   margin-left: 8px;
   font-size: 10.5px;
-  color: var(--green);
-  background: var(--mint);
+  color: var(--accent);
+  background: var(--accent-bg);
   border-radius: 999px;
   padding: 1px 8px;
 }
@@ -5096,7 +5109,7 @@ footer {
   font-size: 12px;
   line-height: 1.8;
   color: var(--ink-2);
-  background: var(--mint);
+  background: var(--accent-bg);
   border-radius: 9px;
   padding: 9px 12px;
 }
@@ -5126,11 +5139,11 @@ footer {
 }
 
 .word-item.first {
-  border-left-color: var(--green);
+  border-left-color: var(--accent);
 }
 
 .word-item.second {
-  border-left-color: #8f5bd6;
+  border-left-color: #b06a12;
 }
 
 .word-item.miss {
@@ -5214,7 +5227,7 @@ footer {
 .word-foot-done {
   margin: 0;
   font-size: 12.5px;
-  color: var(--green);
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -5246,4 +5259,554 @@ footer {
 /* A5 実験4：散布図も同じ扱い */
 .experiment-card .scatter {
   max-height: 168px;
+}
+
+/* ============================================================
+ * 依頼掲示板 v17.1（モックに合わせて板の上に札を貼る）
+ * ========================================================== */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px 24px 26px;
+}
+
+.board::after {
+  inset: 9px;
+}
+
+.board h1 {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.board h1 em {
+  font-style: normal;
+  font-size: 14px;
+  font-weight: 700;
+  color: #c0a960;
+  letter-spacing: 0.04em;
+}
+
+.board .board-area {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.board .board-area-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid rgba(215, 180, 81, 0.28);
+  padding-bottom: 6px;
+}
+
+.board .board-area-head h2 {
+  margin: 0;
+  font-size: 15px;
+  color: #e7dfca;
+  letter-spacing: 0.04em;
+}
+
+.board .board-area-head span {
+  font-size: 12px;
+  color: #c0a960;
+  font-weight: 700;
+}
+
+/* ---- 依頼の札（羊皮紙） ---- */
+
+.board .quest {
+  background: linear-gradient(170deg, #efe4c6 0%, #e4d7b4 100%);
+  border: 1px solid #b8a67e;
+  border-radius: 3px;
+  padding: 15px 13px 11px;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 18px rgba(0, 0, 0, 0.22);
+  color: #2b2517;
+}
+
+.board .quest:hover {
+  border-color: #d7b451;
+  transform: translateY(-2px);
+}
+
+.board .quest-pin {
+  background: #b3402f;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  width: 10px;
+  height: 10px;
+  top: -4px;
+}
+
+.board .quest-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-start;
+}
+
+.board .quest-no {
+  color: #6f5310;
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+}
+
+.board .quest-sep {
+  color: #9c8a5f;
+  font-size: 11px;
+}
+
+.board .quest h3 {
+  color: #241f13;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.board .quest-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.board .quest-star {
+  color: #a8791a;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.board .quest-star i {
+  color: #bfae86;
+}
+
+.board .quest-reward {
+  color: #6f5310;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.board .quest-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid rgba(111, 83, 16, 0.22);
+  padding-top: 6px;
+  margin-top: 1px;
+}
+
+.board .quest-bar {
+  flex: 1;
+  height: 5px;
+  background: rgba(111, 83, 16, 0.18);
+}
+
+.board .quest-bar i {
+  background: #2f5aa8;
+}
+
+.board .quest-meter em {
+  color: #6f5310;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.board .quest-state {
+  border: none;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8a7238;
+  background: none;
+}
+
+.board .quest-state.doing {
+  color: #a8791a;
+}
+
+.board .quest-state.done {
+  color: #2f7f5c;
+}
+
+/* 討伐済の札は、取り消し線を入れて少し落とす */
+.board .quest.done {
+  background: linear-gradient(170deg, #e2dac6 0%, #d6cdb6 100%);
+  border-color: #a99a76;
+  opacity: 0.78;
+}
+
+.board .quest.done h3 {
+  text-decoration: line-through;
+  text-decoration-color: rgba(36, 31, 19, 0.5);
+  color: #4a4231;
+}
+
+.board .quest.doing {
+  border-color: #d7b451;
+  box-shadow: 0 0 0 1px rgba(215, 180, 81, 0.55), 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+/* ============================================================
+ * ステータス画面 v17.1（コマンドウィンドウ風の枠に3本ゲージ）
+ * ========================================================== */
+
+.status-hero {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.status-lead {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: #a3abbd;
+  max-width: 72ch;
+}
+
+.status-window {
+  border: 2px solid #e7dfca;
+  border-radius: 8px;
+  background: rgba(8, 13, 26, 0.55);
+  padding: 13px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.status-window-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(231, 223, 202, 0.24);
+  padding-bottom: 7px;
+}
+
+.status-window-head b {
+  font-size: 13px;
+  color: #e7dfca;
+  letter-spacing: 0.04em;
+}
+
+.status-window-head span {
+  font-size: 12px;
+  color: #9db4e8;
+  font-weight: 700;
+}
+
+.status-window-head .status-coin {
+  color: #d7b451;
+  margin-left: auto;
+}
+
+.status-hero .gauges {
+  gap: 11px;
+}
+
+.status-hero .gauge {
+  background: none;
+  border: none;
+  padding: 0;
+  grid-template-columns: 74px minmax(0, 1fr) 74px;
+  row-gap: 3px;
+}
+
+.status-hero .gauge-name {
+  color: #e7dfca;
+  font-size: 13px;
+}
+
+.status-hero .gauge-bar {
+  background: rgba(231, 223, 202, 0.14);
+  height: 12px;
+  border-radius: 3px;
+}
+
+.status-hero .gauge-bar i {
+  border-radius: 3px;
+}
+
+.status-hero .gauge > b {
+  color: #e7dfca;
+  font-size: 17px;
+}
+
+.status-hero .gauge > b em {
+  font-style: normal;
+  font-size: 11px;
+  color: #8892a6;
+  font-weight: 400;
+}
+
+.status-hero .gauge > small {
+  grid-column: 2 / 4;
+  font-size: 10.5px;
+  color: #8892a6;
+}
+
+/* 3色は暗い紺の上で検証ずみ（CVD ΔE 9.1／通常視 18.1／コントラスト3:1以上） */
+.gauge.g-power .gauge-bar i {
+  background: #be6517;
+}
+
+.gauge.g-wisdom .gauge-bar i {
+  background: #2376b9;
+}
+
+.gauge.g-heart .gauge-bar i {
+  background: #009160;
+}
+
+.status-purse-line {
+  margin: 0;
+  font-size: 11.5px;
+  color: #8892a6;
+  border-top: 1px solid rgba(231, 223, 202, 0.16);
+  padding-top: 8px;
+}
+
+.status-purse-line b {
+  color: #d7b451;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .status-hero .gauge {
+    grid-template-columns: 62px minmax(0, 1fr) 62px;
+  }
+}
+
+/* ============================================================
+ * コマンドウィンドウ（ステータス画面）
+ * ========================================================== */
+
+.command-window {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  border-top: 1px solid rgba(231, 223, 202, 0.16);
+  padding-top: 10px;
+}
+
+.command {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(231, 223, 202, 0.42);
+  border-radius: 5px;
+  background: rgba(231, 223, 202, 0.05);
+  padding: 8px 13px;
+  text-align: left;
+  min-width: 0;
+}
+
+.command span {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #e7dfca;
+  white-space: nowrap;
+}
+
+.command em {
+  font-style: normal;
+  font-size: 11px;
+  color: #9db4e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command:hover {
+  background: rgba(231, 223, 202, 0.13);
+  border-color: #e7dfca;
+}
+
+@media (max-width: 560px) {
+  .command-window {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+ * そうび（用語集）
+ * ========================================================== */
+
+.term-block {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  overflow: hidden;
+}
+
+.term-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 14px;
+  background: var(--accent-bg);
+  border: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.term-head b {
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.term-head span {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.term-head em {
+  font-style: normal;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.term-head:hover {
+  background: #e3f1e9;
+}
+
+.term-list {
+  margin: 0;
+  padding: 10px 14px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px 16px;
+}
+
+.term-list > div {
+  border-left: 2px solid var(--line);
+  padding-left: 9px;
+}
+
+.term-list > div.on-test {
+  border-left-color: #c9a227;
+}
+
+.term-list dt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.term-list dt i {
+  font-style: normal;
+  color: #c9a227;
+  font-size: 11px;
+}
+
+.term-list dd {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* ============================================================
+ * ヒントの店
+ * ========================================================== */
+
+.shop-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  padding: 7px 12px;
+}
+
+.shop-row.owned {
+  background: var(--accent-bg);
+  border-color: #bcd7c7;
+}
+
+.shop-where {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0;
+}
+
+.shop-where b {
+  font-size: 12px;
+  color: var(--accent);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+.shop-where span {
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-where:hover span {
+  text-decoration: underline;
+}
+
+.shop-buy {
+  border: 1px dashed #d9c689;
+  background: #fdf9ec;
+  color: #8a6712;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.shop-buy:hover:not(:disabled) {
+  background: #f7edcf;
+}
+
+.shop-buy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.shop-owned {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* 縦積みにしたので、flex-basis が高さとして効かないようにする */
+.status-hero .status-title {
+  flex: 0 0 auto;
+  width: 100%;
 }

@@ -255,6 +255,8 @@ export type StudentRecord = {
   missionNotes: Record<string, string>;
   /** 買ったヒント */
   boughtHints: Record<string, boolean>;
+  /** 最後に開いた単元 */
+  lastLesson: string;
   /** G の収支。成績には使いません */
   coins: { earned: number; spent: number; balance: number; hintsBought: string[]; level: number };
   /** 主体的に学習に取り組む態度 */
