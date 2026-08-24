@@ -706,6 +706,7 @@ export default function Home() {
               </div>
               {sheetDrills[lesson.id] && (
                 <MiniSheet
+                  lessonId={lesson.id}
                   data={sheetDrills[lesson.id].data}
                   tasks={sheetDrills[lesson.id].tasks}
                   caption={sheetDrills[lesson.id].caption}
@@ -782,48 +783,15 @@ export default function Home() {
         {active === "home" && (
           <>
             <section className="board">
-              <div className="board-title">
-                <span className="board-eyebrow">依頼掲示板</span>
-                <h1>
-                  受けたい依頼を選べ。
-                  <em>残り {lessons.length - summary.completedLessons} 件</em>
-                </h1>
-                <p>討伐すると報酬が出る。★が多いほど手ごわいが、実入りもいい。</p>
-                {studentCode.length === 4 ? (
-                  <div className="board-me">
-                    <div className="me-ring">
-                      <strong>{level.level}</strong>
-                      <span>Lv</span>
-                      <i style={{ width: `${Math.round(level.ratio * 100)}%` }} />
-                    </div>
-                    <div className="me-body">
-                      <div className="me-head">
-                        <b>No.{studentCode} の記録</b>
-                        <span className="me-g">{balance} G</span>
-                      </div>
-                      <p className="me-next">
-                        {level.maxed ? "最高レベルに到達している。" : `つぎのレベルまで あと ${level.toNext}G。`}
-                        　討伐 {summary.completedLessons}/{summary.lessonCount} ・ 総合点 {summary.totalScore}/
-                        {summary.totalMax}
-                      </p>
-                      <div className="me-gauges">
-                        {[
-                          { key: "power", name: "ちから", value: summary.perspective.knowledge },
-                          { key: "wisdom", name: "かしこさ", value: summary.perspective.thinking },
-                          { key: "heart", name: "こころ", value: summary.perspective.attitude }
-                        ].map((g) => (
-                          <div className={`me-gauge g-${g.key}`} key={g.key}>
-                            <span>{g.name}</span>
-                            <div className="gauge-bar">
-                              <i style={{ width: `${g.value}%` }} />
-                            </div>
-                            <b>{g.value}</b>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
+              <div className="board-head">
+                <div className="board-title">
+                  <span className="board-eyebrow">依頼掲示板</span>
+                  <h1>
+                    受けたい依頼を選べ。
+                    <em>残り {lessons.length - summary.completedLessons} 件</em>
+                  </h1>
+                  <p>討伐すると報酬が出る。★が多いほど手ごわいが、実入りもいい。</p>
+                  {studentCode.length !== 4 && (
                   <div className="code-entry">
                     <div className="lookup">
                       <label>
@@ -888,6 +856,45 @@ export default function Home() {
                         </div>
                       </div>
                     )}
+                  </div>
+                  )}
+                </div>
+
+                {studentCode.length === 4 && (
+                  <div className="board-me">
+                    <div className="me-ring">
+                      <strong>{level.level}</strong>
+                      <span>Lv</span>
+                      <i style={{ width: `${Math.round(level.ratio * 100)}%` }} />
+                    </div>
+                    <div className="me-body">
+                      <div className="me-head">
+                        <b>No.{studentCode} の記録</b>
+                        <span className="me-g">{balance} G</span>
+                      </div>
+                      <p className="me-next">
+                        {level.maxed ? "最高レベルに到達している。" : `つぎのレベルまで あと ${level.toNext}G。`}
+                      </p>
+                      <p className="me-next">
+                        討伐 {summary.completedLessons}/{summary.lessonCount} ・ 総合点 {summary.totalScore}/
+                        {summary.totalMax}
+                      </p>
+                      <div className="me-gauges">
+                        {[
+                          { key: "power", name: "ちから", value: summary.perspective.knowledge },
+                          { key: "wisdom", name: "かしこさ", value: summary.perspective.thinking },
+                          { key: "heart", name: "こころ", value: summary.perspective.attitude }
+                        ].map((g) => (
+                          <div className={`me-gauge g-${g.key}`} key={g.key}>
+                            <span>{g.name}</span>
+                            <div className="gauge-bar">
+                              <i style={{ width: `${g.value}%` }} />
+                            </div>
+                            <b>{g.value}</b>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1230,7 +1237,8 @@ export default function Home() {
             </button>
             <h1>ヒントを買う</h1>
             <p className="muted">
-              ヒントは全部で{hintList.length}個。1つ<b>{COIN.hint}G</b>です。
+              ヒントは全部で{hintList.length}個（実験のヒント{hintList.filter((h) => h.kind === "実験").length}個 ＋
+              応用の表計算の式{hintList.filter((h) => h.kind === "式").length}個）。1つ<b>{COIN.hint}G</b>です。
               一度買えば、そのあとはいつでも見られます。いま <b>{balance}G</b> 持っています
               （買えるのは {Math.floor(balance / COIN.hint)}個）。
             </p>
@@ -1243,7 +1251,7 @@ export default function Home() {
                 const lesson = lessons.find((l) => l.id === hint.lessonId);
                 if (!lesson) return null;
                 const last = lesson.theory.length;
-                const label = hint.index === last ? "応用" : `実験${hint.index + 1}`;
+                const label = hint.kind === "式" ? "応用の表計算" : hint.index === last ? "応用" : `実験${hint.index + 1}`;
                 const owned = !!boughtHints[hint.id];
                 const short = COIN.hint - balance;
                 return (
@@ -1603,27 +1611,34 @@ export default function Home() {
                   <h3>単元別の理解度マップ</h3>
                   <p className="muted small">色と文字の両方で状態を示しています。押すとその単元へ移動します。</p>
                   <div className="unit-map">
-                    {analysis.perLesson.map((row) => (
-                      <button
-                        type="button"
-                        key={row.lesson.id}
-                        className={`map-row state-${row.state}`}
-                        onClick={() => setActive(row.lesson.id)}
-                        title={`${row.lesson.no} ${row.lesson.title} — ${row.submitted ? `${row.correct}/${row.total}問正解` : "未送信"} / 実験 ${row.expDone}/${row.expTotal}`}
-                      >
-                        <span className="map-no">{row.lesson.no}</span>
-                        <span className="map-title">{row.lesson.title}</span>
-                        <span className="bar-track">
-                          <i style={{ width: `${row.rate ?? 0}%` }} />
-                        </span>
-                        <b>{row.rate === null ? "—" : `${row.rate}%`}</b>
-                        <em className="map-state">
-                          {row.state === "good" ? "定着" : row.state === "warn" ? "あと一歩" : row.state === "bad" ? "要復習" : "未受験"}
-                        </em>
-                        <em className="map-exp">
-                          実験 {row.expDone}/{row.expTotal}
-                        </em>
-                      </button>
+                    {(["デジタル", "データ活用"] as const).map((area) => (
+                      <div className="map-col" key={area}>
+                        <h4>{area}分野</h4>
+                        {analysis.perLesson
+                          .filter((row) => row.lesson.area === area)
+                          .map((row) => (
+                            <button
+                              type="button"
+                              key={row.lesson.id}
+                              className={`map-row state-${row.state}`}
+                              onClick={() => setActive(row.lesson.id)}
+                              title={`${row.lesson.no} ${row.lesson.title} — ${row.submitted ? `${row.correct}/${row.total}問正解` : "未送信"} / 実験 ${row.expDone}/${row.expTotal}`}
+                            >
+                              <span className="map-no">{row.lesson.no}</span>
+                              <span className="map-title">{row.lesson.title}</span>
+                              <span className="bar-track">
+                                <i style={{ width: `${row.rate ?? 0}%` }} />
+                              </span>
+                              <b>{row.rate === null ? "—" : `${row.rate}%`}</b>
+                              <em className="map-state">
+                                {row.state === "good" ? "定着" : row.state === "warn" ? "あと一歩" : row.state === "bad" ? "要復習" : "未受験"}
+                              </em>
+                              <em className="map-exp">
+                                実験 {row.expDone}/{row.expTotal}
+                              </em>
+                            </button>
+                          ))}
+                      </div>
                     ))}
                   </div>
               </div>
@@ -1733,18 +1748,25 @@ export default function Home() {
               )}
             </section>
             <div className="unit-results">
-              {lessons.map((lesson) => (
-                <div key={lesson.id}>
-                  <span>{lesson.no}</span>
-                  <b>{lesson.title}</b>
-                  <em>
-                    実験 {lessonProgress(lesson)}/{experimentCount(lesson)}
-                  </em>
-                  <em>
-                    {submissions[lesson.id]
-                      ? `${submissions[lesson.id].score}/${lesson.questions.length}点（1回目${submissions[lesson.id].correct}問・2回目${submissions[lesson.id].secondCorrect}問）`
-                      : "未送信"}
-                  </em>
+              {(["デジタル", "データ活用"] as const).map((area) => (
+                <div className="unit-col" key={area}>
+                  <h4>{area}分野</h4>
+                  {lessons
+                    .filter((lesson) => lesson.area === area)
+                    .map((lesson) => (
+                      <div className="unit-line" key={lesson.id}>
+                        <span>{lesson.no}</span>
+                        <b>{lesson.title}</b>
+                        <em>
+                          実験 {lessonProgress(lesson)}/{experimentCount(lesson)}
+                        </em>
+                        <em>
+                          {submissions[lesson.id]
+                            ? `${submissions[lesson.id].score}/${lesson.questions.length}点（1回目${submissions[lesson.id].correct}問・2回目${submissions[lesson.id].secondCorrect}問）`
+                            : "未送信"}
+                        </em>
+                      </div>
+                    ))}
                 </div>
               ))}
             </div>

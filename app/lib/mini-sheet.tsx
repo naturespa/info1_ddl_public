@@ -5,8 +5,10 @@
 // 生徒は「セルに式を打ちこんで、答えが出る」という経験をここでします。
 // 数字を直接打ちこんでも正解にはならず、指定された関数を使ったときだけ正解になります。
 
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { evaluateFormula, functionsUsed, type SheetData } from "./sheet";
+import { HintShopContext } from "./ui";
+import { sheetHintId } from "./hint-list";
 
 export type SheetTask = {
   /** 何を求めるか */
@@ -29,9 +31,25 @@ const show = (v: number | string) => {
   return String(Math.round(v * 10000) / 10000);
 };
 
-export function MiniSheet({ data, tasks, caption }: { data: SheetData; tasks: SheetTask[]; caption?: string }) {
+export function MiniSheet({
+  data,
+  tasks,
+  caption,
+  lessonId
+}: {
+  data: SheetData;
+  tasks: SheetTask[];
+  caption?: string;
+  /** 「式を見る」をGで買うために使う */
+  lessonId: string;
+}) {
+  const shop = useContext(HintShopContext);
   const [inputs, setInputs] = useState<string[]>(() => tasks.map(() => ""));
   const [revealed, setRevealed] = useState<boolean[]>(() => tasks.map(() => false));
+
+  /** その式をもう買っているか。売り場がないとき（テストなど）はタダで開ける */
+  const bought = (i: number) => !shop || shop.bought(sheetHintId(lessonId, i));
+  const short = shop ? shop.price - shop.balance : 0;
 
   const results = useMemo(
     () =>
@@ -125,15 +143,31 @@ export function MiniSheet({ data, tasks, caption }: { data: SheetData; tasks: Sh
                 <span className="sheet-value">
                   {r.state === "empty" ? "" : r.state === "error" ? "エラー" : show(r.value)}
                 </span>
-                <button type="button" className="ghost small" onClick={() => setRevealed((p) => p.map((v, k) => (k === i ? !v : v)))}>
-                  {revealed[i] ? "式を隠す" : "式を見る"}
-                </button>
+                {bought(i) ? (
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={() => setRevealed((p) => p.map((v, k) => (k === i ? !v : v)))}
+                  >
+                    {revealed[i] ? "式を隠す" : "式を見る"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="sheet-buy"
+                    onClick={() => shop?.buy(sheetHintId(lessonId, i))}
+                    disabled={short > 0}
+                    title={short > 0 ? `あと ${short}G 足りません` : ""}
+                  >
+                    式を見る<b>{shop?.price}G</b>
+                  </button>
+                )}
               </div>
               {r.state === "error" && <p className="sheet-msg ng">{r.message}</p>}
               {r.state === "wrong" && <p className="sheet-msg ng">{r.message}</p>}
               {r.state === "nofunc" && <p className="sheet-msg warn">{r.message}</p>}
               {r.state === "ok" && <p className="sheet-msg ok">{r.message}</p>}
-              {revealed[i] && (
+              {bought(i) && revealed[i] && (
                 <p className="sheet-msg sample">
                   見本：<code>{task.sample}</code>
                 </p>
