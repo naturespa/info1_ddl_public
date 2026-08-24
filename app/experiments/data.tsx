@@ -86,7 +86,7 @@ const joinList = (parts: (string | number)[], limit = 12, sep = ", ") =>
 /* ========================================================================
  * A1 データの種類と度数分布
  * ====================================================================== */
-export function OrganizeLab({ card }: LabProps) {
+export function OrganizeLab({ card, missionNote, onMissionNote }: LabProps) {
   const [stage, setStage] = useState("raw");
   const [scale, setScale] = useState("身長 168.5cm");
   const [raw, setRaw] = useState(HEIGHTS);
@@ -95,7 +95,6 @@ export function OrganizeLab({ card }: LabProps) {
   const [binView, setBinView] = useState("table");
   const [shape, setShape] = useState("bell");
   const [dirty, setDirty] = useState("7, 6.5, , 8, 70, 6.5, -1, 7.5");
-  const [report, setReport] = useState("");
 
   const scales: Record<string, [string, string]> = {
     "身長 168.5cm": ["量的・比例尺度", "差にも比にも意味があるので、平均も標準偏差も計算できます。"],
@@ -248,7 +247,7 @@ export function OrganizeLab({ card }: LabProps) {
               ["比例尺度", "＋「何倍か」が言える", "身長、金額、時間"]
             ]}
           />
-          <HintButton>
+          <HintButton id="organize-1-1">
             数字が書いてあっても、足したり平均したりしていいとは限りません。背番号10番の選手と20番の選手を足して「平均15番」と言っても何の意味もないのと同じです。例を切りかえながら、「その数字で平均を出したら意味があるか？」を自分に問いかけてみてください。
           </HintButton>
         </>
@@ -333,7 +332,7 @@ export function OrganizeLab({ card }: LabProps) {
               <Hint>階級の幅を変えると形が変わります。幅が狭すぎるとギザギザに、広すぎると特徴が消えます。</Hint>
             </>
           )}
-          <HintButton>
+          <HintButton id="organize-2-1">
             相対度数は「全体の中で何割か」。ここまでの割合の合計は、上の行からそこまでを足し算した「ここまでで何割たまったか」です。階段を1段ずつ上がって、最後は必ず1（＝全員）になります。1にならないときは数え落としがあります。
           </HintButton>
         </>
@@ -387,8 +386,8 @@ export function OrganizeLab({ card }: LabProps) {
         "見つけた問題を、どう処理するかまで書きます。",
         <AreaField
           label="処理の手順と、その根拠"
-          value={report}
-          onChange={setReport}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：70時間は単位の誤り（分で入力した可能性）が疑われるため、原票を確認する。確認できない場合は欠損として扱い、除外した件数と理由を報告に明記する。"
           rows={5}
         />
@@ -400,7 +399,7 @@ export function OrganizeLab({ card }: LabProps) {
 /* ========================================================================
  * A2 代表値と四分位数
  * ====================================================================== */
-export function CenterLab({ card }: LabProps) {
+export function CenterLab({ card, missionNote, onMissionNote }: LabProps) {
   const [raw, setRaw] = useState("2,3,3,4,8");
   const [outlier, setOutlier] = useState(8);
   const [classA, setClassA] = useState("58,62,65,67,70,72,74,76,78,95");
@@ -410,7 +409,6 @@ export function CenterLab({ card }: LabProps) {
   const [rates, setRates] = useState("1.4,1.357,1.053,1.2,1.25");
   const [speeds, setSpeeds] = useState("10,4");
   const [quartileView, setQuartileView] = useState("number");
-  const [compare, setCompare] = useState("");
 
   const base = parseNumbers(raw);
   const replaced = [...base.slice(0, -1), outlier];
@@ -615,7 +613,7 @@ export function CenterLab({ card }: LabProps) {
                   )}
                 </>
               )}
-          <HintButton>
+          <HintButton id="center-2-1">
             Q1・Q2・Q3 は、全員を背の順に並べたときの「4分の1の人」「まん中の人」「4分の3の人」の値です。Q1からQ3までの間に、ちょうど全体の半分が入っています。箱の左端がQ1、中の線が中央値、右端がQ3で、この箱が細いクラスは「みんな似ている」、太いクラスは「差が大きい」と読めます。
           </HintButton>
         </>
@@ -683,7 +681,7 @@ export function CenterLab({ card }: LabProps) {
               }
             ]}
           />
-          <HintButton>
+          <HintButton id="center-3-1">
             550円が60食、700円が25食売れたなら、安いほうが2倍以上多く出ています。3つの値段をただ足して割ると、ほとんど売れていない700円を「よく売れた550円と同じ重さ」で数えることになります。人気投票で、1人しかいない部活と40人いる部活を1票ずつにするようなものです。
           </HintButton>
         </>
@@ -784,8 +782,8 @@ export function CenterLab({ card }: LabProps) {
         "中心とばらつきの両方を使って説明します。",
         <AreaField
           label="2クラスの違いと、その根拠"
-          value={compare}
-          onChange={setCompare}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：平均はほぼ同じだが、1組のIQRは11、2組は26で2組のばらつきが大きい。1組は中位層に集中し、2組は上下に分かれている。指導は、1組は全体に、2組は層別に行うのが有効。"
           rows={5}
         />
@@ -797,7 +795,7 @@ export function CenterLab({ card }: LabProps) {
 /* ========================================================================
  * A3 分散・標準偏差・偏差値
  * ====================================================================== */
-export function SpreadLab({ card }: LabProps) {
+export function SpreadLab({ card, missionNote, onMissionNote }: LabProps) {
   const [raw, setRaw] = useState("62,68,71,72,75,78,81,95");
   const [groupA, setGroupA] = useState("48,49,50,51,52");
   const [groupB, setGroupB] = useState("30,40,50,60,70");
@@ -814,7 +812,6 @@ export function SpreadLab({ card }: LabProps) {
   const [mMean, setMMean] = useState(50);
   const [mSd, setMSd] = useState(15);
   const [spreadView, setSpreadView] = useState("deviation");
-  const [conclusion, setConclusion] = useState("");
 
   const s = summarize(raw);
   const a = summarize(groupA);
@@ -952,7 +949,7 @@ export function SpreadLab({ card }: LabProps) {
                 />
               </>
             ))}
-          <HintButton>
+          <HintButton id="spread-1-1">
             画面に4つ数字が出ますが、まず見るのは上の2つ（分散・標準偏差）だけで十分です。下の「不偏」がつくほうは、全員ではなく一部の人しか測れなかったときに、全体を推測するための値です。学校の身体測定は全員ぶんあるので上の2つ、街頭アンケート100人ぶんなら下の2つ、と覚えてください。
           </HintButton>
         </>
@@ -977,7 +974,7 @@ export function SpreadLab({ card }: LabProps) {
             ]}
           />
           <NormalCurve mean={0} sd={1} marks={[{ value: clamp(z, -3.8, 3.8), label: `z=${fmt(z, 2)}` }]} />
-          <HintButton>
+          <HintButton id="spread-2-1">
             z得点は「平均から、標準偏差何個ぶん離れているか」を表す数です。ものさしの目盛りを cm から「標準偏差1個ぶん」に取りかえるイメージです。z＝0なら平均ちょうど、z＝2なら平均より標準偏差2個ぶん上、ということです。
           </HintButton>
         </>
@@ -1060,8 +1057,8 @@ export function SpreadLab({ card }: LabProps) {
         "計算結果をもとに、どちらが良かったかを説明します。",
         <AreaField
           label="判断と、その根拠"
-          value={conclusion}
-          onChange={setConclusion}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：素点は国語70・数学60だが、標準偏差が国語8・数学15と違うため、z得点は国語0.63・数学0.67。集団内の位置では数学のほうがわずかに上といえる。"
           rows={4}
         />
@@ -1073,14 +1070,13 @@ export function SpreadLab({ card }: LabProps) {
 /* ========================================================================
  * A4 確率分布と正規分布
  * ====================================================================== */
-export function NormalLab({ card }: LabProps) {
+export function NormalLab({ card, missionNote, onMissionNote }: LabProps) {
   const [n, setN] = useState(10);
   const [p, setP] = useState(0.5);
   const [mean, setMean] = useState(50);
   const [sd, setSd] = useState(10);
   const [target, setTarget] = useState(70);
   const [population, setPopulation] = useState(300);
-  const [report, setReport] = useState("");
 
   const pmf = Array.from({ length: n + 1 }, (_, k) => binomialPmf(n, k, p));
   const z = zScore(target, mean, sd);
@@ -1171,10 +1167,6 @@ export function NormalLab({ card }: LabProps) {
             bands
             marks={[{ value: clamp(target, 2, 98), label: `${target}点` }]}
           />
-          <p className="muted small">
-            横軸は0〜100点で固定しています。μを動かすと山ごと左右にずれ、σを大きくすると山は低く広く、小さくすると高く細くなります。
-            色の濃い帯が μ±1σ、その外側が ±2σ、いちばん薄いところが ±3σ です。
-          </p>
           <Formula>
             μは山の位置、σは山の広がり　／　z ＝ (自分の得点 − μ) ÷ σ　／　上位の割合 ＝ zより右側の面積　／　順位の目安 ＝ 上位の割合 × 人数
           </Formula>
@@ -1210,7 +1202,8 @@ export function NormalLab({ card }: LabProps) {
             ])}
             highlight={(index) => Math.abs(z) <= index + 1 && Math.abs(z) > index}
           />
-          <HintButton>
+          <HintButton id="normal-1-1">
+            横軸は0〜100点で固定してあります。色の濃い帯が μ±1σ、その外側が ±2σ、いちばん薄いところが ±3σ です。
             μ（ミュー）を変えると山が左右に動き、σ（シグマ）を変えると山の太さが変わります。テントの位置を移すのがμ、テントを広げたり狭めたりするのがσです。
             山の下の面積は、どんな形でも必ず1（＝全員）なので、σを大きくして横に広げると、そのぶん山は低くなります。
             自分の位置は「点数」ではなく「μから σ 何個ぶん離れているか」で測ります。それがz得点で、10倍して50を足すと、いつもの偏差値になります。
@@ -1246,8 +1239,8 @@ export function NormalLab({ card }: LabProps) {
         "計算結果を使って、自分の位置を言葉で説明します。",
         <AreaField
           label="説明文"
-          value={report}
-          onChange={setReport}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：平均50・標準偏差10のテストで70点。z=2.0、偏差値70で、正規分布に従うとすれば上位約2.3%。300人なら約7位に相当する。ただし実際の分布が正規分布から外れていれば、この推定はずれる。"
           rows={4}
         />
@@ -1259,13 +1252,12 @@ export function NormalLab({ card }: LabProps) {
 /* ========================================================================
  * A5 相関と回帰
  * ====================================================================== */
-export function RelationLab({ card }: LabProps) {
+export function RelationLab({ card, missionNote, onMissionNote }: LabProps) {
   const [xs, setXs] = useState("1,2,3,4,5,6,7,8,9,10");
   const [ys, setYs] = useState("18,26,33,41,50,59,68,72,79,88");
   const [predictX, setPredictX] = useState(12);
   const [cause, setCause] = useState("気温");
   const [statement, setStatement] = useState("スマホ時間と成績に負の相関があるので、スマホが成績低下の原因である。");
-  const [proposal, setProposal] = useState("");
 
   const xValues = parseNumbers(xs);
   const yValues = parseNumbers(ys);
@@ -1307,7 +1299,7 @@ export function RelationLab({ card }: LabProps) {
           <Verdict ok>
             ここは計算をするカードではありません。点が右上がりに並べば「片方が増えるともう片方も増える」、右下がりなら「片方が増えるともう片方は減る」、ばらばらなら「関係は見えない」と読みます。いまの図は{correlationLabel(r)}に見えます。
           </Verdict>
-          <HintButton>
+          <HintButton id="relation-0-1">
             数字の表をにらんでも関係は見えませんが、点を打つと一目で分かります。右上がりに並べば「片方が増えるともう片方も増える」、右下がりなら「片方が増えるともう片方は減る」。星座を見つけるのと同じで、まず並びの形をつかんでから数値にします。計算より先に図、が分析の鉄則です。
           </HintButton>
         </>
@@ -1393,7 +1385,7 @@ export function RelationLab({ card }: LabProps) {
               { label: "決定係数 R²", value: fmt(r * r, 4), note: "r を2乗した値。yのばらつきのうち、この直線で言い当てられた割合" }
             ]}
           />
-          <HintButton>
+          <HintButton id="relation-2-1">
             rは −1 から 1 の間に必ず収まります。1に近いほど右上がりにきれいに並び、0に近いほどバラバラ、−1に近いほど右下がりです。R²はそのrを2乗した値で、「この直線でどれくらい言い当てられたか」の割合。10本中8本が的に入れば0.8、というイメージです。
           </HintButton>
         </>
@@ -1474,7 +1466,7 @@ export function RelationLab({ card }: LabProps) {
               ? "「原因」「必ず」などの断定表現があります。相関からは因果を証明できません。"
               : "相関の範囲で表現できています。"}
           </Verdict>
-          <HintButton>
+          <HintButton id="relation-4-1">
             アイスがよく売れる日は、熱中症の人も増えます。でもアイスが熱中症を起こしているわけではなく、両方の裏に「暑さ」がいるだけです。相関から言えるのは「いっしょに動いている」までで、「こっちが原因だ」とは言えません。分析文では「原因である」ではなく「関連がある」と書きましょう。
           </HintButton>
         </>
@@ -1486,8 +1478,8 @@ export function RelationLab({ card }: LabProps) {
         "交絡要因と追加調査まで含めて提案します。",
         <AreaField
           label="言えることの範囲と、次に行う調査"
-          value={proposal}
-          onChange={setProposal}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：スマホ時間と得点にr=−0.62の負の相関がある。ただし家庭学習時間という交絡要因が考えられるため、学習時間を記録して層別に比較する追加調査を行う。因果を主張するには介入実験が必要。"
           rows={5}
         />
@@ -1499,14 +1491,13 @@ export function RelationLab({ card }: LabProps) {
 /* ========================================================================
  * A6 乱数とシミュレーション
  * ====================================================================== */
-export function SimulationLab({ card }: LabProps) {
+export function SimulationLab({ card, missionNote, onMissionNote }: LabProps) {
   const [times, setTimes] = useState(1000);
   const [seed, setSeed] = useState(1);
   const [points, setPoints] = useState(2000);
   const [arrival, setArrival] = useState(3);
   const [service, setService] = useState(4);
   const [staff, setStaff] = useState(1);
-  const [assumption, setAssumption] = useState("");
 
   const dice = useMemo(() => rollDice(times, seed), [times, seed]);
   const series = useMemo(() => [50, 100, 1000, 10000].map((t) => ({ t, data: rollDice(t, seed) })), [seed]);
@@ -1592,7 +1583,7 @@ export function SimulationLab({ card }: LabProps) {
               }
             ]}
           />
-          <HintButton>
+          <HintButton id="simulation-2-1">
             正方形の中にでたらめに点をばらまくと、四分円の中に入る点の割合は面積の比とほぼ同じになります。四分円の面積は正方形の π/4 なので、割合を4倍すれば π が出てきます。雨つぶが降った跡を数えて傘の面積を当てるようなものです。点を増やすほど当たりますが、精度を10倍にするには点を100倍にしないといけません。
           </HintButton>
         </>
@@ -1643,7 +1634,7 @@ export function SimulationLab({ card }: LabProps) {
           <Hint>
             受付を増やしたときの正確な待ち時間はもっと複雑な計算になります。ここでは「行列が伸びるかどうか」の判断に使ってください。
           </Hint>
-          <HintButton>
+          <HintButton id="simulation-3-1">
             ρ（こみぐあい）は「来るペースに対して、さばくペースが足りているか」を表す1つの数です。1より小さければ行列はいずれ落ち着き、1以上だと閉場まで伸び続けます。水を入れる蛇口と排水口の太さの関係と同じで、入るほうが多ければあふれ続けるだけです。だから待ち時間が「無限大」と出たときは、計算ミスではなく「この体制では無理」という答えなのです。
           </HintButton>
         </>
@@ -1676,8 +1667,8 @@ export function SimulationLab({ card }: LabProps) {
         "仮定・試行結果・現実との差をまとめて提案します。",
         <AreaField
           label="提案と、置いた仮定"
-          value={assumption}
-          onChange={setAssumption}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：到着間隔3分・処理4分と仮定するとρ=1.33で1人体制では破綻する。2人体制ならρ=0.67、待ち時間は約8分。ただし開場直後の集中は再現できていないため、開始30分は3人配置する。"
           rows={5}
         />
@@ -1689,7 +1680,7 @@ export function SimulationLab({ card }: LabProps) {
 /* ========================================================================
  * A7 仮説検定と区間推定
  * ====================================================================== */
-export function TestLab({ card }: LabProps) {
+export function TestLab({ card, missionNote, onMissionNote }: LabProps) {
   const [tosses, setTosses] = useState(10);
   const [heads, setHeads] = useState(8);
   const [pValue, setPValue] = useState(0.03);
@@ -1713,7 +1704,6 @@ export function TestLab({ card }: LabProps) {
   const [femaleYes, setFemaleYes] = useState(36);
   const [femaleNo, setFemaleNo] = useState(74);
   const [question, setQuestion] = useState("mean-known");
-  const [conclusion, setConclusion] = useState("");
 
   const coinPmf = Array.from({ length: tosses + 1 }, (_, k) => binomialPmf(tosses, k, 0.5));
   const coinHeads = clamp(Math.round(heads), 0, tosses);
@@ -2056,7 +2046,7 @@ export function TestLab({ card }: LabProps) {
               </Hint>
             </>
           )}
-          <HintButton>
+          <HintButton id="test-2-1">
             Z値やt値は「基準からのズレが、ふつうのブレ何個ぶんか」を表す数です。割っている標準誤差は、1個ずつのばらつきではなく「平均そのもののブレ」。10人でジャンケンした勝率より100人でやった勝率のほうが安定するのと同じで、個数が多いほどこの値は小さくなり、同じズレでもZ値・t値は大きくなります。Zとtのちがいはただひとつ、本来のばらつきを知っているかどうかです。
           </HintButton>
         </>
@@ -2166,7 +2156,7 @@ export function TestLab({ card }: LabProps) {
               )}
             </>
           )}
-          <HintButton>
+          <HintButton id="test-3-1">
             同じ人が受けた2つのテストなら、1人ごとに「学科 − 実技」の差を出して、その差の平均が0からずれているかだけを見ます。もともと得意な人・苦手な人の個人差が引き算で消えるので、小さな差でも見つけやすくなります。全員が同じ厚さの靴をはいていても身長の差には影響しないのと同じ理屈です。ちがう人どうしを比べるときは、この引き算ができないので別の方法を使います。
           </HintButton>
         </>
@@ -2272,8 +2262,8 @@ export function TestLab({ card }: LabProps) {
           />
           <AreaField
             label="2つの調査それぞれの設計と結論"
-            value={conclusion}
-            onChange={setConclusion}
+            value={missionNote}
+            onChange={onMissionNote}
             placeholder="例：(1) 2クラスの平均点は母分散未知なので対応のないt検定。H0:差がない、α=0.05、両側。(2) 学年別のA/B選択はカイ二乗検定。H0:学年と選択は独立。いずれもp値とαで判定し、95%信頼区間または残差を添える。"
             rows={6}
           />
@@ -2286,7 +2276,7 @@ export function TestLab({ card }: LabProps) {
 /* ========================================================================
  * A8 時系列とAI活用
  * ====================================================================== */
-export function TimeseriesLab({ card }: LabProps) {
+export function TimeseriesLab({ card, missionNote, onMissionNote }: LabProps) {
   const [raw, setRaw] = useState(TEMPS);
   const [startYear, setStartYear] = useState(1980);
   const [windowSize, setWindowSize] = useState(5);
@@ -2295,7 +2285,6 @@ export function TimeseriesLab({ card }: LabProps) {
   const [lastYear, setLastYear] = useState(1000);
   const [lastMonth, setLastMonth] = useState(1500);
   const [prompt, setPrompt] = useState("この表を分析して結論を出して。");
-  const [audit, setAudit] = useState("");
 
   const values = parseNumbers(raw);
   const ma = movingAverage(values, windowSize);
@@ -2439,7 +2428,7 @@ export function TimeseriesLab({ card }: LabProps) {
             </>
           )}
 
-          <HintButton>
+          <HintButton id="timeseries-0-1">
             時系列データは、並んでいる順番そのものが情報です。読むときは、長期的なトレンド・周期的な季節性・短期的な不規則変動の3つに分けて考えます。
             テストの点なら並べ替えても中身は変わりませんが、気温の記録を並べ替えたら「上がってきている」という一番大事な事実が消えてしまいます。
             ①そのまま並べると全部が混ざって見え、②移動平均をとると短期の不規則変動が消え、④直線にすると長期のトレンドだけが1つの数（傾き）になります。
@@ -2535,7 +2524,7 @@ export function TimeseriesLab({ card }: LabProps) {
           <Hint>
             「目的／対象の列／手順／根拠の示し方／禁止事項／出力形式」を書くと再現性が上がります。個人情報は入力前に取り除きます。
           </Hint>
-          <HintButton>
+          <HintButton id="timeseries-2-1">
             このスコアは、依頼文の中に「目的」「列」「手順」「根拠」「禁止」「出力」という6つの言葉が実際に書かれているかを数えています。料理を頼むときに「何かおいしいもの」ではなく「4人ぶん、辛くなく、20分で、皿に盛って」と伝えるのと同じで、条件を言葉にして書くほど、返ってきたものが注文どおりか確かめられます。
           </HintButton>
         </>
@@ -2547,8 +2536,8 @@ export function TimeseriesLab({ card }: LabProps) {
         "再計算・匿名化・根拠・限界の4点を確認する手順書を作ります。",
         <AreaField
           label="監査の手順書"
-          value={audit}
-          onChange={setAudit}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：1) AIが出した平均とp値を表計算で再計算し一致を確認 2) 氏名・クラスを削除し4けた番号に置換 3) 使ったデータの範囲と件数を明記 4) 相関を因果と書いていないか読み合わせ 5) 標本数が少ない項目には限界を注記"
           rows={6}
         />

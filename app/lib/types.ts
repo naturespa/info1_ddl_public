@@ -96,13 +96,16 @@ export type Submission = {
 export type Done = Record<string, boolean>;
 
 export type Perspective = {
-  /** 知識・技能：確認問題の正答率 */
+  /** 知識・技能：確認問題＋重要語句の得点率 */
   knowledge: number;
   /** 思考・判断・表現：実験の実施率 */
   thinking: number;
-  /** 主体的に学習に取り組む態度：実験ごとの理解度申告の平均（％）。生徒には点数を出さない */
+  /** 主体的に学習に取り組む態度：単元の完走率70％＋ふり返り申告率30％ */
   attitude: number;
 };
+
+/** こころ（主体性）の内訳。素点と100点換算の両方を持つ */
+export type AttitudePart = { done: number; max: number; rate: number };
 
 /**
  * 実験ごとの理解度の申告。生徒には点数を見せない。
@@ -131,6 +134,18 @@ export type AreaScore = {
   quizMax: number;
   firstCorrect: number;
   secondCorrect: number;
+  /** 重要語句の素点（0.5刻み） */
+  wordScore: number;
+  /** 重要語句の満点＝語数 */
+  wordMax: number;
+  /** 重要語句を1回目で正解した数 */
+  wordFirst: number;
+  /** 重要語句を2回目で正解した数 */
+  wordSecond: number;
+  /** 知識・技能の素点＝確認問題＋重要語句 */
+  knowledgeScore: number;
+  /** 知識・技能の満点 */
+  knowledgeMax: number;
   experimentDone: number;
   experimentMax: number;
   /** 理解度の申告点の合計（1実験あたり最大5点。未申告は0点） */
@@ -141,6 +156,12 @@ export type AreaScore = {
   understandingAnswered: number;
   completedLessons: number;
   lessonCount: number;
+  /** こころの内訳：ふり返りの申告 */
+  reflection: AttitudePart;
+  /** こころの内訳：単元の完走 */
+  clear: AttitudePart;
+  /** かせいだGの累計（使ってもここは減らない） */
+  earned: number;
 };
 
 export type Summary = {
@@ -157,6 +178,18 @@ export type Summary = {
   /** 2回目で正解した問題数 */
   quizSecondCorrect: number;
   quizMax: number;
+  /** 重要語句の素点（0.5刻み） */
+  wordScore: number;
+  /** 重要語句の満点＝語数 */
+  wordMax: number;
+  /** 重要語句を1回目で正解した数 */
+  wordFirst: number;
+  /** 重要語句を2回目で正解した数 */
+  wordSecond: number;
+  /** 知識・技能の素点＝確認問題＋重要語句 */
+  knowledgeScore: number;
+  /** 知識・技能の満点 */
+  knowledgeMax: number;
   experimentDone: number;
   experimentMax: number;
   /** 理解度の申告点の合計（1実験あたり最大5点。未申告は0点） */
@@ -167,6 +200,14 @@ export type Summary = {
   understandingAnswered: number;
   completedLessons: number;
   lessonCount: number;
+  /** こころの内訳：ふり返りの申告 */
+  reflection: AttitudePart;
+  /** こころの内訳：単元の完走 */
+  clear: AttitudePart;
+  /** かせいだGの累計（使ってもここは減らない） */
+  earned: number;
+  /** つかったGの累計（ヒント代） */
+  spent: number;
   /** 分野ごとの成績（それぞれ100点満点） */
   areas: AreaScore[];
 };
@@ -190,8 +231,15 @@ export type ExamRow = {
   elapsedSeconds: number;
 };
 
+/** こころ（主体性）の出力。素点と100点換算の両方を出す */
+export type AttitudeReport = {
+  total: { reflection: AttitudePart; clear: AttitudePart; score100: number };
+  byArea: { area: Area; reflection: AttitudePart; clear: AttitudePart; score100: number }[];
+  weight: { clear: number; reflection: number };
+};
+
 export type StudentRecord = {
-  version: 5;
+  version: 6;
   exportedAt?: string;
   studentCode: string;
   drafts: Record<string, number[]>;
@@ -199,6 +247,18 @@ export type StudentRecord = {
   experiments: Record<string, boolean>;
   /** 実験ごとの理解度の申告（1〜5）。キーは experiments と同じ `${lessonId}-${index}` */
   understanding: Record<string, UnderstandingLevel>;
+  /** 重要語句テストの入力（送信前） */
+  wordDrafts: Record<string, string[]>;
+  /** 重要語句テストの記録 */
+  wordSubmissions: Record<string, unknown>;
+  /** 応用ミッションの自由記述 */
+  missionNotes: Record<string, string>;
+  /** 買ったヒント */
+  boughtHints: Record<string, boolean>;
+  /** G の収支。成績には使いません */
+  coins: { earned: number; spent: number; balance: number; hintsBought: string[]; level: number };
+  /** 主体的に学習に取り組む態度 */
+  attitude: AttitudeReport;
   summary: Summary;
   /** 分野別テストの結果。成績処理はまずこの exams を見れば足りる */
   exams: ExamRow[];

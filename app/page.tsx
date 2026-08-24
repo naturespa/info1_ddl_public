@@ -8,10 +8,14 @@ import { MiniSheet } from "./lib/mini-sheet";
 import { sheetDrills } from "./lib/sheet-tasks";
 import { experimentCount, lessons, totalExperiments, totalQuestions } from "./lib/lessons";
 import type { Area, ExamRow, Lesson, QuestionResult, Submission, StudentRecord, Summary, UnderstandingLevel } from "./lib/types";
+import { COIN, DIFFICULTY, attitudeScore, levelOf, part } from "./lib/progress";
+import { WordQuiz, gradeWords, type WordSubmission } from "./lib/word-quiz";
+import { WORDS_PER_LESSON, wordsOf } from "./lib/words";
 import { UNDERSTANDING_CHOICES } from "./lib/types";
 import type { ExamResult } from "./lib/exam-types";
 import { classOf, gradeOf, seatOf } from "./lib/exam-types";
 import { formatElapsed } from "./lib/exam-runtime";
+import { HintShopContext } from "./lib/ui";
 
 const STORAGE_PREFIX = "joho-ddl-public-v2:";
 /** 確定した4桁番号を覚えておくキー。次に開いたときも同じ番号で続きから始める */
@@ -101,6 +105,14 @@ export default function Home() {
   const [endConfirm, setEndConfirm] = useState(false);
   /** 分野別テストの結果（分野ごとに最新の1回） */
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
+  /** 重要語句テストの入力（送信前） */
+  const [wordDrafts, setWordDrafts] = useState<Record<string, string[]>>({});
+  /** 重要語句テストの記録 */
+  const [wordSubmissions, setWordSubmissions] = useState<Record<string, WordSubmission>>({});
+  /** 応用ミッションの自由記述 */
+  const [missionNotes, setMissionNotes] = useState<Record<string, string>>({});
+  /** 買ったヒント。キーは `${lessonId}-${実験番号}-${そのカードの中の何番目か}` */
+  const [boughtHints, setBoughtHints] = useState<Record<string, boolean>>({});
 
   const current = lessons.find((lesson) => lesson.id === active);
 
@@ -116,6 +128,11 @@ export default function Home() {
       let understandingScore = 0;
       let understandingAnswered = 0;
       let completedLessons = 0;
+      let wordScore = 0;
+      let wordMax = 0;
+      let wordFirst = 0;
+      let wordSecond = 0;
+      let earned = 0;
       group.forEach((lesson) => {
         const submission = submissions[lesson.id];
         quizMax += lesson.questions.length;
@@ -123,21 +140,52 @@ export default function Home() {
           quizScore += submission.score;
           firstCorrect += submission.correct;
           secondCorrect += submission.secondCorrect;
+          earned += submission.correct * COIN.first + submission.secondCorrect * COIN.second;
+        }
+        // 重要語句
+        const wordSub = wordSubmissions[lesson.id];
+        wordMax += WORDS_PER_LESSON;
+        if (wordSub) {
+          wordScore += wordSub.score;
+          wordFirst += wordSub.correct;
+          wordSecond += wordSub.secondCorrect;
+          earned += wordSub.correct * COIN.first + wordSub.secondCorrect * COIN.second;
         }
         const expTotal = experimentCount(lesson);
-        const expDone = Array.from({ length: expTotal }, (_, i) => experiments[`${lesson.id}-${i}`]).filter(Boolean).length;
+        const missionIndex = expTotal - 1;
+        // 応用ミッションの自由記述が空欄のときは 0.5個ぶん・0G
+        const blankMission = !((missionNotes[lesson.id] ?? "").trim());
+        let doneHere = 0;
+        for (let i = 0; i < expTotal; i++) {
+          if (!experiments[`${lesson.id}-${i}`]) continue;
+          const half = i === missionIndex && blankMission;
+          doneHere += half ? 0.5 : 1;
+          earned += half ? COIN.experimentBlank : COIN.experiment;
+        }
         experimentMax += expTotal;
-        experimentDone += expDone;
+        experimentDone += doneHere;
         for (let i = 0; i < expTotal; i++) {
           const level = understanding[`${lesson.id}-${i}`] ?? 0;
           understandingScore += level;
           if (level > 0) understandingAnswered += 1;
         }
-        if (submission && expDone === expTotal) completedLessons += 1;
+        // 完走＝実験を全部やり、確認問題と重要語句の両方で2回目待ちが残っていないこと
+        const allExp = Array.from({ length: expTotal }, (_, i) => experiments[`${lesson.id}-${i}`]).every(Boolean);
+        const quizDone = !!submission && !submission.results.includes("2回目待ち");
+        const wordDone = !!wordSub && !wordSub.results.includes("2回目待ち");
+        if (allExp && quizDone && wordDone) {
+          completedLessons += 1;
+          earned += COIN.lessonClear;
+        }
       });
-      const knowledge = quizMax ? Math.round((quizScore / quizMax) * 100) : 0;
+      // 知識・技能は「確認問題＋重要語句」
+      const knowledgeScore = quizScore + wordScore;
+      const knowledgeMax = quizMax + wordMax;
+      const knowledge = knowledgeMax ? Math.round((knowledgeScore / knowledgeMax) * 100) : 0;
       const thinking = experimentMax ? Math.round((experimentDone / experimentMax) * 100) : 0;
-      const attitude = experimentMax ? Math.round((understandingScore / (experimentMax * 5)) * 100) : 0;
+      const reflection = part(understandingAnswered, experimentMax);
+      const clear = part(completedLessons, group.length);
+      const attitude = attitudeScore(reflection, clear);
       return {
         totalScore: Math.round(knowledge * 0.6 + thinking * 0.4),
         perspective: { knowledge, thinking, attitude },
@@ -145,13 +193,22 @@ export default function Home() {
         firstCorrect,
         secondCorrect,
         quizMax,
-        experimentDone,
+        wordScore: point(wordScore),
+        wordMax,
+        wordFirst,
+        wordSecond,
+        knowledgeScore: point(knowledgeScore),
+        knowledgeMax,
+        experimentDone: point(experimentDone),
         experimentMax,
         understandingScore,
         understandingMax: experimentMax * 5,
         understandingAnswered,
         completedLessons,
-        lessonCount: group.length
+        lessonCount: group.length,
+        earned,
+        reflection,
+        clear
       };
     };
 
@@ -166,6 +223,12 @@ export default function Home() {
       quizCorrect: whole.firstCorrect,
       quizSecondCorrect: whole.secondCorrect,
       quizMax: whole.quizMax,
+      wordScore: whole.wordScore,
+      wordMax: whole.wordMax,
+      wordFirst: whole.wordFirst,
+      wordSecond: whole.wordSecond,
+      knowledgeScore: whole.knowledgeScore,
+      knowledgeMax: whole.knowledgeMax,
       experimentDone: whole.experimentDone,
       experimentMax: whole.experimentMax,
       understandingScore: whole.understandingScore,
@@ -173,9 +236,13 @@ export default function Home() {
       understandingAnswered: whole.understandingAnswered,
       completedLessons: whole.completedLessons,
       lessonCount: whole.lessonCount,
+      earned: whole.earned,
+      spent: Object.values(boughtHints).filter(Boolean).length * COIN.hint,
+      reflection: whole.reflection,
+      clear: whole.clear,
       areas
     };
-  }, [submissions, experiments, understanding]);
+  }, [submissions, experiments, understanding, wordSubmissions, missionNotes, boughtHints]);
 
   /** 成績ページのダッシュボード用に、単元別・難易度別の理解度を集計する */
   const analysis = useMemo(() => {
@@ -283,15 +350,54 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** 保存とJSON出力で使う、記録の中身を1か所で組み立てる */
+  const buildRecord = (): StudentRecord => ({
+    version: 6,
+    studentCode,
+    drafts,
+    submissions,
+    experiments,
+    understanding,
+    wordDrafts,
+    wordSubmissions,
+    missionNotes,
+    boughtHints,
+    coins: {
+      earned: summary.earned,
+      spent: summary.spent,
+      balance: summary.earned - summary.spent,
+      hintsBought: Object.keys(boughtHints).filter((k) => boughtHints[k]),
+      level: levelOf(summary.earned).level
+    },
+    attitude: {
+      total: {
+        reflection: summary.reflection,
+        clear: summary.clear,
+        score100: summary.perspective.attitude
+      },
+      byArea: summary.areas.map((a) => ({
+        area: a.area,
+        reflection: a.reflection,
+        clear: a.clear,
+        score100: a.perspective.attitude
+      })),
+      weight: { clear: 0.7, reflection: 0.3 }
+    },
+    summary,
+    exams: examRows,
+    examDetails: examResults
+  });
+
   useEffect(() => {
     if (!loaded || studentCode.length !== 4) return;
-    const record: StudentRecord = { version: 5, studentCode, drafts, submissions, experiments, understanding, summary, exams: examRows, examDetails: examResults };
+    const record: StudentRecord = buildRecord();
     try {
       localStorage.setItem(`${STORAGE_PREFIX}${studentCode}`, JSON.stringify(record));
     } catch {
       /* 保存できない環境では黙って続行する */
     }
-  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints]);
 
   /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
   const loadRecord = (code: string) => {
@@ -306,12 +412,25 @@ export default function Home() {
       setSubmissions(restored);
       setExperiments(saved.experiments ?? {});
       setUnderstanding(saved.understanding ?? {});
+      const restoredWords: Record<string, WordSubmission> = {};
+      lessons.forEach((lesson) => {
+        const graded = gradeWords(lesson.id, saved.wordSubmissions?.[lesson.id] as Partial<WordSubmission> | undefined);
+        if (graded) restoredWords[lesson.id] = graded;
+      });
+      setWordDrafts(saved.wordDrafts ?? {});
+      setWordSubmissions(restoredWords);
+      setMissionNotes(saved.missionNotes ?? {});
+      setBoughtHints(saved.boughtHints ?? {});
       setExamResults(loadExamResults(code));
     } catch {
       setDrafts({});
       setSubmissions({});
       setExperiments({});
       setUnderstanding({});
+      setWordDrafts({});
+      setWordSubmissions({});
+      setMissionNotes({});
+      setBoughtHints({});
     }
   };
 
@@ -409,11 +528,40 @@ export default function Home() {
     });
   };
 
+  /** いま持っているG */
+  const balance = summary.earned - summary.spent;
+  const level = levelOf(summary.earned);
+
+  /** ヒントを1つ買う。足りなければ何もしない */
+  const buyHint = (id: string) => {
+    if (balance < COIN.hint || boughtHints[id]) return;
+    setBoughtHints((prev) => ({ ...prev, [id]: true }));
+  };
+
+  /** 重要語句テストを送信する */
+  const submitWords = (lessonId: string, next: WordSubmission) =>
+    setWordSubmissions((prev) => ({ ...prev, [lessonId]: next }));
+
   /** 理解度を選ぶと、その実験を「やった」として記録し、理解度も同時に残す */
   const markExperiment = (lessonId: string, index: number, level: UnderstandingLevel) => {
     const key = `${lessonId}-${index}`;
     setExperiments((prev) => ({ ...prev, [key]: true }));
     setUnderstanding((prev) => ({ ...prev, [key]: level }));
+  };
+
+  /** その単元を討伐したか（実験ぜんぶ＋確認問題も語句も2回目まで終えた） */
+  const clearedLesson = (lesson: Lesson) => {
+    const expTotal = experimentCount(lesson);
+    const allExp = Array.from({ length: expTotal }, (_, i) => experiments[`${lesson.id}-${i}`]).every(Boolean);
+    const quiz = submissions[lesson.id];
+    const word = wordSubmissions[lesson.id];
+    return (
+      allExp &&
+      !!quiz &&
+      !quiz.results.includes("2回目待ち") &&
+      !!word &&
+      !word.results.includes("2回目待ち")
+    );
   };
 
   const lessonProgress = (lesson: Lesson) =>
@@ -422,16 +570,8 @@ export default function Home() {
   const exportJson = () => {
     if (studentCode.length !== 4) return;
     const record: StudentRecord = {
-      version: 5,
-      exportedAt: new Date().toISOString(),
-      studentCode,
-      drafts,
-      submissions,
-      experiments,
-      understanding,
-      summary,
-      exams: examRows,
-      examDetails: examResults
+      ...buildRecord(),
+      exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json;charset=utf-8" });
     const link = document.createElement("a");
@@ -455,6 +595,10 @@ export default function Home() {
     setSubmissions({});
     setExperiments({});
     setUnderstanding({});
+    setWordDrafts({});
+    setWordSubmissions({});
+    setMissionNotes({});
+    setBoughtHints({});
     setActive("home");
     try {
       localStorage.removeItem(ACTIVE_KEY);
@@ -542,20 +686,28 @@ export default function Home() {
         <button className="brand" onClick={() => setActive("home")}>
           情報I Digital &amp; Data Lab
         </button>
+        {studentCode.length === 4 && (
+          <div className="purse" title="いま持っているG">
+            <span className="purse-lv">Lv {level.level}</span>
+            <span className="purse-g">
+              <b>{balance}</b> G
+            </span>
+          </div>
+        )}
         <nav className="nav">
-          <button onClick={() => setActive("home")}>学習マップ</button>
+          <button onClick={() => setActive("home")}>依頼掲示板</button>
           {studentCode.length === 4 && <button onClick={() => setActive("exam")}>分野別テスト</button>}
-          <button onClick={() => setActive("results")}>成績・JSON出力</button>
+          <button onClick={() => setActive("results")}>ステータス</button>
           {studentCode.length === 4 &&
             (endConfirm ? (
               <>
                 <button className="danger" onClick={endLearning}>
-                  終了する（記録は残ります）
+                  休む（記録は残ります）
                 </button>
                 <button onClick={() => setEndConfirm(false)}>やめる</button>
               </>
             ) : (
-              <button onClick={() => setEndConfirm(true)}>学習を終了</button>
+              <button onClick={() => setEndConfirm(true)}>宿屋で休む</button>
             ))}
         </nav>
       </header>
@@ -563,20 +715,21 @@ export default function Home() {
       <div className="shell">
         {active === "home" && (
           <>
-            <section className="hero">
-              <div>
-                <h1>さあ、どの単元から攻略する？</h1>
+            <section className="board-hero">
+              <div className="board-title">
+                <span className="board-eyebrow">依頼掲示板</span>
+                <h1>受けたい依頼を選べ。</h1>
                 <p>
-                  全{lessons.length}単元・実験{totalExperiments}個・確認問題{totalQuestions}問。読むだけの単元はひとつもありません。
-                  数値を打ちこみ、ビットを押し、絵を描いて確かめていきます。挑んだ記録はこのブラウザに残り、成績ページで弱点まで見えます。
-                  {studentCode.length === 4
-                    ? ""
-                    : "はじめに4桁番号を入れ、確認してから確定してください。確定するとこのブラウザでは番号を変えられません。同じパソコン・同じブラウザなら、前に使った番号を入れ直すと前回の記録から続けられます。"}
+                  依頼は全部で{lessons.length}件。実験{totalExperiments}個・確認問題{totalQuestions}問・重要語句{lessons.length * WORDS_PER_LESSON}語。
+                  読むだけの依頼はひとつもない。数値を打ちこみ、ビットを押し、絵を描いて確かめていけ。
                 </p>
                 {studentCode.length === 4 ? (
-                  <div className="code-locked">
-                    <b>番号 {studentCode}</b>
-                    <span>確定しました。この番号で記録しています。</span>
+                  <div className="board-card-me">
+                    <span className="me-code">No.{studentCode}</span>
+                    <span className="me-lv">Lv {level.level}</span>
+                    <span className="me-g">{balance} G</span>
+                    {!level.maxed && <em>次のレベルまで あと {level.toNext}G</em>}
+                    {level.maxed && <em>最高レベルに到達している</em>}
                   </div>
                 ) : (
                   <div className="code-entry">
@@ -625,51 +778,67 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              <div className="score-panel">
-                <div className="score-ring">
-                  <strong>{summary.totalScore}</strong>
-                  <span>/{summary.totalMax}</span>
-                </div>
-                <ul className="perspective">
-                  <li>
-                    <span>知識・技能</span>
-                    <b>{summary.perspective.knowledge}</b>
-                  </li>
-                  <li>
-                    <span>思考・判断・表現</span>
-                    <b>{summary.perspective.thinking}</b>
-                  </li>
-                </ul>
-              </div>
             </section>
 
             {(["デジタル", "データ活用"] as const).map((area) => {
               const areaLessons = lessons.filter((lesson) => lesson.area === area);
+              const cleared = areaLessons.filter((lesson) => clearedLesson(lesson)).length;
               return (
-                <section key={area}>
-                  <div className="section-heading">
-                    <h2>{area}</h2>
-                    <span className="muted">
-                      {areaLessons.filter((lesson) => submissions[lesson.id]).length} / {areaLessons.length} テスト送信済み
+                <section className="board-area" key={area}>
+                  <div className="board-area-head">
+                    <h2>{area}分野の依頼</h2>
+                    <span>
+                      討伐 {cleared} / {areaLessons.length}
                     </span>
                   </div>
-                  <div className="lesson-grid">
-                    {areaLessons.map((lesson) => (
-                      <button className={`lesson-card ${submissions[lesson.id] ? "done" : ""}`} key={lesson.id} onClick={() => setActive(lesson.id)}>
-                        <b>{lesson.no}</b>
-                        <h3>{lesson.title}</h3>
-                        <p>{lesson.subtitle}</p>
-                        <div className="tags">
-                          {lesson.concepts.slice(0, 4).map((concept) => (
-                            <span key={concept}>{concept}</span>
-                          ))}
-                        </div>
-                        <strong>
-                          実験 {lessonProgress(lesson)}/{experimentCount(lesson)}
-                          {submissions[lesson.id] ? ` ・ 問題 ${submissions[lesson.id].correct}/${lesson.questions.length}` : ""}
-                        </strong>
-                      </button>
-                    ))}
+                  <div className="quest-grid">
+                    {areaLessons.map((lesson) => {
+                      const expTotal = experimentCount(lesson);
+                      const expDone = lessonProgress(lesson);
+                      const quiz = submissions[lesson.id];
+                      const word = wordSubmissions[lesson.id];
+                      const done = clearedLesson(lesson);
+                      const started = expDone > 0 || !!quiz || !!word;
+                      const star = DIFFICULTY[lesson.id] ?? 2;
+                      const reward =
+                        expTotal * COIN.experiment +
+                        lesson.questions.length * COIN.first +
+                        WORDS_PER_LESSON * COIN.first +
+                        COIN.lessonClear;
+                      return (
+                        <button
+                          className={`quest ${done ? "done" : started ? "doing" : ""}`}
+                          key={lesson.id}
+                          onClick={() => setActive(lesson.id)}
+                        >
+                          <span className="quest-pin" aria-hidden="true" />
+                          <div className="quest-head">
+                            <b className="quest-no">{lesson.no}</b>
+                            <span className="quest-star" aria-label={`手ごわさ ${star}`}>
+                              {"★".repeat(star)}
+                              <i>{"★".repeat(3 - star)}</i>
+                            </span>
+                          </div>
+                          <h3>{lesson.title}</h3>
+                          <p>{lesson.subtitle}</p>
+                          <div className="quest-meter">
+                            <span>実験</span>
+                            <div className="quest-bar">
+                              <i style={{ width: `${(expDone / expTotal) * 100}%` }} />
+                            </div>
+                            <em>
+                              {expDone}/{expTotal}
+                            </em>
+                          </div>
+                          <div className="quest-foot">
+                            <span className={`quest-state ${done ? "done" : started ? "doing" : ""}`}>
+                              {done ? "討伐ずみ" : started ? "挑戦中" : "未着手"}
+                            </span>
+                            <span className="quest-reward">報酬 最大 {reward}G</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -680,7 +849,7 @@ export default function Home() {
         {current && (
           <section className="workspace">
             <button className="back" onClick={() => setActive("home")}>
-              学習マップへ戻る
+              依頼掲示板へ戻る
             </button>
             <div className="lesson-hero">
               <div>
@@ -734,7 +903,29 @@ export default function Home() {
               )}
             </section>
 
-            <Experiments lessonId={current.id} card={renderCard(current)} />
+            <HintShopContext.Provider
+              value={{
+                balance,
+                price: COIN.hint,
+                bought: (id) => !!boughtHints[id],
+                buy: buyHint
+              }}
+            >
+              <Experiments
+                lessonId={current.id}
+                card={renderCard(current)}
+                missionNote={missionNotes[current.id] ?? ""}
+                onMissionNote={(value) => setMissionNotes((prev) => ({ ...prev, [current.id]: value }))}
+              />
+            </HintShopContext.Provider>
+
+            <WordQuiz
+              lessonId={current.id}
+              submission={wordSubmissions[current.id]}
+              draft={wordDrafts[current.id] ?? wordsOf(current.id).map(() => "")}
+              onDraft={(next) => setWordDrafts((prev) => ({ ...prev, [current.id]: next }))}
+              onSubmit={(next) => submitWords(current.id, next)}
+            />
 
             <section className="quiz">
               <h2>確認問題 {current.questions.length}問</h2>
@@ -849,16 +1040,69 @@ export default function Home() {
         )}
 
         {active === "results" && (
-          <section className="workspace">
+          <section className="workspace status-view">
             <button className="back" onClick={() => setActive("home")}>
-              学習マップへ戻る
+              依頼掲示板へ戻る
             </button>
-            <h1>成績・JSON出力</h1>
-            <p className="muted">
-              デジタル分野100点＋データ活用分野100点の<b>200点満点</b>です。分野ごとに、知識・技能（確認問題）60％、
-              思考・判断・表現（実験）40％で計算します。確認問題は1回目で正解すると1点、2回目で正解すると0.5点です。
-              教員用の保存機能はありません。
-            </p>
+
+            <div className="status-hero">
+              <div className="status-title">
+                <span className="board-eyebrow">ステータス</span>
+                <h1>
+                  レベル {level.level}。
+                  {level.maxed ? "最高レベルに到達している。" : `次のレベルまであと ${level.toNext}G。`}
+                </h1>
+                <div className="status-lvbar">
+                  <i style={{ width: `${Math.round(level.ratio * 100)}%` }} />
+                </div>
+                <p className="muted small">
+                  No.{studentCode || "----"} ／ かせいだ {summary.earned}G ・ つかった {summary.spent}G ・ のこり{" "}
+                  <b>{balance}G</b>
+                </p>
+              </div>
+              <div className="status-purse">
+                <span>もちもの</span>
+                <strong>{balance}</strong>
+                <em>G</em>
+                <small>ヒント {Object.values(boughtHints).filter(Boolean).length} 個 開放ずみ</small>
+              </div>
+            </div>
+
+            <div className="gauges">
+              <div className="gauge">
+                <span className="gauge-name">ちから</span>
+                <div className="gauge-bar">
+                  <i style={{ width: `${summary.perspective.knowledge}%` }} />
+                </div>
+                <b>{summary.perspective.knowledge}</b>
+                <em>
+                  知識・技能　確認問題 {summary.quizScore}/{summary.quizMax}点 ＋ 重要語句 {summary.wordScore}/
+                  {summary.wordMax}点
+                </em>
+              </div>
+              <div className="gauge">
+                <span className="gauge-name">かしこさ</span>
+                <div className="gauge-bar">
+                  <i style={{ width: `${summary.perspective.thinking}%` }} />
+                </div>
+                <b>{summary.perspective.thinking}</b>
+                <em>
+                  思考・判断・表現　実験 {summary.experimentDone}/{summary.experimentMax}個
+                </em>
+              </div>
+              <div className="gauge">
+                <span className="gauge-name">こころ</span>
+                <div className="gauge-bar">
+                  <i style={{ width: `${summary.perspective.attitude}%` }} />
+                </div>
+                <b>{summary.perspective.attitude}</b>
+                <em>
+                  主体性　単元の討伐 {summary.clear.done}/{summary.clear.max} ・ ふり返り {summary.reflection.done}/
+                  {summary.reflection.max}
+                </em>
+              </div>
+            </div>
+
             <div className="result-grid">
               <div className="metric">
                 <span>総合点（2分野の合計）</span>
@@ -866,18 +1110,9 @@ export default function Home() {
                 <small>/{summary.totalMax}</small>
               </div>
               <div className="metric">
-                <span>知識・技能</span>
-                <b>{summary.perspective.knowledge}</b>
-                <small>
-                  {summary.quizScore}/{summary.quizMax}点
-                </small>
-              </div>
-              <div className="metric">
-                <span>思考・判断・表現</span>
-                <b>{summary.perspective.thinking}</b>
-                <small>
-                  {summary.experimentDone}/{summary.experimentMax}実験
-                </small>
+                <span>討伐した依頼</span>
+                <b>{summary.completedLessons}</b>
+                <small>/{summary.lessonCount}件</small>
               </div>
               <div className="metric">
                 <span>ふり返りの記録</span>
@@ -886,8 +1121,10 @@ export default function Home() {
               </div>
             </div>
             <p className="muted small">
-              「どこまで分かった？」の申告は、主体的に学習に取り組む態度として記録され、JSONに入ります。
-              正直に選んでください。点数は画面には出しません。
+              総合点は、デジタル分野100点＋データ活用分野100点の<b>200点満点</b>です。分野ごとに、
+              ちから（確認問題＋重要語句）60％、かしこさ（実験）40％で計算します。
+              分野別テストの点と、こころの点は、この200点には入っていません。
+              Gは道具を買うためのもので、成績には使いません。
             </p>
 
             <div className="area-grid">

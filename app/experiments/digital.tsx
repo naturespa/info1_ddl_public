@@ -68,7 +68,12 @@ import {
 import { MOJIBAKE_ENCODINGS, mojibakeSamples } from "../lib/mojibake-data";
 
 export type CardRenderer = (index: number, title: string, goal: string, body: ReactNode) => ReactNode;
-export type LabProps = { card: CardRenderer };
+export type LabProps = {
+  card: CardRenderer;
+  /** 応用ミッションの自由記述。ページ側が持ち、保存とJSON出力の対象になる */
+  missionNote: string;
+  onMissionNote: (value: string) => void;
+};
 
 /** 教科書（1KB＝1,024B）にそろえた段階表示。IPAの問題文が1,000進を指定する場合は下段を見る */
 const bytesRow = (bytes: number) => {
@@ -494,7 +499,7 @@ const RippleDiagram = ({
 /* ========================================================================
  * D0 デジタル情報の特徴
  * ====================================================================== */
-export function FeatureLab({ card }: LabProps) {
+export function FeatureLab({ card, missionNote, onMissionNote }: LabProps) {
   const [temp, setTemp] = useState(21.7);
   const [gradation, setGradation] = useState("1");
   const [copies, setCopies] = useState(6);
@@ -502,7 +507,6 @@ export function FeatureLab({ card }: LabProps) {
   const [bits, setBits] = useState(8);
   const [kinds, setKinds] = useState(15);
   const [stage, setStage] = useState("digitization");
-  const [plan, setPlan] = useState("");
 
   /* --- 実験1: アナログ温度計とデジタル温度計 --- */
   const stepSize = Number(gradation);
@@ -885,8 +889,8 @@ export function FeatureLab({ card }: LabProps) {
           </div>
           <AreaField
             label="選んだ事例と、次の段階に進めるなら何を変えるか"
-            value={plan}
-            onChange={setPlan}
+            value={missionNote}
+            onChange={onMissionNote}
             placeholder="例：出席確認は今アプリ入力なのでデジタイゼーション。入室時のICカードで自動記録すれば点呼の手順がなくなり、デジタライゼーションに進む。"
             rows={4}
           />
@@ -899,7 +903,7 @@ export function FeatureLab({ card }: LabProps) {
 /* ========================================================================
  * D1 基数変換・加算・シフト
  * ====================================================================== */
-export function BaseLab({ card }: LabProps) {
+export function BaseLab({ card, missionNote, onMissionNote }: LabProps) {
   const [decimal, setDecimal] = useState(45);
   const [ladderValue, setLadderValue] = useState(36);
   const [bitInput, setBitInput] = useState("00101101");
@@ -912,7 +916,6 @@ export function BaseLab({ card }: LabProps) {
   const [shiftDir, setShiftDir] = useState("left");
   const [devices, setDevices] = useState(480);
   const [growth, setGrowth] = useState(3);
-  const [idPlan, setIdPlan] = useState("");
 
   const ladder = divisionLadder(ladderValue);
   const bits = padBits(parseBits(bitInput) || "0", 8);
@@ -1201,7 +1204,7 @@ export function BaseLab({ card }: LabProps) {
               <Hint>負の数を論理シフトすると符号が消えて正の数になってしまいます。だから符号ありには算術シフトを使います。</Hint>
             </>
           )}
-          <HintButton>
+          <HintButton id="base-4-1">
             右にずらすと、いちばん左のあいた場所に何を入れるかが問題になります。ここに0を入れると、マイナスだった数がいきなりプラスに変わってしまいます。だから「いちばん左の値をそのままコピーして入れる」というルールにしています。氷を割って半分にしても氷であることは変わらないのと同じで、半分にしてもマイナスはマイナスのままでなければいけません。
           </HintButton>
         </>
@@ -1240,8 +1243,8 @@ export function BaseLab({ card }: LabProps) {
           <Results items={[{ label: "現在の台数", value: fmt(needed, 0), note: "手順①で入力した数" }, { label: "推奨ビット数", value: `${requiredBits} bit`, note: "将来の台数から求めた最小ビット数" }, { label: "128ビットなら", value: "3.4×10³⁸ 通り", note: "IPv6と同じ規模。増設の心配がなくなる" }]} />
           <AreaField
             label="採用するビット数と、その理由"
-            value={idPlan}
-            onChange={setIdPlan}
+            value={missionNote}
+            onChange={onMissionNote}
             placeholder="例：現在480台、10年後に720台と見積もると10ビット（1,024通り）で足りる。ただし他校と統合する可能性を考え16ビットを採用する。"
             rows={4}
           />
@@ -1254,14 +1257,13 @@ export function BaseLab({ card }: LabProps) {
 /* ========================================================================
  * D2 負の数（補数）
  * ====================================================================== */
-export function NegativeLab({ card }: LabProps) {
+export function NegativeLab({ card, missionNote, onMissionNote }: LabProps) {
   const [minuend, setMinuend] = useState(56);
   const [subtrahend, setSubtrahend] = useState(17);
   const [source, setSource] = useState("00000101");
   const [target, setTarget] = useState(-50);
   const [width, setWidth] = useState(8);
   const [counterMax, setCounterMax] = useState(300);
-  const [counterPlan, setCounterPlan] = useState("");
 
   const digits = String(Math.max(minuend, subtrahend)).length;
   const complement = radixComplement(subtrahend, 10, digits);
@@ -1324,13 +1326,6 @@ export function NegativeLab({ card }: LabProps) {
         "1つのビット列に、反転（1の補数）と＋1（2の補数）を続けて行い、元の数と足すと0になることまで確かめます。",
         <>
           <TextField label="元のビット列(2)（8けた）" value={source} onChange={setSource} mono hint="0と1だけ・8けた" />
-          <div className="preset-row">
-            {["00000101", "00000001", "00001010", "01111111", "10000000"].map((v) => (
-              <button type="button" key={v} onClick={() => setSource(v)}>
-                <span className="mono">{v}</span>
-              </button>
-            ))}
-          </div>
           <Formula>1の補数 ＝ すべてのけたの0と1を入れかえた並び　／　2の補数 ＝ 1の補数 ＋ 1</Formula>
 
           <div className="complement-chain">
@@ -1380,7 +1375,7 @@ export function NegativeLab({ card }: LabProps) {
               ? `${parseInt(bits, 2)} + (${signedValue(twos.result)}) = 0 が成り立ちました。引き算をせずに、足し算とけた捨てだけで求められています。`
               : "0になりません。元の値が0のときは、2の補数も0になります（0に符号はないため）。"}
           </Verdict>
-          <HintButton>
+          <HintButton id="negative-1-1">
             1の補数は、オセロの盤面をまるごと裏返すのと同じで、0と1を入れかえるだけです。足すと必ず 11111111（255）になります。
             そこにもう1だけ足したものが2の補数で、足すと 100000000（256）になります。8けたしかない機械では、いちばん上のけたは捨てられるので、
             残るのは 00000000＝0 です。つまり2の補数は「足すと0になる相手」＝マイナスの値そのものになります。
@@ -1432,7 +1427,7 @@ export function NegativeLab({ card }: LabProps) {
               {width} ビットでは表せません。範囲は {signedMin} 〜 {signedMax} です。
             </Verdict>
           )}
-          <HintButton>
+          <HintButton id="negative-2-1">
             いちばん左のビットが1なら、その数はマイナスという約束です。ビットの数が決まっているので、表せる数にも上限と下限があります。8けたのメーターに999が表示できないのと同じで、範囲の外の数は入りません。
           </HintButton>
         </>
@@ -1507,8 +1502,8 @@ export function NegativeLab({ card }: LabProps) {
           />
           <AreaField
             label="採用する設計と、範囲外になったときの対応"
-            value={counterPlan}
-            onChange={setCounterPlan}
+            value={missionNote}
+            onChange={onMissionNote}
             placeholder="例：返品でマイナスが出るので符号あり。1日最大300個なら16ビット符号ありを採用し、範囲外はエラー表示にして記録を残す。"
             rows={4}
           />
@@ -1521,12 +1516,11 @@ export function NegativeLab({ card }: LabProps) {
 /* ========================================================================
  * D3 実数（浮動小数点）
  * ====================================================================== */
-export function RealLab({ card }: LabProps) {
+export function RealLab({ card, missionNote, onMissionNote }: LabProps) {
   const [times, setTimes] = useState(100);
   const [addend, setAddend] = useState(0.1);
   const [value, setValue] = useState(-10.25);
   const [amounts, setAmounts] = useState("120.8, 80.1, 35.1");
-  const [decision, setDecision] = useState("");
 
   /* --- 実験1: 0.1 を何回も足す --- */
   const naiveTotal = useMemo(() => {
@@ -1716,7 +1710,7 @@ export function RealLab({ card }: LabProps) {
             指数部にはバイアス127を足した値が入ります。指数が3なら 3 + 127 = 130 を2進数で格納します。
             指数がマイナスになることもあるので、127を足してからしまうことで、必ず0以上の数にしています。
           </Hint>
-          <HintButton>
+          <HintButton id="real-3-1">
             指数はマイナスになることもあります。そのままだとマイナスをしまう場所がもう1つ必要になるので、あらかじめ127を足して、必ず0以上の数にしてからしまいます。海面より低い土地の標高を「マイナス3m」と書くかわりに、全部に100を足して「97m」と書くようなものです。この127をバイアスといいます。
           </HintButton>
         </>
@@ -1760,8 +1754,8 @@ export function RealLab({ card }: LabProps) {
         "計算したずれを根拠に、どちらの方式を採用するかを決めます。",
         <AreaField
           label="採用する方式と、その根拠"
-          value={decision}
-          onChange={setDecision}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：0.1を100回足すと 9.99999999999998 になり、正しい10にならなかった。3件の合計でも約1.4×10⁻¹⁴のずれが出る。1日1,000件では表示に影響しうるため、円単位の整数で保持する方式を採用する。"
           rows={4}
         />
@@ -1773,7 +1767,7 @@ export function RealLab({ card }: LabProps) {
 /* ========================================================================
  * D4 論理回路
  * ====================================================================== */
-export function LogicLab({ card }: LabProps) {
+export function LogicLab({ card, missionNote, onMissionNote }: LabProps) {
   const [gate, setGate] = useState<Gate>("AND");
   const [gateView, setGateView] = useState("switch");
   const [adderTab, setAdderTab] = useState("half");
@@ -1789,7 +1783,6 @@ export function LogicLab({ card }: LabProps) {
   const [fc, setFc] = useState(true);
   const [ra, setRa] = useState("0111");
   const [rb, setRb] = useState("0101");
-  const [stairPlan, setStairPlan] = useState("");
 
   const gates: Gate[] = ["NOT", "AND", "OR", "NAND", "NOR", "XOR", "XNOR"];
   /** 電気回路で見るとき、どのつなぎ方がどのゲートに当たるか */
@@ -1882,7 +1875,7 @@ export function LogicLab({ card }: LabProps) {
               </Hint>
             </>
           )}
-          <HintButton>
+          <HintButton id="logic-0-1">
             ゲートは「入ってきた0と1を見て、出す0と1を決める部品」です。7種類あっても、覚えるのは「どんなときに1を出すか」だけ。自動ドアが「人がいるとき開く」と決まっているように、それぞれのゲートにも1を出す条件が1つずつ決まっています。
           </HintButton>
         </>
@@ -1983,7 +1976,7 @@ export function LogicLab({ card }: LabProps) {
               </Formula>
             </>
           )}
-          <HintButton>
+          <HintButton id="logic-2-1">
             1＋1は2ですが、2進数では「10」になります。つまり答えが2けたになるので、出口も2つ必要です。1の位が和S、上にくり上がる分がくり上がりCです。そろばんで珠が足りなくなったら上の位に1つ動かすのと、同じことをしています。全加算器は、右のけたから来たくり上がりを受け取る入り口をもう1つ持っている点だけがちがいます。
           </HintButton>
         </>
@@ -2125,8 +2118,8 @@ export function LogicLab({ card }: LabProps) {
           </Verdict>
           <AreaField
             label="選んだゲートと、その根拠"
-            value={stairPlan}
-            onChange={setStairPlan}
+            value={missionNote}
+            onChange={onMissionNote}
             placeholder="例：XORを選ぶ。4通りすべてで、どちらか一方だけを切り替えると出力が必ず反転するため、階段のどちらからでも操作できる。"
             rows={4}
           />
@@ -2139,7 +2132,7 @@ export function LogicLab({ card }: LabProps) {
 /* ========================================================================
  * D5 コンピュータの構成
  * ====================================================================== */
-export function ComputerLab({ card }: LabProps) {
+export function ComputerLab({ card, missionNote, onMissionNote }: LabProps) {
   const [left, setLeft] = useState(5);
   const [right, setRight] = useState(3);
   const [op, setOp] = useState("+");
@@ -2152,7 +2145,6 @@ export function ComputerLab({ card }: LabProps) {
   const [cacheNs, setCacheNs] = useState(2);
   const [mainNs, setMainNs] = useState(60);
   const [osTopic, setOsTopic] = useState("task");
-  const [spec, setSpec] = useState("");
 
   /* --- 実験1: 「5+3」が「8」になるまで --- */
   const answer =
@@ -2390,7 +2382,7 @@ export function ComputerLab({ card }: LabProps) {
               { label: "割合をあと5%上げると", value: `${fmt(effectiveAccess(Math.min(1, hitRate / 100 + 0.05), cacheNs, mainNs), 2)} ns`, note: "見つかる割合を5%増やして計算し直した待ち時間" }
             ]}
           />
-          <HintButton>
+          <HintButton id="computer-3-1">
             よく使うものを手元に置いておくと、取りに行く時間が短くなります。教科書を机に出しておくか、ロッカーまで取りに行くかの違いです。手元（キャッシュ）にある割合が高いほど平均の待ち時間は短くなりますが、手元に置ける量はごくわずかなので100%にはできません。
           </HintButton>
         </>
@@ -2432,8 +2424,8 @@ export function ComputerLab({ card }: LabProps) {
         "文書作成用と動画編集用のPCを、根拠つきで提案します。",
         <AreaField
           label="2台の構成と、優先順位の理由"
-          value={spec}
-          onChange={setSpec}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：文書作成用はCPUを中位に抑えSSDを512GBに。動画編集用はメインメモリ32GBとGPUを優先。書き出しはGPU依存が大きく、メモリ不足だと4K素材で補助記憶への退避が起きて極端に遅くなるため。"
           rows={5}
         />
@@ -2445,7 +2437,7 @@ export function ComputerLab({ card }: LabProps) {
 /* ========================================================================
  * D6 文字
  * ====================================================================== */
-export function TextLab({ card }: LabProps) {
+export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
   const [char, setChar] = useState("A");
   const [sample, setSample] = useState("情報AI 2026");
   const [saveEnc, setSaveEnc] = useState("UTF-8");
@@ -2455,7 +2447,6 @@ export function TextLab({ card }: LabProps) {
   const [chars, setChars] = useState(40);
   const [lines, setLines] = useState(40);
   const [bytesPerChar, setBytesPerChar] = useState(2);
-  const [recovery, setRecovery] = useState("");
 
   const info = asciiInfo(char.slice(0, 1) || "A");
   const table = useMemo(
@@ -2624,7 +2615,7 @@ export function TextLab({ card }: LabProps) {
               ? `${saveEnc} で保存して ${readEnc} で読んだので、正しく読めます。表の対角線（色のついたところ）だけが、もとの文字列に戻る組み合わせです。`
               : `${saveEnc} で保存したものを ${readEnc} で読んだので、文字化けしました。ファイルの中のバイトの並び（上の16進数）は壊れていません。壊れているのは「読み方の決まり」のほうなので、${saveEnc} で開き直せば元に戻ります。`}
           </Verdict>
-          <HintButton>
+          <HintButton id="text-2-1">
             文字化けが起きても、ファイルの中身は壊れていません。壊れているのは「読み方の決まり」のほうです。同じ数字の並びでも、日本語の表で読むか英語の表で読むかで別の文字になる。暗号を間違った鍵で開けたようなもので、正しい方式で開き直せば元どおりになります。
           </HintButton>
         </>
@@ -2652,7 +2643,7 @@ export function TextLab({ card }: LabProps) {
               { label: "代表例", value: bits <= 7 ? "ASCII（128文字）" : bits <= 8 ? "Shift_JIS 半角（256文字）" : bits <= 16 ? "Unicodeのよく使う範囲（65,536文字）" : "Unicode 全体", note: "この種類数で足りる文字集合" }
             ]}
           />
-          <HintButton>
+          <HintButton id="text-3-1">
             1ビット増やすごとに、表せる文字の数は2倍になります。世界中の文字を全部入れようとすると8ビット（256種類）ではとても足りません。座席番号のけたが足りないと同じ席に2人が座ってしまうのと同じで、けたが足りなければ別の文字に同じ番号を割り当てるしかなくなります。
           </HintButton>
         </>
@@ -2686,8 +2677,8 @@ export function TextLab({ card }: LabProps) {
         "元ファイルを壊さずに読み直す手順を書き出します。",
         <AreaField
           label="復旧の手順"
-          value={recovery}
-          onChange={setRecovery}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：1) 元ファイルのコピーを取る 2) テキストエディタで文字コードを指定して開き直す 3) Shift_JISで読めれば正解 4) UTF-8（BOM付き）で保存し直す 5) 以後はUTF-8で統一する"
           rows={5}
         />
@@ -2699,7 +2690,7 @@ export function TextLab({ card }: LabProps) {
 /* ========================================================================
  * D7 音声
  * ====================================================================== */
-export function AudioLab({ card }: LabProps) {
+export function AudioLab({ card, missionNote, onMissionNote }: LabProps) {
   const [freq, setFreq] = useState(440);
   const [sampleRate, setSampleRate] = useState(44100);
   const [maxFreq, setMaxFreq] = useState(20000);
@@ -2707,7 +2698,6 @@ export function AudioLab({ card }: LabProps) {
   const [seconds, setSeconds] = useState(300);
   const [channels, setChannels] = useState(2);
   const [preset, setPreset] = useState("CD");
-  const [broadcast, setBroadcast] = useState("");
 
   const wave = Array.from({ length: 60 }, (_, i) => Math.sin((i / 60) * Math.PI * 2 * (freq / 220)));
   const sampleCount = clamp(Math.round(sampleRate / 2000), 4, 60);
@@ -2829,7 +2819,7 @@ export function AudioLab({ card }: LabProps) {
               ? "標本化定理を満たしています。"
               : "測る速さが足りません。本来なかった低い音（折り返し雑音）が現れます。"}
           </Verdict>
-          <HintButton>
+          <HintButton id="audio-1-1">
             なめらかに動く波を、一定の間隔でパシャパシャと写真に撮るようなものです。撮る回数が少ないと、速い波を見のがして「ゆっくりな波」と勘違いして記録してしまいます。扇風機の羽が速く回っているのに動画では止まって見えるのと同じ現象で、これを防ぐには元の音のいちばん高い周波数の2倍以上の速さで測る必要があります。
           </HintButton>
         </>
@@ -2922,7 +2912,7 @@ export function AudioLab({ card }: LabProps) {
           <button type="button" className="apply-preset" onClick={() => { setSampleRate(pRate); setQuantBits(pBits); setChannels(pCh); }}>
             この設定を実験4の計算に入れる
           </button>
-          <HintButton>
+          <HintButton id="audio-4-1">
             音質を上げると、そのぶんデータ量も増えます。測る回数を2倍にすればデータも2倍、ステレオにすればさらに2倍です。写真の解像度を上げるとファイルが重くなるのと同じで、「きれいさ」と「軽さ」は必ず引っぱり合います。
           </HintButton>
         </>
@@ -2934,8 +2924,8 @@ export function AudioLab({ card }: LabProps) {
         "計算した容量を根拠に、設定を決めます。",
         <AreaField
           label="決めた設定と、その根拠"
-          value={broadcast}
-          onChange={setBroadcast}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：言葉が聞き取れればよいので 16kHz・16bit・モノラルを採用。5分で約9.6MBに収まり、校内サーバの容量にも余裕がある。音楽を流す回は44.1kHz・ステレオに切り替える。"
           rows={4}
         />
@@ -2947,7 +2937,7 @@ export function AudioLab({ card }: LabProps) {
 /* ========================================================================
  * D8 画像
  * ====================================================================== */
-export function ImageLab({ card }: LabProps) {
+export function ImageLab({ card, missionNote, onMissionNote }: LabProps) {
   const [mixTab, setMixTab] = useState("rgb");
   const [artTab, setArtTab] = useState("mono");
   const [r, setR] = useState(255);
@@ -2966,7 +2956,6 @@ export function ImageLab({ card }: LabProps) {
   const [monoArt, setMonoArt] = useState("00000\n01010\n10001\n01010\n01110\n00000\n00110\n00000\n11111\n00100");
   const [colorArt, setColorArt] = useState("0002000000\n0222220012\n0020020034\n0020020056\n0020020070\n0200002000\n0000220000\n0020000000\n0020000000\n0020020000\n0020200000\n0022002222\n0020000000\n0000000000\n0000000000");
   const [useCase, setUseCase] = useState("photo");
-  const [webPlan, setWebPlan] = useState("");
 
   const hex = (n: number) => clamp(Math.round(n), 0, 255).toString(16).toUpperCase().padStart(2, "0");
   const rgbHex = `#${hex(r)}${hex(g)}${hex(b)}`;
@@ -3066,7 +3055,7 @@ export function ImageLab({ card }: LabProps) {
           <Hint>CMYすべてを0%にすると紙の白。混ぜるほど暗くなるのが減法混色です。</Hint>
           </>
           )}
-          <HintButton>
+          <HintButton id="image-0-1">
             絵の具は混ぜるほど暗くなります。絵の具は光を吸い取る（減らす）ので、混ぜるほど反射する光が減るからです。光を足していくRGBとは逆向きの考え方で、だから画面（光）と印刷（インク）では、同じ色を出すための数値がちがいます。
           </HintButton>
         </>
@@ -3222,7 +3211,7 @@ export function ImageLab({ card }: LabProps) {
           />
           </>
           )}
-          <HintButton>
+          <HintButton id="image-3-1">
             1マス（1画素）に何ビット使うかで、表せる色数が決まります。1ビットなら2色、3ビットなら8色です。マス目のノートを1マスずつ塗って絵を描くのと同じで、マスが細かいほど、色数が多いほどきれいになりますが、そのぶんデータ量も増えます。
           </HintButton>
         </>
@@ -3258,7 +3247,7 @@ export function ImageLab({ card }: LabProps) {
                 ? "透過ロゴは、輪郭を保ったまま拡大し、背景も透明にしたいので、SVG（またはPNG）を選びます。"
                 : "図表・文字は、線がにじむと読めなくなるので、完全に戻せる可逆のPNGを選びます。"}
           </Verdict>
-          <HintButton>
+          <HintButton id="image-4-1">
             写真は少しくらい色が変わっても人の目には分かりません。だから思い切って情報を捨てるJPEGが向いています。逆にロゴや図表は線がにじむと一目で分かるので、1ビットも変えないPNGを使います。下書きをそのまま出すか、清書して出すかを使い分けるのと同じ判断です。
           </HintButton>
         </>
@@ -3270,8 +3259,8 @@ export function ImageLab({ card }: LabProps) {
         "形式と解像度を決めて、目標サイズに収まるかを説明します。",
         <AreaField
           label="決めた形式・解像度と、その根拠"
-          value={webPlan}
-          onChange={setWebPlan}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：行事写真は表示幅1200pxに合わせてJPEG品質80で書き出し、約350kBに収める。ロゴはSVGで配置し、非対応環境用にPNGも用意する。元データは無圧縮で別に保存する。"
           rows={5}
         />
@@ -3283,7 +3272,7 @@ export function ImageLab({ card }: LabProps) {
 /* ========================================================================
  * D9 動画
  * ====================================================================== */
-export function VideoLab({ card }: LabProps) {
+export function VideoLab({ card, missionNote, onMissionNote }: LabProps) {
   const [fps, setFps] = useState(30);
   const [width, setWidth] = useState(1920);
   const [height, setHeight] = useState(1080);
@@ -3292,7 +3281,6 @@ export function VideoLab({ card }: LabProps) {
   const [ratio, setRatio] = useState(2);
   const [speed, setSpeed] = useState(50);
   const [deadline, setDeadline] = useState(30);
-  const [plan, setPlan] = useState("");
 
   const seconds = minutes * 60;
   const raw = videoBytes(width, height, colorBits, fps, seconds);
@@ -3333,7 +3321,7 @@ export function VideoLab({ card }: LabProps) {
               { label: "代表例", value: fpsExamples[fps] ?? (fps < 24 ? "カクつきを感じる" : "滑らかに見える"), note: "24枚あたりから、人の目にはなめらかに見えはじめる" }
             ]}
           />
-          <HintButton>
+          <HintButton id="video-0-1">
             動画は、静止画をものすごい速さで次々に見せているだけです。パラパラ漫画のページをめくる速さが fps にあたります。めくるのが遅いとカクカクして見え、24枚以上あたりから人の目にはなめらかに見えはじめます。
           </HintButton>
         </>
@@ -3366,7 +3354,7 @@ export function VideoLab({ card }: LabProps) {
             <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
             <Results items={bytesRowSI(raw)} />
           </details>
-          <HintButton>
+          <HintButton id="video-1-1">
             写真1枚分の容量に、1秒あたりの枚数と秒数をかけるだけです。ただし枚数がとても多いので、答えは一気にGB単位になります。フルHDの写真を1秒間に30枚、10分ぶん保存すると考えてみてください。だからこそ圧縮が絶対に必要になります。
           </HintButton>
         </>
@@ -3425,7 +3413,7 @@ export function VideoLab({ card }: LabProps) {
               ? `締切まで ${fmt(deadline - sendSeconds / 60, 1)} 分の余裕があります。`
               : `${fmt(sendSeconds / 60 - deadline, 1)} 分足りません。容量を減らすか、回線を変える必要があります。`}
           </Verdict>
-          <HintButton>
+          <HintButton id="video-3-1">
             容量の単位はバイト（B）、通信速度の単位はビット毎秒（bps）です。単位がちがうので、割る前に容量を8倍してビットにそろえます。長さをcmとインチのまま比べられないのと同じで、単位をそろえないと答えが8倍ずれます。
           </HintButton>
         </>
@@ -3455,8 +3443,8 @@ export function VideoLab({ card }: LabProps) {
         "計算結果をもとに、締切に間に合う手順を書きます。",
         <AreaField
           label="提出計画（容量・回線・所要時間・余裕）"
-          value={plan}
-          onChange={setPlan}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：1080p・30fps・10分をH.264（元の2%）で書き出すと約1.1GB。校内Wi-Fiの実効50Mbpsで約3分。締切30分前に開始すれば余裕がある。失敗に備え720pの控えも用意する。"
           rows={5}
         />
@@ -3468,14 +3456,13 @@ export function VideoLab({ card }: LabProps) {
 /* ========================================================================
  * D10 データの圧縮
  * ====================================================================== */
-export function CompressLab({ card }: LabProps) {
+export function CompressLab({ card, missionNote, onMissionNote }: LabProps) {
   const [kind, setKind] = useState("lossless");
   const [before, setBefore] = useState(64);
   const [after, setAfter] = useState(52);
   const [runText, setRunText] = useState("AAAABBBBBAAA");
   const [art, setArt] = useState("00000000\n01111110\n01000000\n01000000\n01111100\n01000000\n01000000\n00000000");
   const [huffText, setHuffText] = useState("AAAAAAAAAABBBBCCCDDEEF");
-  const [plan, setPlan] = useState("");
 
   const kinds: Record<string, [string, string, string, string]> = {
     lossless: ["可逆圧縮", "もとに戻せる", "ZIP・PNG・GIF・FLAC", "文書やプログラムのように、1ビットも変えてはいけないデータに使います。"],
@@ -3593,7 +3580,7 @@ export function CompressLab({ card }: LabProps) {
             「ABABABAB」のように1文字ずつ変わる文字列を入れると、圧縮率が100%を超えます。ランレングス法が効くのは、
             同じ値が長く続くデータだけです。
           </Hint>
-          <HintButton>
+          <HintButton id="compress-2-1">
             個数を記録するのに何ビット必要かは、いちばん長い連続の個数で決まります。連続が最大7個なら3ビット（0〜7）で足ります。教室の出席番号が40番までなら2けたで済むのと同じで、いちばん大きい数さえ入ればいいのです。
           </HintButton>
         </>
@@ -3691,8 +3678,8 @@ export function CompressLab({ card }: LabProps) {
         "資料の種類ごとに、どの圧縮を使うかを決めます。",
         <AreaField
           label="決めた方法と、その根拠"
-          value={plan}
-          onChange={setPlan}
+          value={missionNote}
+          onChange={onMissionNote}
           placeholder="例：文章のPDFは1文字も変えられないのでZIP（可逆）。行事の写真はJPEG（非可逆・品質80）で約1/10に。説明音声はAAC（非可逆）。いずれも元データは無圧縮で別に保存しておく。"
           rows={5}
         />

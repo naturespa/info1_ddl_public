@@ -4516,3 +4516,734 @@ footer {
 .chart-compare rect.s2 {
   fill: #b06a12;
 }
+
+/* ============================================================
+ * 依頼掲示板（トップ）
+ * ========================================================== */
+
+.board-hero {
+  background: linear-gradient(160deg, #16203a 0%, #0f1729 60%, #131c31 100%);
+  border: 1px solid #26324e;
+  border-radius: var(--radius);
+  padding: 26px 26px 24px;
+  color: #e7dfca;
+  position: relative;
+  overflow: hidden;
+}
+
+.board-hero::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(215, 180, 81, 0.22);
+  border-radius: calc(var(--radius) - 4px);
+  pointer-events: none;
+}
+
+.board-title {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.board-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: #c0a960;
+  font-weight: 700;
+}
+
+.board-hero h1 {
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.25;
+  margin: 0;
+  color: #f4ecd8;
+  letter-spacing: 0.02em;
+}
+
+.board-hero p {
+  color: #b8bdcb;
+  font-size: 13px;
+  line-height: 1.85;
+  max-width: 74ch;
+  margin: 0;
+}
+
+.board-card-me {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: rgba(10, 16, 30, 0.7);
+  border: 1px solid #2f3d5c;
+  border-radius: 10px;
+  padding: 9px 14px;
+  align-self: flex-start;
+}
+
+.board-card-me .me-code {
+  font-weight: 700;
+  color: #e7dfca;
+  font-size: 13px;
+}
+
+.board-card-me .me-lv {
+  background: #22304d;
+  color: #9db4e8;
+  border-radius: 999px;
+  padding: 2px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.board-card-me .me-g {
+  color: #d7b451;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.board-card-me em {
+  font-style: normal;
+  color: #8892a6;
+  font-size: 11.5px;
+}
+
+/* 掲示板の中の番号入力は、暗い背景に合わせる */
+.board-hero .code-entry label,
+.board-hero .status-pill {
+  color: #b8bdcb;
+}
+
+.board-hero .code-confirm {
+  background: rgba(10, 16, 30, 0.72);
+  border-color: #2f3d5c;
+}
+
+.board-hero .code-ask,
+.board-hero .code-note {
+  color: #e7dfca;
+}
+
+.board-hero .code-warn {
+  color: #e0b98a;
+}
+
+.board-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.board-area-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 8px;
+}
+
+.board-area-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.board-area-head span {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.quest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 12px;
+}
+
+.quest {
+  position: relative;
+  text-align: left;
+  background: #fffdf6;
+  border: 1px solid #ded3b6;
+  border-radius: 4px;
+  padding: 16px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: 0 1px 2px rgba(30, 26, 14, 0.06), 0 6px 16px rgba(30, 26, 14, 0.05);
+  min-width: 0;
+}
+
+.quest:hover {
+  border-color: var(--green);
+  transform: translateY(-1px);
+}
+
+.quest-pin {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #b3402f;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.quest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quest-no {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8a6712;
+  letter-spacing: 0.06em;
+}
+
+.quest-star {
+  font-size: 12px;
+  color: #c9a227;
+  letter-spacing: 0.06em;
+}
+
+.quest-star i {
+  font-style: normal;
+  color: #ddd6c2;
+}
+
+.quest h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.quest p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.quest-meter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.quest-bar {
+  flex: 1;
+  height: 5px;
+  background: #eae3ce;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.quest-bar i {
+  display: block;
+  height: 100%;
+  background: var(--green);
+}
+
+.quest-meter em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.quest-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px dashed #e0d7bf;
+  padding-top: 7px;
+  margin-top: 1px;
+}
+
+.quest-state {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  border: 1px solid #ded3b6;
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
+.quest-state.doing {
+  color: #8a6712;
+  border-color: #d9c689;
+  background: #faf3dd;
+}
+
+.quest-state.done {
+  color: #fff;
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.quest-reward {
+  font-size: 11px;
+  color: #8a6712;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.quest.done {
+  background: #f4f8f5;
+  border-color: #bcd7c7;
+}
+
+.quest.doing {
+  border-color: #d9c689;
+}
+
+/* ============================================================
+ * 所持金（ヘッダ）
+ * ========================================================== */
+
+.purse {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding-right: 4px;
+}
+
+.purse-lv {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green);
+  background: var(--mint);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.purse-g {
+  font-size: 12px;
+  color: #8a6712;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.purse-g b {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+ * ステータス画面
+ * ========================================================== */
+
+.status-hero {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  background: linear-gradient(160deg, #16203a 0%, #0f1729 100%);
+  border: 1px solid #26324e;
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  color: #e7dfca;
+}
+
+.status-title {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.status-title h1 {
+  margin: 0;
+  font-size: clamp(21px, 3.2vw, 30px);
+  line-height: 1.35;
+  color: #f4ecd8;
+}
+
+.status-title .muted {
+  color: #a3abbd;
+}
+
+.status-title .muted b {
+  color: #d7b451;
+}
+
+.status-lvbar {
+  height: 7px;
+  background: #212c46;
+  border-radius: 999px;
+  overflow: hidden;
+  max-width: 420px;
+}
+
+.status-lvbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #c0a960, #e3c877);
+}
+
+.status-purse {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  background: rgba(10, 16, 30, 0.66);
+  border: 1px solid #2f3d5c;
+  border-radius: 12px;
+  padding: 12px 24px;
+  min-width: 132px;
+}
+
+.status-purse span {
+  font-size: 11px;
+  color: #8892a6;
+  letter-spacing: 0.1em;
+}
+
+.status-purse strong {
+  font-size: 34px;
+  line-height: 1.1;
+  color: #d7b451;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-purse em {
+  font-style: normal;
+  font-size: 12px;
+  color: #c0a960;
+  font-weight: 700;
+}
+
+.status-purse small {
+  font-size: 10.5px;
+  color: #8892a6;
+  margin-top: 3px;
+}
+
+.gauges {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.gauge {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  row-gap: 2px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 13px;
+}
+
+.gauge-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.gauge-bar {
+  height: 10px;
+  background: #eef1f4;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.gauge-bar i {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  border-radius: 999px;
+}
+
+.gauge > b {
+  font-size: 19px;
+  text-align: right;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge > em {
+  grid-column: 2 / 4;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .gauge {
+    grid-template-columns: 62px minmax(0, 1fr) 40px;
+  }
+}
+
+/* ============================================================
+ * ヒントの売り場
+ * ========================================================== */
+
+.hint-shop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hint-shop button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed #d9c689;
+  background: #fdf9ec;
+  color: #8a6712;
+  border-radius: 999px;
+  padding: 5px 15px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.hint-shop button span {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e8d9a5;
+  color: #6f5310;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hint-shop button b {
+  background: #8a6712;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
+.hint-shop button:hover:not(:disabled) {
+  background: #f7edcf;
+}
+
+.hint-shop.short button {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hint-shop em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.hint-shop.short em {
+  color: #a06a00;
+}
+
+.hint-owned {
+  margin-left: 8px;
+  font-size: 10.5px;
+  color: var(--green);
+  background: var(--mint);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+/* ============================================================
+ * 重要語句テスト
+ * ========================================================== */
+
+.word-quiz {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.word-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.word-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.word-help {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink-2);
+  background: var(--mint);
+  border-radius: 9px;
+  padding: 9px 12px;
+}
+
+.word-help code {
+  font-family: var(--mono, ui-monospace, monospace);
+  background: #fff;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.word-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.word-item {
+  border-left: 3px solid var(--line);
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.word-item.first {
+  border-left-color: var(--green);
+}
+
+.word-item.second {
+  border-left-color: #8f5bd6;
+}
+
+.word-item.miss {
+  border-left-color: var(--state-bad);
+}
+
+.word-item.wait {
+  border-left-color: #c98a00;
+}
+
+.word-clue {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+.word-clue b {
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.word-input {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.word-input input {
+  flex: 0 1 260px;
+  min-width: 0;
+  font-size: 14px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.word-msg {
+  font-size: 11.5px;
+}
+
+.word-msg.close {
+  color: #a06a00;
+  font-weight: 700;
+}
+
+.word-msg.hint {
+  color: var(--muted);
+}
+
+.word-msg.hint b {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.word-answer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.word-answer > b {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.word-answer em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.word-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.word-foot-done {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--green);
+  font-weight: 700;
+}
+
+/* ---------- 1画面に「入力」と「答え」を収めるための詰め（v17で超過した3枚） ---------- */
+
+/* D2 実験2：1の補数→2の補数のつながり */
+.complement-chain {
+  padding: 6px 9px;
+  gap: 2px;
+}
+
+.complement-chain .chain-arrow {
+  padding: 0 0 0 14px;
+}
+
+.complement-chain .bit-strip button {
+  padding: 4px 2px;
+}
+
+.complement-chain .bit-strip button b {
+  font-size: 15px;
+}
+
+/* A4 実験2：正規分布のカーブは高さを抑える */
+.experiment-card .normal-curve {
+  max-height: 158px;
+}
+
+/* A5 実験4：散布図も同じ扱い */
+.experiment-card .scatter {
+  max-height: 168px;
+}

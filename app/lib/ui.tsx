@@ -3,7 +3,7 @@
 // 実験カードの中で使う共通部品。
 // すべての実験は「自分で数値や文字を入力 → その場で結果が変わる」形にそろえる。
 
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { clamp, normalPdf, tPdf } from "./calc";
 
 /* ---------- 入力部品 ---------- */
@@ -259,12 +259,60 @@ export function Hint({ children }: { children: ReactNode }) {
  * 最初は閉じているので、自力で考えたい生徒のじゃまをしない。
  * label を変えれば「もっとくわしく」など段階をつけられる。
  */
-export function HintButton({ label = "ヒントを見る", children }: { label?: string; children: ReactNode }) {
+type HintShop = {
+  /** いま持っているG */
+  balance: number;
+  /** 1つ開くのに必要なG */
+  price: number;
+  /** すでに買ったか */
+  bought: (id: string) => boolean;
+  /** 買う。足りなければ何も起きない */
+  buy: (id: string) => void;
+  /** テスト中など、ヒントそのものを出さない場面 */
+  hidden?: boolean;
+};
+
+/** ヒントの売り場。page.tsx が値を入れる。入っていないときはタダで開ける（テスト用） */
+export const HintShopContext = createContext<HintShop | null>(null);
+
+export function HintButton({
+  id,
+  label = "ヒントを見る",
+  children
+}: {
+  /** ヒント1つ1つを見分ける名前。`単元-実験番号-その中の何番目か` */
+  id: string;
+  label?: string;
+  children: ReactNode;
+}) {
+  const shop = useContext(HintShopContext);
+
+  if (shop?.hidden) return null;
+
+  if (shop && !shop.bought(id)) {
+    const short = shop.price - shop.balance;
+    return (
+      <div className={`hint-shop ${short > 0 ? "short" : ""}`}>
+        <button type="button" onClick={() => shop.buy(id)} disabled={short > 0}>
+          <span aria-hidden="true">？</span>
+          {label}
+          <b>{shop.price}G</b>
+        </button>
+        <em>
+          {short > 0
+            ? `あと ${short}G 足りません。実験を ${short} 個やると開けます`
+            : `いま ${shop.balance}G 持っています。開くと ${shop.balance - shop.price}G になります`}
+        </em>
+      </div>
+    );
+  }
+
   return (
-    <details className="hint-toggle">
+    <details className="hint-toggle" open={!!shop}>
       <summary>
         <span aria-hidden="true">？</span>
         {label}
+        {shop && <b className="hint-owned">開放ずみ</b>}
       </summary>
       <div className="hint-toggle-body">{children}</div>
     </details>
