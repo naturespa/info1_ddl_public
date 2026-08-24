@@ -257,6 +257,8 @@ export type StudentRecord = {
   boughtHints: Record<string, boolean>;
   /** 最後に開いた単元 */
   lastLesson: string;
+  /** そうびの中で覚え直して集めた語。キーは語句そのもの。得点には影響しない */
+  practiced: Record<string, boolean>;
   /** G の収支。成績には使いません */
   coins: { earned: number; spent: number; balance: number; hintsBought: string[]; level: number };
   /** 主体的に学習に取り組む態度 */

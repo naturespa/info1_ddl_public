@@ -6,12 +6,15 @@ import { Experiments } from "./experiments";
 import { QuestionFigure } from "./lib/question-figures";
 import { MiniSheet } from "./lib/mini-sheet";
 import { sheetDrills } from "./lib/sheet-tasks";
-import { experimentCount, lessons, totalExperiments, totalQuestions } from "./lib/lessons";
+import { experimentCount, lessons } from "./lib/lessons";
 import type { Area, ExamRow, Lesson, QuestionResult, Submission, StudentRecord, Summary, UnderstandingLevel } from "./lib/types";
 import { COIN, DIFFICULTY, attitudeScore, levelOf, part } from "./lib/progress";
 import { WordQuiz, gradeWords, type WordSubmission } from "./lib/word-quiz";
 import { WORDS_PER_LESSON, words, wordsOf } from "./lib/words";
+import { checkWord } from "./lib/word-check";
+import type { WordItem } from "./lib/words";
 import { hintList } from "./lib/hint-list";
+import { describeCode, isAllowedCode } from "./lib/roster";
 import { UNDERSTANDING_CHOICES } from "./lib/types";
 import type { ExamResult } from "./lib/exam-types";
 import { classOf, gradeOf, seatOf } from "./lib/exam-types";
@@ -116,6 +119,10 @@ export default function Home() {
   const [boughtHints, setBoughtHints] = useState<Record<string, boolean>>({});
   /** 最後に開いた単元。「つづきから」で戻る先 */
   const [lastLesson, setLastLesson] = useState("");
+  /** そうびの中で打ち直して覚えた語。得点は動かさず、集めたかどうかだけが変わる */
+  const [practiced, setPracticed] = useState<Record<string, boolean>>({});
+  /** そうびで打ちこみ中の文字（保存しない） */
+  const [termDraft, setTermDraft] = useState<Record<string, string>>({});
 
   const current = lessons.find((lesson) => lesson.id === active);
 
@@ -340,7 +347,8 @@ export default function Home() {
     setLoaded(true);
     try {
       const saved = normalizeStudentCode(localStorage.getItem(ACTIVE_KEY) ?? "");
-      if (saved.length === 4) {
+      // 名簿から外れた番号（名簿を入れかえたときなど）では、続きから始めない
+      if (saved.length === 4 && isAllowedCode(saved)) {
         setStudentCode(saved);
         setCodeDraft(saved);
         loadRecord(saved);
@@ -366,6 +374,7 @@ export default function Home() {
     missionNotes,
     boughtHints,
     lastLesson,
+    practiced,
     coins: {
       earned: summary.earned,
       spent: summary.spent,
@@ -401,7 +410,7 @@ export default function Home() {
       /* 保存できない環境では黙って続行する */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints, lastLesson]);
+  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints, lastLesson, practiced]);
 
   /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
   const loadRecord = (code: string) => {
@@ -426,6 +435,7 @@ export default function Home() {
       setMissionNotes(saved.missionNotes ?? {});
       setBoughtHints(saved.boughtHints ?? {});
       setLastLesson(saved.lastLesson ?? "");
+      setPracticed(saved.practiced ?? {});
       setExamResults(loadExamResults(code));
     } catch {
       setDrafts({});
@@ -437,12 +447,16 @@ export default function Home() {
       setMissionNotes({});
       setBoughtHints({});
       setLastLesson("");
+      setPracticed({});
     }
   };
 
   /** 入力中の番号に、このブラウザの記録があるかを見て、確認画面に出す内容を決める */
+  /** 入力中の番号が名簿にあるか */
+  const codeAllowed = codeDraft.length === 4 && isAllowedCode(codeDraft);
+
   const draftPreview = useMemo(() => {
-    if (codeDraft.length !== 4 || !loaded) return null;
+    if (codeDraft.length !== 4 || !loaded || !isAllowedCode(codeDraft)) return null;
     try {
       const saved = JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${codeDraft}`) ?? "null") as StudentRecord | null;
       if (!saved) return { found: false, lessons: 0, experiments: 0 };
@@ -458,6 +472,8 @@ export default function Home() {
 
   /** 番号を確定する。確定するとこのブラウザではもう変えられない */
   const confirmCode = () => {
+    // 名簿にない番号では始められない
+    if (!isAllowedCode(codeDraft)) return;
     if (codeDraft.length !== 4) return;
     setStudentCode(codeDraft);
     loadRecord(codeDraft);
@@ -538,6 +554,14 @@ export default function Home() {
   const balance = summary.earned - summary.spent;
   const level = levelOf(summary.earned);
 
+  /** そうびで語句を打ちこむ。正しければ、その場で集める（得点は動かさない） */
+  const tryTerm = (key: string, item: WordItem | undefined, value: string) => {
+    setTermDraft((prev) => ({ ...prev, [key]: value }));
+    if (item && checkWord(item, value) === "correct") {
+      setPracticed((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    }
+  };
+
   /** ヒントを1つ買う。足りなければ何もしない */
   const buyHint = (id: string) => {
     if (balance < COIN.hint || boughtHints[id]) return;
@@ -554,6 +578,29 @@ export default function Home() {
     setExperiments((prev) => ({ ...prev, [key]: true }));
     setUnderstanding((prev) => ({ ...prev, [key]: level }));
   };
+
+  /** 重要語句テストで正解して手に入れた語 */
+  const wonWords = useMemo(() => {
+    const set = new Set<string>();
+    lessons.forEach((lesson) => {
+      const sub = wordSubmissions[lesson.id];
+      if (!sub) return;
+      wordsOf(lesson.id).forEach((w, i) => {
+        const r = sub.results[i];
+        if (r === "1回目で正解" || r === "2回目で正解") set.add(w.answer);
+      });
+    });
+    return set;
+  }, [wordSubmissions]);
+
+  /** テストで取った語＋そうびで覚え直した語。★がつくのはこの集合 */
+  const collectedWords = useMemo(() => {
+    const set = new Set(wonWords);
+    Object.keys(practiced).forEach((key) => {
+      if (practiced[key]) set.add(key);
+    });
+    return set;
+  }, [wonWords, practiced]);
 
   /** 用語集にある語の総数 */
   const allTermCount = lessons.reduce((sum, lesson) => sum + lesson.terms.length, 0);
@@ -617,6 +664,7 @@ export default function Home() {
     setMissionNotes({});
     setBoughtHints({});
     setLastLesson("");
+    setPracticed({});
     setActive("home");
     try {
       localStorage.removeItem(ACTIVE_KEY);
@@ -742,12 +790,38 @@ export default function Home() {
                 </h1>
                 <p>討伐すると報酬が出る。★が多いほど手ごわいが、実入りもいい。</p>
                 {studentCode.length === 4 ? (
-                  <div className="board-card-me">
-                    <span className="me-code">No.{studentCode}</span>
-                    <span className="me-lv">Lv {level.level}</span>
-                    <span className="me-g">{balance} G</span>
-                    {!level.maxed && <em>次のレベルまで あと {level.toNext}G</em>}
-                    {level.maxed && <em>最高レベルに到達している</em>}
+                  <div className="board-me">
+                    <div className="me-ring">
+                      <strong>{level.level}</strong>
+                      <span>Lv</span>
+                      <i style={{ width: `${Math.round(level.ratio * 100)}%` }} />
+                    </div>
+                    <div className="me-body">
+                      <div className="me-head">
+                        <b>No.{studentCode} の記録</b>
+                        <span className="me-g">{balance} G</span>
+                      </div>
+                      <p className="me-next">
+                        {level.maxed ? "最高レベルに到達している。" : `つぎのレベルまで あと ${level.toNext}G。`}
+                        　討伐 {summary.completedLessons}/{summary.lessonCount} ・ 総合点 {summary.totalScore}/
+                        {summary.totalMax}
+                      </p>
+                      <div className="me-gauges">
+                        {[
+                          { key: "power", name: "ちから", value: summary.perspective.knowledge },
+                          { key: "wisdom", name: "かしこさ", value: summary.perspective.thinking },
+                          { key: "heart", name: "こころ", value: summary.perspective.attitude }
+                        ].map((g) => (
+                          <div className={`me-gauge g-${g.key}`} key={g.key}>
+                            <span>{g.name}</span>
+                            <div className="gauge-bar">
+                              <i style={{ width: `${g.value}%` }} />
+                            </div>
+                            <b>{g.value}</b>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="code-entry">
@@ -765,15 +839,36 @@ export default function Home() {
                           autoComplete="off"
                         />
                       </label>
-                      <div className="status-pill">
-                        {codeDraft.length === 4 ? "下のボタンで確定します" : "半角数字4桁を入力"}
+                      <div className={`status-pill ${codeDraft.length === 4 && !codeAllowed ? "ng" : ""}`}>
+                        {codeDraft.length !== 4
+                          ? "半角数字4桁を入力"
+                          : codeAllowed
+                            ? describeCode(codeDraft)
+                            : "この番号は使えません"}
                       </div>
                     </div>
 
-                    {codeDraft.length === 4 && draftPreview && (
+                    {codeDraft.length === 4 && !codeAllowed && (
+                      <div className="code-confirm ng">
+                        <p className="code-ask">
+                          <b>{codeDraft}</b> は名簿にありません。
+                        </p>
+                        <p className="code-note">
+                          使えるのは、自分の組の <b>◯◯01〜◯◯41</b> と、先生が指定した予備の番号だけです
+                          （1年2組5番なら <b>1205</b>）。打ち間違いがないか確かめてください。
+                        </p>
+                        <div className="code-actions">
+                          <button className="ghost" onClick={() => setCodeDraft("")}>
+                            入力し直す
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {codeDraft.length === 4 && codeAllowed && draftPreview && (
                       <div className="code-confirm">
                         <p className="code-ask">
-                          <b>{codeDraft}</b> ですね？
+                          <b>{codeDraft}</b>（{describeCode(codeDraft)}）ですね？
                         </p>
                         <p className="code-note">
                           {draftPreview.found
@@ -1059,9 +1154,13 @@ export default function Home() {
             </button>
             <h1>そうび ── 重要語句</h1>
             <p className="muted">
-              全{allTermCount}語。<b>★のついた{words.length}語</b>が、各単元の重要語句テストに出ます。
-              単元名を押すと、その単元へ移動します。
+              全{allTermCount}語。<b>★のついた{words.length}語</b>は、その単元の重要語句テストで正解すると出てきます。
+              テストで取れなかった語も、<b>ここで打ち直せば集まります</b>（得点は変わりません）。
+              いま <b>{collectedWords.size} / {words.length}</b> 集めました。単元名を押すと、その単元へ移動します。
             </p>
+            <div className="collect-bar">
+              <i style={{ width: `${Math.round((collectedWords.size / words.length) * 100)}%` }} />
+            </div>
             {lessons.map((lesson) => {
               const testWords = new Set(wordsOf(lesson.id).map((w) => w.answer));
               return (
@@ -1070,7 +1169,9 @@ export default function Home() {
                     <b>{lesson.no}</b>
                     <span>{lesson.title}</span>
                     <em>
-                      {lesson.terms.length}語（うちテスト{wordsOf(lesson.id).length}語）
+                      {lesson.terms.length}語 ／ 集めた{" "}
+                      {wordsOf(lesson.id).filter((w) => collectedWords.has(w.answer)).length} /{" "}
+                      {wordsOf(lesson.id).length}
                     </em>
                   </button>
                   <dl className="term-list">
@@ -1082,13 +1183,36 @@ export default function Home() {
                         .replace(/\s+[A-Za-zμσα-ωΑ-Ω][A-Za-z0-9]*\s*$/, "")
                         .trim();
                       const onTest = testWords.has(term.word) || testWords.has(bare);
+                      const answer = testWords.has(term.word) ? term.word : bare;
+                      const got = onTest && collectedWords.has(answer);
+                      const hidden = onTest && !got;
+                      const key = answer;
+                      const item = hidden ? wordsOf(lesson.id).find((x) => x.answer === answer) : undefined;
+                      const verdict = item ? checkWord(item, termDraft[key] ?? "") : "empty";
                       return (
-                        <div key={term.word} className={onTest ? "on-test" : ""}>
+                        <div key={term.word} className={`${onTest ? "on-test" : ""} ${got ? "got" : ""} ${hidden ? "hidden-word" : ""}`}>
                           <dt>
-                            {onTest && <i aria-label="テストに出ます">★</i>}
-                            {term.word}
+                            {onTest && <i aria-label={got ? "集めました" : "まだ集めていません"}>{got ? "★" : "☆"}</i>}
+                            {hidden ? <span className="masked">？ ？ ？</span> : term.word}
                           </dt>
                           <dd>{term.meaning}</dd>
+                          {hidden && (
+                            <div className="term-try">
+                              <input
+                                value={termDraft[key] ?? ""}
+                                onChange={(e) => tryTerm(key, item, e.target.value)}
+                                placeholder="思い出して打ってみる"
+                                spellCheck={false}
+                                autoComplete="off"
+                                aria-label={`${term.meaning} の語句を入力`}
+                              />
+                              {verdict === "close" && <span className="term-msg close">おしい！</span>}
+                              {verdict === "wrong" && <span className="term-msg">ちがいます</span>}
+                              {verdict === "empty" && (
+                                <span className="term-msg">テストで正解するか、ここで打てば集まります</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1233,7 +1357,9 @@ export default function Home() {
                   </button>
                   <button type="button" className="command" onClick={() => setActive("terms")}>
                     <span>そうび</span>
-                    <em>用語 {allTermCount}</em>
+                    <em>
+                      集めた {collectedWords.size}/{words.length}
+                    </em>
                   </button>
                   <button type="button" className="command" onClick={() => setActive("hintshop")}>
                     <span>ヒントを買う</span>
@@ -1335,7 +1461,7 @@ export default function Home() {
                 <div className="dash-head">
                   <h2>分野別テストの結果</h2>
                   <span className="muted small">
-                    {gradeOf(studentCode)}年{classOf(studentCode)}組{seatOf(studentCode)}番 ／ 普段の学習の点数とは別に記録しています
+                    {describeCode(studentCode)} ／ 普段の学習の点数とは別に記録しています
                   </span>
                 </div>
 

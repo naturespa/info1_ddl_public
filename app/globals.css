@@ -690,25 +690,6 @@ footer {
   gap: 9px;
 }
 
-.record-experiment {
-  align-self: flex-start;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  border-radius: 999px;
-  padding: 5px 18px;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.record-experiment.recorded,
-.record-experiment:disabled {
-  background: #fff;
-  color: var(--accent-soft);
-  border-style: dashed;
-  cursor: default;
-}
-
 /* ---------- 理解度（主体性）の記録 ---------- */
 
 .understand-bar {
@@ -4584,45 +4565,6 @@ footer {
   margin: 0;
 }
 
-.board-card-me {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: rgba(10, 16, 30, 0.7);
-  border: 1px solid #2f3d5c;
-  border-radius: 10px;
-  padding: 9px 14px;
-  align-self: flex-start;
-}
-
-.board-card-me .me-code {
-  font-weight: 700;
-  color: #e7dfca;
-  font-size: 13px;
-}
-
-.board-card-me .me-lv {
-  background: #22304d;
-  color: #9db4e8;
-  border-radius: 999px;
-  padding: 2px 11px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.board-card-me .me-g {
-  color: #d7b451;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.board-card-me em {
-  font-style: normal;
-  color: #8892a6;
-  font-size: 11.5px;
-}
-
 /* 掲示板の中の番号入力は、暗い背景に合わせる */
 .board .code-entry label,
 .board .status-pill {
@@ -5809,4 +5751,280 @@ footer {
 .status-hero .status-title {
   flex: 0 0 auto;
   width: 100%;
+}
+
+/* ============================================================
+ * 依頼掲示板の「いまどこにいるか」パネル
+ * もとのトップページにあった総合点リングと観点タイルの役割を、
+ * レベルの輪と3本のゲージで置きかえたもの
+ * ========================================================== */
+
+.board-me {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  background: rgba(8, 13, 26, 0.6);
+  border: 1px solid #2f3d5c;
+  border-radius: 12px;
+  padding: 13px 17px;
+  align-self: flex-start;
+  max-width: 560px;
+  width: 100%;
+}
+
+.me-ring {
+  flex: 0 0 auto;
+  width: 74px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border-right: 1px solid rgba(231, 223, 202, 0.16);
+  padding-right: 15px;
+  position: relative;
+}
+
+.me-ring strong {
+  font-size: 34px;
+  line-height: 1.05;
+  color: #d7b451;
+  font-variant-numeric: tabular-nums;
+}
+
+.me-ring span {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: #8892a6;
+}
+
+/* レベルの進み具合を、輪のかわりに下の細い線で出す */
+.me-ring i {
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c0a960, #e3c877);
+  max-width: calc(100% - 15px);
+}
+
+.me-ring::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: calc(100% - 15px);
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(231, 223, 202, 0.14);
+  z-index: -1;
+}
+
+.me-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.me-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.me-head b {
+  font-size: 12.5px;
+  color: #e7dfca;
+  font-weight: 700;
+}
+
+.me-head .me-g {
+  margin-left: auto;
+  color: #d7b451;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.me-next {
+  margin: 0;
+  font-size: 11px;
+  color: #8892a6;
+  line-height: 1.6;
+}
+
+.me-gauges {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.me-gauge {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 8px;
+}
+
+.me-gauge span {
+  font-size: 11px;
+  color: #b8bdcb;
+}
+
+.me-gauge .gauge-bar {
+  height: 7px;
+  background: rgba(231, 223, 202, 0.14);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.me-gauge .gauge-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.me-gauge b {
+  font-size: 12px;
+  text-align: right;
+  color: #e7dfca;
+  font-variant-numeric: tabular-nums;
+}
+
+.me-gauge.g-power .gauge-bar i {
+  background: #be6517;
+}
+
+.me-gauge.g-wisdom .gauge-bar i {
+  background: #2376b9;
+}
+
+.me-gauge.g-heart .gauge-bar i {
+  background: #009160;
+}
+
+@media (max-width: 520px) {
+  .board-me {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .me-ring {
+    flex-direction: row;
+    gap: 8px;
+    border-right: none;
+    border-bottom: 1px solid rgba(231, 223, 202, 0.16);
+    padding: 0 0 8px;
+    width: 100%;
+    justify-content: flex-start;
+    align-items: baseline;
+  }
+
+  .me-ring::after,
+  .me-ring i {
+    display: none;
+  }
+}
+
+/* ---------- そうび：集めた語と、まだ伏せている語 ---------- */
+
+.collect-bar {
+  height: 8px;
+  background: var(--accent-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  max-width: 460px;
+}
+
+.collect-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #c0a960, #e3c877);
+  border-radius: 999px;
+}
+
+.term-list > div.got {
+  border-left-color: #c9a227;
+}
+
+.term-list > div.hidden-word {
+  border-left-color: var(--line);
+  border-left-style: dashed;
+}
+
+.term-list dt i {
+  font-size: 11px;
+}
+
+.term-list > div.got dt i {
+  color: #c9a227;
+}
+
+.term-list > div.hidden-word dt i {
+  color: var(--muted);
+}
+
+.term-list .masked {
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.word-locked {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+/* そうびの中で語句を打ち直す */
+.term-try {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.term-try input {
+  flex: 0 1 180px;
+  min-width: 0;
+  font-size: 12.5px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.term-msg {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.term-msg.close {
+  color: #a06a00;
+  font-weight: 700;
+}
+
+/* 名簿にない番号のとき */
+.status-pill.ng {
+  background: #fdeeea;
+  color: var(--state-bad);
+  border-color: #f0c8c0;
+}
+
+.code-confirm.ng {
+  border-color: #f0c8c0;
+  background: #fdf6f4;
+}
+
+.board .code-confirm.ng {
+  background: rgba(60, 20, 16, 0.5);
+  border-color: #7a3a30;
+}
+
+.board .code-confirm.ng .code-ask,
+.board .code-confirm.ng .code-note {
+  color: #f0d8d2;
 }

@@ -23,7 +23,8 @@ import {
   type ExamProgress,
   type ServedQuestion
 } from "./lib/exam-runtime";
-import { classOf, gradeOf, seatOf, type ClassNo, type EncryptedBundle, type ExamResult, type ExamSet } from "./lib/exam-types";
+import { gradeOf, seatOf, type ClassNo, type EncryptedBundle, type ExamResult, type ExamSet } from "./lib/exam-types";
+import { examClassOf, isTeacherCode } from "./lib/roster";
 
 const PER_PAGE = 10;
 
@@ -51,7 +52,8 @@ export function ExamView({
   /** 採点が終わったら、成績ページとJSON出力に渡す */
   onResult: (result: ExamResult) => void;
 }) {
-  const classNo = classOf(studentCode);
+  // 試し用の番号は1組の問題を開く
+  const classNo = examClassOf(studentCode) as ClassNo | null;
   const [phase, setPhase] = useState<Phase>("password");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -212,7 +214,9 @@ export function ExamView({
       <div className="exam-head">
         <h1>分野別テスト</h1>
         <span className="exam-who">
-          {gradeOf(studentCode)}年{classNo}組{seatOf(studentCode)}番（{studentCode}）
+          {isTeacherCode(studentCode)
+            ? `試し用の番号 ${studentCode}（1組の問題を開きます）`
+            : `${gradeOf(studentCode)}年${classNo}組${seatOf(studentCode)}番（${studentCode}）`}
         </span>
       </div>
 
