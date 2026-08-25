@@ -6318,3 +6318,145 @@ footer {
       "no score score";
   }
 }
+
+/* =========================================================================
+   v26 入力欄の強調（案B：太わく＋ペン印）
+   打つ場所が一目で分かるように、全ての入力欄を共通の見た目にそろえる。
+   - 枠は2pxの紺　- 未入力はうすいクリーム色　- 入力すると白＋✓
+   - 文字は16px（スマホで勝手に拡大されるのを防ぐ）
+   ========================================================================= */
+:root {
+  --input-border: #2f5aa8;
+  --input-border-filled: #9fb2d4;
+  --input-empty: #fffdf5;
+  --input-ring: rgba(47, 90, 168, 0.18);
+  --input-pen: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f5aa8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E");
+  --input-check: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23348f66' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+
+/* --- 文字を打つ欄（ペン印つき） --- */
+.field input[type="text"],
+.field input:not([type]),
+.field textarea,
+.lookup input,
+.word-input input,
+.sheet-input input,
+.term-try input {
+  font-size: 16px;
+  border: 2px solid var(--input-border);
+  border-radius: 11px;
+  background-color: var(--input-empty);
+  background-image: var(--input-pen);
+  background-repeat: no-repeat;
+  background-position: 10px center;
+  background-size: 15px 15px;
+  padding: 10px 12px 10px 34px;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field textarea,
+.term-try textarea {
+  background-position: 10px 13px;
+}
+
+/* 何か打ってあるときは、白地＋✓ */
+.field input[type="text"]:not(:placeholder-shown),
+.field input:not([type]):not(:placeholder-shown),
+.field textarea:not(:placeholder-shown),
+.lookup input:not(:placeholder-shown),
+.word-input input:not(:placeholder-shown),
+.sheet-input input:not(:placeholder-shown),
+.term-try input:not(:placeholder-shown) {
+  background-color: #fff;
+  background-image: var(--input-check);
+  border-color: var(--input-border-filled);
+}
+
+/* --- 数値・選択（ペン印なし。枠だけそろえる） --- */
+.field input[type="number"],
+.field select {
+  font-size: 16px;
+  border: 2px solid var(--input-border);
+  border-radius: 11px;
+  background-color: #fff;
+  padding: 10px 12px;
+}
+
+.field input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 打っている最中は、枠を濃くして外側に輪を出す --- */
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.lookup input:focus,
+.word-input input:focus,
+.sheet-input input:focus,
+.term-try input:focus {
+  outline: none;
+  background-color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--input-ring);
+}
+
+/* --- 個別の調整 --- */
+.lookup input {
+  width: 178px;
+  letter-spacing: 0.22em;
+  font-size: 18px;
+}
+
+.sheet-input input {
+  font-family: "SFMono-Regular", "Consolas", "Roboto Mono", "Courier New", monospace;
+  font-size: 14.5px;
+  padding: 8px 10px 8px 30px;
+  background-size: 13px 13px;
+  background-position: 9px center;
+}
+
+.word-input input,
+.term-try input {
+  max-width: 100%;
+}
+
+/* 正誤の判定が出ている語句欄は、その色を優先する */
+.word-item.correct .word-input input,
+.word-item.wrong .word-input input,
+.sheet-task.ok .sheet-input input {
+  border-color: var(--input-border-filled);
+}
+
+/* すべり込み：スマホでも枠が細らないように */
+@media (max-width: 720px) {
+  .field input[type="text"],
+  .field input:not([type]),
+  .field textarea,
+  .lookup input,
+  .word-input input,
+  .sheet-input input,
+  .term-try input {
+    font-size: 16px;
+  }
+}
+
+/* 数値欄は横に長すぎると押しどころが分かりにくいので、幅を抑えて単位の隣に置く */
+.field input[type="number"] {
+  width: auto;
+  min-width: 110px;
+  max-width: 190px;
+  flex: 0 0 auto;
+}
+
+.field select {
+  width: auto;
+  min-width: 200px;
+  max-width: 100%;
+}
+
+/* つまみ（スライダー）も、触れる場所が分かるように太くする */
+.field input[type="range"] {
+  height: 26px;
+  accent-color: var(--accent-soft);
+}
