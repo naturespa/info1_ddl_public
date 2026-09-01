@@ -716,9 +716,11 @@ export default function Home() {
           ) : (
             <div className="theory-box">
               <b>理論</b>
-              {lesson.theory[index].split("\n").map((paragraph, i) => (
-                <p key={i}>{paragraph}</p>
-              ))}
+              <ul>
+                {lesson.theory[index].split("\n").map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
             </div>
           )}
           <div className="experiment-body">{body}</div>
