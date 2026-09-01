@@ -470,7 +470,7 @@ export default function Home() {
     }
   }, [codeDraft, loaded]);
 
-  /** 番号を確定する。確定するとこのブラウザではもう変えられない */
+  /** 番号を確定する。確定するともう変えられない */
   const confirmCode = () => {
     // 名簿にない番号では始められない
     if (!isAllowedCode(codeDraft)) return;
@@ -846,7 +846,7 @@ export default function Home() {
                             : `このブラウザに ${codeDraft} の記録はありません。新しく始めます。`}
                         </p>
                         <p className="code-warn">
-                          確定すると、このブラウザでは番号を変えられなくなります。間違いがないか確かめてください。
+                          確定すると、番号を変えられなくなります。間違いがないか確かめてください。
                         </p>
                         <div className="code-actions">
                           <button className="primary" onClick={confirmCode}>

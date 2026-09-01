@@ -6490,3 +6490,36 @@ footer {
   border-radius: 2px;
   background: var(--accent-soft);
 }
+
+/* =========================================================================
+   v28 日本語の改行を整える
+   ・text-wrap: balance … 2〜3行の短い文で、行の長さをそろえて「1文字だけ次の行」を防ぐ
+   ・word-break: auto-phrase … 文節の切れ目で折り返す（対応ブラウザのみ。非対応でも従来どおり）
+   ========================================================================= */
+.lesson-hero p,
+.experiment-heading h2,
+.experiment-heading p,
+.mission-box > p,
+.mission-step p,
+.theory-box li,
+.hint-line,
+.word-clue,
+.sheet-ask,
+.quest p,
+.board h1,
+.board p,
+.status-lead,
+.dash-panel > .muted,
+.verdict-box p,
+.understand-bar b,
+.field-label {
+  text-wrap: pretty;
+  text-wrap: balance;
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
+}
+
+/* 単元名の下の1文は、幅の許すかぎり1行で見せる（60chの制限をやめた） */
+.lesson-hero p {
+  max-width: none;
+}
