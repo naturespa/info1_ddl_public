@@ -983,9 +983,14 @@ export default function Home() {
                     <span key={concept}>{concept}</span>
                   ))}
                 </div>
-                <p className="muted small">
-                  教科書 {current.textbook} ／ 学習時間の目安 {current.minutes}分
-                </p>
+                <div className="muted small refs">
+                  <b>教科書</b>
+                  <span>{current.textbook}</span>
+                  <b>ITパスポート</b>
+                  <span>{current.itpassport}</span>
+                  <b>学習時間</b>
+                  <span>目安 {current.minutes}分</span>
+                </div>
               </div>
               <div className="lesson-status">
                 <span>

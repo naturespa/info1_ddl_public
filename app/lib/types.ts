@@ -55,8 +55,10 @@ export type Lesson = {
   title: string;
   subtitle: string;
   concepts: string[];
-  /** 教科書の該当ページ（Excelシートの記載に対応） */
+  /** 教科書の該当箇所。日本文教出版「情報Ⅰ ADVANCED」(116-902) の章・節で書く */
   textbook: string;
+  /** ITパスポート試験シラバス Ver.6.5（令和8年1月適用）の分類 */
+  itpassport: string;
   /** 学習時間の目安（分） */
   minutes: number;
   /** 用語集（赤シート学習に対応する重要語句） */

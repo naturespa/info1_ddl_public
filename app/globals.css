@@ -6523,3 +6523,30 @@ footer {
 .lesson-hero p {
   max-width: none;
 }
+
+/* v29 単元名の下の出典（教科書・ITパスポート・時間） */
+.lesson-hero > div:first-child {
+  flex: 1 1 520px;
+  min-width: 0;
+}
+
+.lesson-hero .refs {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 3px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.lesson-hero .refs span {
+  text-wrap: pretty;
+  text-wrap: balance;
+  word-break: auto-phrase;
+}
+
+.lesson-hero .refs b {
+  color: var(--accent-soft);
+  font-weight: 700;
+  white-space: nowrap;
+}
