@@ -857,10 +857,10 @@ export function FeatureLab({ card, missionNote, onMissionNote }: LabProps) {
               24ビット＝16,777,216通り。光の3原色を各8ビット（256階調）で表すと8×3＝24ビットになり、これが「フルカラー」です。
             </em>
           </div>
-          <Hint>
+          <HintButton id="feature-3-1">
             必要なビット数は「その数以上になる最小の2のn乗」を探すことで求まります。15種類なら4ビット（16通り）、50色なら6ビット（64通り）、
             1,677万色なら24ビット（16,777,216通り）です。ビットを1つ増やすたびに、表せる数は2倍になります。
-          </Hint>
+          </HintButton>
         </>
       )}
 
@@ -1011,10 +1011,10 @@ export function BaseLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "答え合わせ（2進数を10進数に戻す）", value: parseInt(ladder.digits, 2) === ladderValue ? "一致" : "不一致", warn: parseInt(ladder.digits, 2) !== ladderValue, note: "1が立ったけたの重みを足した結果と、もとの数を比べた" }
             ]}
           />
-          <Hint>
+          <HintButton id="base-1-1">
             商が0になるまで2で割り、出てきた余りを最後から最初へ逆順に並べると2進数になります。
             表の余りの列を、下から上へ読んでみましょう。
-          </Hint>
+          </HintButton>
         </>
       )}
 
@@ -1704,10 +1704,10 @@ export function RealLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "元の値とのずれ", value: fmt(float32.error, 12), warn: float32.error !== 0, note: "保存された値から元の値を引いた差。仮数部の打ち切りで生じる" }
             ]}
           />
-          <Hint>
+          <HintButton id="real-3-2">
             指数部にはバイアス127を足した値が入ります。指数が3なら 3 + 127 = 130 を2進数で格納します。
             指数がマイナスになることもあるので、127を足してからしまうことで、必ず0以上の数にしています。
-          </Hint>
+          </HintButton>
           <HintButton id="real-3-1">
             指数はマイナスになることもあります。そのままだとマイナスをしまう場所がもう1つ必要になるので、あらかじめ127を足して、必ず0以上の数にしてからしまいます。海面より低い土地の標高を「マイナス3m」と書くかわりに、全部に100を足して「97m」と書くようなものです。この127をバイアスといいます。
           </HintButton>
@@ -2346,10 +2346,10 @@ export function ComputerLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "クロック数を半分にすると", value: `約 ${fmt((clock * 1e9) / Math.max(1, cycles / 2) / 1e8, 1)} 億回`, note: "周波数はそのままで、1命令あたりのクロック数を半分にした場合" }
             ]}
           />
-          <Hint>
+          <HintButton id="computer-2-1">
             1.6GHzで4クロックなら 1.6×10⁹ ÷ 4 ＝ 4.0×10⁸ で、1秒間に4億回。クロックを上げるか、1命令あたりのクロック数を減らすかの
             2通りで速くできます。
-          </Hint>
+          </HintButton>
         </>
       )}
 
@@ -2665,7 +2665,7 @@ export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "1kB＝1,000B なら", value: `${fmt(totalBytes / 1000, 3)} kB`, note: "世界共通の単位のきまり（SI）。問題文が指定したときはこちら" }
             ]}
           />
-          <Hint>1kBを1,000とするか1,024とするかで答えが変わります。問題文の指定を必ず確認しましょう。</Hint>
+          <HintButton id="text-4-1">1kBを1,000とするか1,024とするかで答えが変わります。問題文の指定を必ず確認しましょう。</HintButton>
         </>
       )}
 
@@ -2847,7 +2847,7 @@ export function AudioLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "表せる音の大きさの幅（ダイナミックレンジ）の目安", value: `約 ${fmt(quantBits * 6, 0)} dB`, note: "1ビットあたりおよそ6dB。ビット数 × 6 で見積もる" }
             ]}
           />
-          <Hint>1ビット増やすごとに段階は2倍、表現できる音の強弱の幅はおよそ6dB広がります。</Hint>
+          <HintButton id="audio-2-1">1ビット増やすごとに段階は2倍、表現できる音の強弱の幅はおよそ6dB広がります。</HintButton>
         </>
       )}
 
@@ -3088,7 +3088,7 @@ export function ImageLab({ card, missionNote, onMissionNote }: LabProps) {
             <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
             <Results items={bytesRowSI(bytes)} />
           </details>
-          <Hint>縦横をそれぞれ2倍にすると、画素数は4倍。データ量も4倍になります。教科書は 1KB＝1,024B で計算します。</Hint>
+          <HintButton id="image-1-1">縦横をそれぞれ2倍にすると、画素数は4倍。データ量も4倍になります。教科書は 1KB＝1,024B で計算します。</HintButton>
         </>
       )}
 
@@ -3116,7 +3116,7 @@ export function ImageLab({ card, missionNote, onMissionNote }: LabProps) {
             <summary>問題文で「1MB＝1,000kB」と指定されたとき</summary>
             <Results items={bytesRowSI(scanBytes)} />
           </details>
-          <Hint>dpiは「1インチあたり」の数なので、cmのままかけると答えが合いません。必ず1インチ＝2.54cmで単位をそろえてから計算します。</Hint>
+          <HintButton id="image-2-1">dpiは「1インチあたり」の数なので、cmのままかけると答えが合いません。必ず1インチ＝2.54cmで単位をそろえてから計算します。</HintButton>
         </>
       )}
 

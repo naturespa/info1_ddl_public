@@ -1043,15 +1043,15 @@ export default function Home() {
                 missionNote={missionNotes[current.id] ?? ""}
                 onMissionNote={(value) => setMissionNotes((prev) => ({ ...prev, [current.id]: value }))}
               />
-            </HintShopContext.Provider>
 
-            <WordQuiz
-              lessonId={current.id}
-              submission={wordSubmissions[current.id]}
-              draft={wordDrafts[current.id] ?? wordsOf(current.id).map(() => "")}
-              onDraft={(next) => setWordDrafts((prev) => ({ ...prev, [current.id]: next }))}
-              onSubmit={(next) => submitWords(current.id, next)}
-            />
+              <WordQuiz
+                lessonId={current.id}
+                submission={wordSubmissions[current.id]}
+                draft={wordDrafts[current.id] ?? wordsOf(current.id).map(() => "")}
+                onDraft={(next) => setWordDrafts((prev) => ({ ...prev, [current.id]: next }))}
+                onSubmit={(next) => submitWords(current.id, next)}
+              />
+            </HintShopContext.Provider>
 
             <section className="quiz">
               <h2>確認問題 {current.questions.length}問</h2>
@@ -1245,7 +1245,8 @@ export default function Home() {
             <h1>ヒントを買う</h1>
             <p className="muted">
               ヒントは全部で{hintList.length}個（実験のヒント{hintList.filter((h) => h.kind === "実験").length}個 ＋
-              応用の表計算の式{hintList.filter((h) => h.kind === "式").length}個）。1つ<b>{COIN.hint}G</b>です。
+              応用の表計算の式{hintList.filter((h) => h.kind === "式").length}個 ＋ 重要語句の最初の1文字
+              {hintList.filter((h) => h.kind === "語句").length}個）。1つ<b>{COIN.hint}G</b>です。
               一度買えば、そのあとはいつでも見られます。いま <b>{balance}G</b> 持っています
               （買えるのは {Math.floor(balance / COIN.hint)}個）。
             </p>
@@ -1258,7 +1259,14 @@ export default function Home() {
                 const lesson = lessons.find((l) => l.id === hint.lessonId);
                 if (!lesson) return null;
                 const last = lesson.theory.length;
-                const label = hint.kind === "式" ? "応用の表計算" : hint.index === last ? "応用" : `実験${hint.index + 1}`;
+                const label =
+                  hint.kind === "式"
+                    ? "応用の表計算"
+                    : hint.kind === "語句"
+                      ? "重要語句テスト"
+                      : hint.index === last
+                        ? "応用"
+                        : `実験${hint.index + 1}`;
                 const owned = !!boughtHints[hint.id];
                 const short = COIN.hint - balance;
                 return (

@@ -915,7 +915,7 @@ export function SpreadLab({ card, missionNote, onMissionNote }: LabProps) {
                     }
                   ]}
                 />
-                <Hint>偏差をそのまま足すと必ず0。だから2乗してから平均をとります。</Hint>
+                <HintButton id="spread-1-2">偏差をそのまま足すと必ず0。だから2乗してから平均をとります。</HintButton>
               </>
             ) : (
               <>
@@ -1010,7 +1010,7 @@ export function SpreadLab({ card, missionNote, onMissionNote }: LabProps) {
               }
             ]}
           />
-          <Hint>偏差値60はz=1、上位約15.9%。偏差値70はz=2、上位約2.3%です。</Hint>
+          <HintButton id="spread-3-1">偏差値60はz=1、上位約15.9%。偏差値70はz=2、上位約2.3%です。</HintButton>
         </>
       )}
 
@@ -1552,7 +1552,7 @@ export function SimulationLab({ card, missionNote, onMissionNote }: LabProps) {
             values={series.map(({ data }) => Math.max(...data.map((d) => Math.abs(d.relative - 1 / 6))))}
             labels={series.map(({ t }) => `${t}回`)}
           />
-          <Hint>回数が10倍になると、ずれはおよそ1/√10（約0.32倍）に縮みます。</Hint>
+          <HintButton id="simulation-1-1">回数が10倍になると、ずれはおよそ1/√10（約0.32倍）に縮みます。</HintButton>
         </>
       )}
 
@@ -2222,7 +2222,7 @@ export function TestLab({ card, missionNote, onMissionNote }: LabProps) {
                   ["女性", fmt(chi.residuals[1][0], 3), fmt(chi.residuals[1][1], 3)]
                 ]}
               />
-              <Hint>表の数字が ＋2 より大きい、または −2 より小さいマスが、差を生んでいる場所です。＋は期待より多い、−は少ないことを表します。</Hint>
+              <HintButton id="test-4-1">表の数字が ＋2 より大きい、または −2 より小さいマスが、差を生んでいる場所です。＋は期待より多い、−は少ないことを表します。</HintButton>
             </>
           )}
         </>

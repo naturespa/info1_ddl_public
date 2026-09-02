@@ -6655,3 +6655,42 @@ footer {
 .calc-steps b .mono {
   font-size: 1.08em;
 }
+
+/* v31 重要語句テストの「最初の1文字」を買うボタン */
+.word-buy {
+  border: 1px dashed var(--gold-soft);
+  background: #fffaf0;
+  color: var(--gold);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.word-buy b {
+  background: var(--gold-soft);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.word-buy:hover:not(:disabled) { background: #fff3d8; border-style: solid; }
+.word-buy:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* v32 答えの文字数（カタカナ3文字 など） */
+.word-shape {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: 1px;
+}

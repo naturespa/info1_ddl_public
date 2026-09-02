@@ -4,12 +4,14 @@
 //
 // ・意味を読んで、語句を入力する
 // ・確認問題と同じ2回ルール（1回目で正解＝1点、2回目で正解＝0.5点）
-// ・1回目を間違えると、最初の1文字が出る
+// ・1回目を間違えたとき、最初の1文字は有料ヒント（単元ごとに1つ買うと5語ぶん出る）
 // ・打ち方のちがい（全角半角・大小・長音・スペース）は正解あつかい
 // ・1文字違いは「おしい！」と出して、×にせずもう一度打たせる
 
-import { useMemo, useState } from "react";
-import { checkWord, firstLetter } from "./word-check";
+import { useContext, useMemo, useState } from "react";
+import { answerShape, checkWord, firstLetter } from "./word-check";
+import { wordHintId } from "./hint-list";
+import { HintShopContext } from "./ui";
 import { wordsOf, type WordItem } from "./words";
 import type { QuestionResult } from "./types";
 
@@ -73,6 +75,11 @@ export function WordQuiz({
   /** 2回目に打ちこむ文字列 */
   const [retryDraft, setRetryDraft] = useState<string[]>(() => items.map(() => ""));
   const [showHelp, setShowHelp] = useState(false);
+  /** 最初の1文字は有料。買っていなければ伏せる */
+  const shop = useContext(HintShopContext);
+  const letterId = wordHintId(lessonId);
+  const letterBought = !shop || shop.bought(letterId);
+  const letterShort = shop ? shop.price - shop.balance : 0;
 
   const waiting = submission?.results.filter((r) => r === "2回目待ち").length ?? 0;
   const filled = draft.filter((v) => v.trim()).length;
@@ -132,7 +139,7 @@ export function WordQuiz({
       <div className="word-head">
         <h2>重要語句</h2>
         <span className="muted small">
-          意味を読んで、語句を入力します。全部で{items.length}語・{items.length}点。
+          次の意味にあてはまる語句を答えなさい。全部で{items.length}語・{items.length}点。青いラベルは答えの文字の種類と文字数です。
           {submission ? `　いまの得点 ${submission.score} / ${items.length}点` : `　入力ずみ ${filled} / ${items.length}`}
         </span>
         <button type="button" className="ghost small" onClick={() => setShowHelp((v) => !v)}>
@@ -157,6 +164,7 @@ export function WordQuiz({
             <li key={item.answer} className={`word-item ${result ? tag(result) : ""}`}>
               <p className="word-clue">
                 <b>{i + 1}.</b> {item.clue}
+                <span className="word-shape">{answerShape(item.answer)}</span>
               </p>
 
               {!submission && (
@@ -177,12 +185,27 @@ export function WordQuiz({
                   <input
                     value={retryDraft[i] ?? ""}
                     onChange={(e) => setRetryDraft(setAt(retryDraft, i, e.target.value))}
-                    placeholder={`${firstLetter(item)} …`}
+                    placeholder={letterBought ? `${firstLetter(item)} …` : "もう一度入力"}
                     spellCheck={false}
                     autoComplete="off"
                   />
                   <span className="word-msg hint">
-                    1回目「{submission?.answers[i] || "（空欄）"}」は不正解。最初の1文字は<b>{firstLetter(item)}</b>です
+                    1回目「{submission?.answers[i] || "（空欄）"}」は不正解。
+                    {letterBought ? (
+                      <>
+                        最初の1文字は<b>{firstLetter(item)}</b>です
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="word-buy"
+                        disabled={letterShort > 0}
+                        title={letterShort > 0 ? `あと ${letterShort}G 足りません` : ""}
+                        onClick={() => shop?.buy(letterId)}
+                      >
+                        最初の1文字を見る<b>{shop?.price}G</b>
+                      </button>
+                    )}
                   </span>
                   {checkWord(item, retryDraft[i] ?? "") === "close" && (
                     <span className="word-msg close">おしい！　もう少しです</span>

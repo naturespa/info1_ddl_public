@@ -9,11 +9,24 @@ export type HintEntry = {
   index: number;
   /** その実験の見出し */
   title: string;
-  /** 実験のヒントか、応用ミッションの表計算の「式を見る」か */
-  kind: "実験" | "式";
+  /** 実験のヒント／応用の表計算の「式を見る」／重要語句テストの「最初の1文字」 */
+  kind: "実験" | "式" | "語句";
 };
 
 const experimentHints: HintEntry[] = [
+  // v31: もともと常時表示だったヒントのうち、解き方を先に言っているものを有料にした12個
+  { id: "feature-3-1", lessonId: "feature", index: 3, title: "情報量の単位と、必要なビット数", kind: "実験" },
+  { id: "base-1-1", lessonId: "base", index: 1, title: "割り算をくり返して2進数にする", kind: "実験" },
+  { id: "real-3-2", lessonId: "real", index: 3, title: "32ビットの浮動小数点に分解する", kind: "実験" },
+  { id: "computer-2-1", lessonId: "computer", index: 2, title: "クロック周波数から命令の実行回数を求める", kind: "実験" },
+  { id: "text-4-1", lessonId: "text", index: 4, title: "文字データの容量を見積もる", kind: "実験" },
+  { id: "audio-2-1", lessonId: "audio", index: 2, title: "量子化：波の高さを段階に丸める", kind: "実験" },
+  { id: "image-1-1", lessonId: "image", index: 1, title: "画素数と1画素のビット数から容量を求める", kind: "実験" },
+  { id: "image-2-1", lessonId: "image", index: 2, title: "dpiから画素数を求める", kind: "実験" },
+  { id: "spread-1-2", lessonId: "spread", index: 1, title: "偏差から分散・標準偏差を組み立てる", kind: "実験" },
+  { id: "spread-3-1", lessonId: "spread", index: 3, title: "偏差値に直す", kind: "実験" },
+  { id: "simulation-1-1", lessonId: "simulation", index: 1, title: "大数の法則を確かめる", kind: "実験" },
+  { id: "test-4-1", lessonId: "test", index: 4, title: "カイ二乗検定で、割合の差を調べる", kind: "実験" },
   { id: "base-4-1", lessonId: "base", index: 4, title: "けたをずらす：0で埋めるシフトと、符号を残すシフト", kind: "実験" },
   { id: "negative-1-1", lessonId: "negative", index: 1, title: "1の補数から2の補数までを、ひと続きで作る", kind: "実験" },
   { id: "negative-2-1", lessonId: "negative", index: 2, title: "10進数を、マイナスも表せるビットの並びにする", kind: "実験" },
@@ -84,7 +97,33 @@ const sheetHints: HintEntry[] = [
   { id: "sheet-timeseries-3", lessonId: "timeseries", index: -1, title: "表計算 4問目の式", kind: "式" },
 ];
 
-export const hintList: HintEntry[] = [...experimentHints, ...sheetHints];
+/** 重要語句テストの「最初の1文字」。単元ごとに1つ買うと、その単元の5語ぶん出る */
+const wordHints: HintEntry[] = [
+  { id: "word-feature", lessonId: "feature", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-base", lessonId: "base", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-negative", lessonId: "negative", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-real", lessonId: "real", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-logic", lessonId: "logic", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-computer", lessonId: "computer", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-text", lessonId: "text", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-audio", lessonId: "audio", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-image", lessonId: "image", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-video", lessonId: "video", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-compress", lessonId: "compress", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-organize", lessonId: "organize", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-center", lessonId: "center", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-spread", lessonId: "spread", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-normal", lessonId: "normal", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-relation", lessonId: "relation", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-simulation", lessonId: "simulation", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-test", lessonId: "test", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" },
+  { id: "word-timeseries", lessonId: "timeseries", index: -2, title: "重要語句の最初の1文字（5語ぶん）", kind: "語句" }
+];
+
+export const hintList: HintEntry[] = [...experimentHints, ...sheetHints, ...wordHints];
 
 /** 表計算の式のぶんだけ取り出す */
 export const sheetHintId = (lessonId: string, taskIndex: number) => `sheet-${lessonId}-${taskIndex}`;
+
+/** 重要語句の「最初の1文字」のID */
+export const wordHintId = (lessonId: string) => `word-${lessonId}`;

@@ -60,3 +60,27 @@ export const checkWord = (item: WordItem, input: string): WordVerdict => {
 
 /** 間違えたときに出す、最初の1文字 */
 export const firstLetter = (item: WordItem) => item.answer.slice(0, 1);
+
+/**
+ * 答えの形（文字の種類と文字数）を短い日本語にする。
+ * 「カタカナ3文字」のように出して、何を答えればよいかを分かりやすくするために使う。
+ */
+export const answerShape = (answer: string): string => {
+  const chars = [...answer];
+  const n = chars.length;
+  const kind = (c: string) => {
+    if (/[ァ-ヺー・]/.test(c)) return "カタカナ";
+    if (/[ぁ-ゖ]/.test(c)) return "ひらがな";
+    if (/[一-鿿々]/.test(c)) return "漢字";
+    if (/[A-Za-z]/.test(c)) return "アルファベット";
+    if (/[0-9]/.test(c)) return "数字";
+    return "記号";
+  };
+  const order = ["漢字", "ひらがな", "カタカナ", "アルファベット", "数字"];
+  const kinds = order.filter((k) => chars.some((c) => kind(c) === k));
+  if (kinds.length === 1) {
+    return kinds[0] === "漢字" ? `漢字${n}字` : `${kinds[0]}${n}文字`;
+  }
+  if (kinds.length === 2) return `${kinds[0]}と${kinds[1]}で${n}文字`;
+  return `全部で${n}文字`;
+};
