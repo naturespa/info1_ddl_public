@@ -6725,3 +6725,97 @@ footer {
   color: var(--muted);
   margin-left: auto;
 }
+
+/* =========================================================================
+   v34 ステータス画面の文字まわりを整える
+   ========================================================================= */
+
+/* 分野カードの内訳：値が「7.5 / 89」「点」で分かれて折り返していたのを直す */
+.area-detail {
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: 6px 16px;
+}
+
+.area-detail > div {
+  align-items: baseline;
+}
+
+.area-detail dt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.area-detail dd {
+  white-space: nowrap;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 難易度別の到達度：「ITパスポート」が2行に折り返していたのを直す */
+.level-row {
+  grid-template-columns: 118px minmax(0, 1fr) 46px 62px;
+}
+
+.level-row .level {
+  white-space: nowrap;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .level-row {
+    grid-template-columns: 108px minmax(0, 1fr) 44px;
+  }
+}
+
+/* 弱点カードの見出し：単元名と得点が別行に落ちるのをそろえる */
+.weak-card header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.weak-card header b {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.weak-card header em {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 単元別の理解度マップ：単元名は省略せず、必要なら折り返す */
+@media (min-width: 721px) {
+  .map-row {
+    grid-template-columns: 32px minmax(0, 3.6fr) minmax(30px, 0.8fr) 36px 52px 54px;
+  }
+}
+
+.map-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.35;
+}
+
+/* スマホでは「実験 0/6」が枠からはみ出していたので折り返しを許す */
+@media (max-width: 720px) {
+  .map-exp {
+    white-space: normal;
+    text-align: left !important;
+  }
+}
+
+/* スマホでは単元名を省略せずに折り返す（単元別の記録） */
+@media (max-width: 720px) {
+  .unit-line > b {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.35;
+  }
+}

@@ -878,7 +878,7 @@ export default function Home() {
                         {level.maxed ? "最高レベルに到達している。" : `つぎのレベルまで あと ${level.toNext}G。`}
                       </p>
                       <p className="me-next">
-                        討伐 {summary.completedLessons}/{summary.lessonCount} ・ 総合点 {summary.totalScore}/
+                        討伐済 {summary.completedLessons}/{summary.lessonCount}件 ・ 総合点 {summary.totalScore}/
                         {summary.totalMax}
                       </p>
                       <div className="me-gauges">
@@ -909,7 +909,7 @@ export default function Home() {
                   <div className="board-area-head">
                     <h2>{area}分野の依頼</h2>
                     <span>
-                      討伐 {cleared} / {areaLessons.length}
+                      討伐済 {cleared}/{areaLessons.length}件
                     </span>
                   </div>
                   <div className="quest-grid">
@@ -1352,7 +1352,7 @@ export default function Home() {
                       {summary.perspective.thinking} <em>/ 100</em>
                     </b>
                     <small>
-                      思考・判断・表現　実験 {summary.experimentDone}/{summary.experimentMax}個
+                      思考・判断・表現　実施した実験 {summary.experimentDone}/{summary.experimentMax}個
                     </small>
                   </div>
                   <div className="gauge g-heart">
@@ -1364,8 +1364,8 @@ export default function Home() {
                       {summary.perspective.attitude} <em>/ 100</em>
                     </b>
                     <small>
-                      主体性　単元の討伐 {summary.clear.done}/{summary.clear.max} ・ ふり返り {summary.reflection.done}/
-                      {summary.reflection.max}
+                      主体性　討伐済 {summary.clear.done}/{summary.clear.max}件 ・ ふり返りの申告{" "}
+                      {summary.reflection.done}/{summary.reflection.max}実験
                     </small>
                   </div>
                 </div>
@@ -1393,8 +1393,8 @@ export default function Home() {
                 </div>
 
                 <p className="status-purse-line">
-                  かせいだ {summary.earned}G ・ つかった {summary.spent}G ・ のこり <b>{balance}G</b>　／　ヒント{" "}
-                  {Object.values(boughtHints).filter(Boolean).length} 個 開放ずみ
+                  かせいだ {summary.earned}G ・ つかった {summary.spent}G ・ のこり <b>{balance}G</b>　／　開放したヒント{" "}
+                  {Object.values(boughtHints).filter(Boolean).length}個
                 </p>
               </div>
             </div>
@@ -1406,14 +1406,14 @@ export default function Home() {
                 <small>/{summary.totalMax}</small>
               </div>
               <div className="metric">
-                <span>討伐した依頼</span>
+                <span>討伐済の依頼</span>
                 <b>{summary.completedLessons}</b>
                 <small>/{summary.lessonCount}件</small>
               </div>
               <div className="metric">
-                <span>ふり返りの記録</span>
+                <span>ふり返りを申告した実験</span>
                 <b>{summary.understandingAnswered}</b>
-                <small>/{summary.experimentMax}実験で申告ずみ</small>
+                <small>/{summary.experimentMax}個</small>
               </div>
             </div>
             <p className="muted small">
@@ -1462,16 +1462,16 @@ export default function Home() {
                     </div>
                     <div>
                       <dt>知識・技能</dt>
-                      <dd>{area.perspective.knowledge}</dd>
+                      <dd>{area.perspective.knowledge} / 100</dd>
                     </div>
                     <div>
                       <dt>思考・判断・表現</dt>
-                      <dd>{area.perspective.thinking}</dd>
+                      <dd>{area.perspective.thinking} / 100</dd>
                     </div>
                     <div>
                       <dt>ふり返りの申告</dt>
                       <dd>
-                        {area.understandingAnswered} / {area.experimentMax}実験
+                        {area.understandingAnswered} / {area.experimentMax}個
                       </dd>
                     </div>
                   </dl>
@@ -1584,8 +1584,8 @@ export default function Home() {
             )}
 
             <p className="muted small">
-              完了した単元（全実験＋確認問題送信）: {summary.completedLessons} / {summary.lessonCount}　／
-              確認問題は 1回目で {summary.quizCorrect}問、2回目で {summary.quizSecondCorrect}問 正解しています。
+              討伐済の依頼（実験・重要語句・確認問題を、2回目待ちを残さず終えた単元）: {summary.completedLessons}/{" "}
+              {summary.lessonCount}件　／　確認問題は 1回目で {summary.quizCorrect}問、2回目で {summary.quizSecondCorrect}問 正解しています。
             </p>
 
             <section className="dashboard">
@@ -1668,8 +1668,8 @@ export default function Home() {
                         <header>
                           <span className="map-no">{row.lesson.no}</span>
                           <b>{row.lesson.title}</b>
-                          <em>
-                            {row.correct}/{row.total}問正解（{row.rate}%）
+                          <em title={`1回目で正解 ${row.correct}問、2回目で正解 ${Math.round((row.score - row.correct) * 2)}問`}>
+                            {row.score}/{row.total}点（{row.rate}%）
                           </em>
                         </header>
                         <div className="weak-block">
