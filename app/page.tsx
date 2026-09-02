@@ -247,7 +247,8 @@ export default function Home() {
       completedLessons: whole.completedLessons,
       lessonCount: whole.lessonCount,
       earned: whole.earned,
-      spent: Object.values(boughtHints).filter(Boolean).length * COIN.hint,
+      /** つかったG。かせいだGを超えないようにする（値段を変えたときの数え直し対策） */
+      spent: Math.min(whole.earned, Object.values(boughtHints).filter(Boolean).length * COIN.hint),
       reflection: whole.reflection,
       clear: whole.clear,
       areas
@@ -412,6 +413,29 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints, lastLesson, practiced]);
 
+  /**
+   * 実験カードを統合・削除した版を挟むと、`${単元}-${実験番号}` のキーがずれる。
+   * いま存在するカードのぶんだけを残して、古いキーは捨てる。
+   */
+  const pickLiveCards = <T,>(saved: Record<string, T> | undefined): Record<string, T> => {
+    if (!saved) return {};
+    const live: Record<string, T> = {};
+    for (const [key, value] of Object.entries(saved)) {
+      const at = key.lastIndexOf("-");
+      const lesson = lessons.find((l) => l.id === key.slice(0, at));
+      const index = Number(key.slice(at + 1));
+      if (lesson && Number.isInteger(index) && index >= 0 && index <= lesson.theory.length) live[key] = value;
+    }
+    return live;
+  };
+
+  /** 買ったヒントも、いまの一覧にあるIDだけを残す */
+  const pickLiveHints = (saved: Record<string, boolean> | undefined): Record<string, boolean> => {
+    if (!saved) return {};
+    const ids = new Set(hintList.map((h) => h.id));
+    return Object.fromEntries(Object.entries(saved).filter(([id, on]) => on && ids.has(id)));
+  };
+
   /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
   const loadRecord = (code: string) => {
     try {
@@ -423,8 +447,8 @@ export default function Home() {
       });
       setDrafts(saved.drafts ?? {});
       setSubmissions(restored);
-      setExperiments(saved.experiments ?? {});
-      setUnderstanding(saved.understanding ?? {});
+      setExperiments(pickLiveCards(saved.experiments));
+      setUnderstanding(pickLiveCards(saved.understanding));
       const restoredWords: Record<string, WordSubmission> = {};
       lessons.forEach((lesson) => {
         const graded = gradeWords(lesson.id, saved.wordSubmissions?.[lesson.id] as Partial<WordSubmission> | undefined);
@@ -433,7 +457,7 @@ export default function Home() {
       setWordDrafts(saved.wordDrafts ?? {});
       setWordSubmissions(restoredWords);
       setMissionNotes(saved.missionNotes ?? {});
-      setBoughtHints(saved.boughtHints ?? {});
+      setBoughtHints(pickLiveHints(saved.boughtHints));
       setLastLesson(saved.lastLesson ?? "");
       setPracticed(saved.practiced ?? {});
       setExamResults(loadExamResults(code));
@@ -551,7 +575,11 @@ export default function Home() {
   };
 
   /** いま持っているG */
-  const balance = summary.earned - summary.spent;
+  /**
+   * のこりのG。ヒントの値段を変えたあとは、過去に買ったぶんが今の値段で計算し直されるので、
+   * かせいだGを超えることがある。マイナスは出さない。
+   */
+  const balance = Math.max(0, summary.earned - summary.spent);
   const level = levelOf(summary.earned);
 
   /** そうびで語句を打ちこむ。正しければ、その場で集める（得点は動かさない） */

@@ -6,7 +6,6 @@ import {
   audioBytes,
   binaryAdd,
   byteSteps,
-  charVariations,
   clamp,
   dpiToDots,
   effectiveAccess,
@@ -500,11 +499,11 @@ const RippleDiagram = ({
  * D0 デジタル情報の特徴
  * ====================================================================== */
 export function FeatureLab({ card, missionNote, onMissionNote }: LabProps) {
+  const [bits, setBits] = useState(8);
   const [temp, setTemp] = useState(21.7);
   const [gradation, setGradation] = useState("1");
   const [copies, setCopies] = useState(6);
   const [wear, setWear] = useState("normal");
-  const [bits, setBits] = useState(8);
   const [kinds, setKinds] = useState(15);
   const [stage, setStage] = useState("digitization");
 
@@ -2433,7 +2432,6 @@ export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
   const [saveEnc, setSaveEnc] = useState("UTF-8");
   const [readEnc, setReadEnc] = useState("UTF-8");
   const [mojiIndex, setMojiIndex] = useState(0);
-  const [bits, setBits] = useState(8);
   const [chars, setChars] = useState(40);
   const [lines, setLines] = useState(40);
   const [bytesPerChar, setBytesPerChar] = useState(2);
