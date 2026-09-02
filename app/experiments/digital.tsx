@@ -1644,31 +1644,23 @@ export function RealLab({ card, missionNote, onMissionNote }: LabProps) {
         </>
       )}
 
+
       {card(
         2,
-        "小数点を動かして 1.◯◯◯ × 2の◯乗 の形にそろえる",
-        "小数点を動かして、仮数の先頭を1にそろえます。",
+        "小数点をそろえてから、32ビットの浮動小数点に分解する",
+        "まず 1.◯◯◯ × 2の◯乗 の形にそろえ（正規化）、そのうえで符号部1・指数部8・仮数部23 に並べます。",
         <>
-          <Steps
-            items={[
-              { label: "2進数(2)", value: <span className="mono">{normalized.binary}</span> },
-              { label: "符号", value: normalized.negative ? "− (1)" : "＋ (0)" },
-              { label: "1.◯◯◯ の部分（仮数）", value: <span className="mono">{normalized.mantissa}</span> },
-              { label: "指数", value: `2 の ${normalized.exponent} 乗` }
-            ]}
-          />
           <Formula>
             {value} ＝ {normalized.negative ? "−" : "＋"} {normalized.mantissa} × 2<sup>{normalized.exponent}</sup>
           </Formula>
-          <Hint>小数点が左に動けば指数は正、右に動けば負になります。指数は「小数点を何けた動かしたか」そのものです。</Hint>
-        </>
-      )}
-
-      {card(
-        3,
-        "32ビットの浮動小数点に分解する",
-        "符号部1・指数部8・仮数部23 に並べ、実際に保存された値ともとの値の差を見ます。",
-        <>
+          <Steps
+            items={[
+              { label: "① 2進数(2)に直す", value: <span className="mono">{normalized.binary}</span> },
+              { label: "② 符号を切り離す", value: normalized.negative ? "− (1)" : "＋ (0)" },
+              { label: "③ 1.◯◯◯ の形にそろえる（仮数）", value: <span className="mono">{normalized.mantissa}</span>, note: "小数点が左に動けば指数は正、右に動けば負" },
+              { label: "④ 動かしたけた数が指数", value: `2 の ${normalized.exponent} 乗` }
+            ]}
+          />
           <div className="float-bits">
             <div className="sign">
               <small>符号部 1bit</small>
@@ -1688,34 +1680,34 @@ export function RealLab({ card, missionNote, onMissionNote }: LabProps) {
           </Formula>
           <Steps
             items={[
-              { label: "① 32けたの並びを取り出す", value: <span className="mono">{float32.bits.slice(0, 12)}…</span>, note: "先頭12けたのみ表示" },
-              { label: "② 左から1けた目を切り出す（符号部）", value: <span className="mono">{float32.sign}</span>, note: float32.sign === "1" ? "1 なので負の数" : "0 なので正の数" },
-              { label: "③ 次の8けたを切り出す（指数部）", value: <span className="mono">{float32.exponent}</span>, note: `10進で読むと ${float32.exponentValue}` },
-              { label: "④ 127を引いて実際の指数に戻す", value: `${float32.exponentValue} − 127 ＝ ${float32.realExponent}` },
-              { label: "⑤ 残り23けたを切り出す（仮数部）", value: <span className="mono">{float32.mantissa.slice(0, 12)}…</span>, note: "1.◯◯◯ の小数点より右だけを左詰めで入れてある" },
-              { label: "⑥ 組み立て直した値", value: fmt(float32.stored, 10), note: "仮数部が23けたで打ち切られた分だけ、元の値とずれる" }
+              { label: "⑤ 32けたの並びを取り出す", value: <span className="mono">{float32.bits.slice(0, 12)}…</span>, note: "先頭12けたのみ表示" },
+              { label: "⑥ 左から1けた目を切り出す（符号部）", value: <span className="mono">{float32.sign}</span>, note: float32.sign === "1" ? "1 なので負の数" : "0 なので正の数" },
+              { label: "⑦ 次の8けたを切り出す（指数部）", value: <span className="mono">{float32.exponent}</span>, note: `10進で読むと ${float32.exponentValue}` },
+              { label: "⑧ 127を引いて実際の指数に戻す", value: `${float32.exponentValue} − 127 ＝ ${float32.realExponent}` },
+              { label: "⑨ 残り23けたを切り出す（仮数部）", value: <span className="mono">{float32.mantissa.slice(0, 12)}…</span>, note: "1.◯◯◯ の小数点より右だけを左詰めで入れてある" },
+              { label: "⑩ 組み立て直した値", value: fmt(float32.stored, 10), note: "仮数部が23けたで打ち切られた分だけ、元の値とずれる" }
             ]}
           />
           <Results
             items={[
-              { label: "指数部に入っている値", value: float32.exponentValue, note: "手順③。実際の指数に127を足した値" },
-              { label: "実際の指数", value: float32.realExponent, note: "手順④。指数部から127を引いて戻した値" },
-              { label: "実際に保存された値", value: fmt(float32.stored, 10), note: "手順⑥。この32ビットが表している値" },
+              { label: "指数部に入っている値", value: float32.exponentValue, note: "手順⑦。実際の指数に127を足した値" },
+              { label: "実際の指数", value: float32.realExponent, note: "手順⑧。指数部から127を引いて戻した値" },
+              { label: "実際に保存された値", value: fmt(float32.stored, 10), note: "手順⑩。この32ビットが表している値" },
               { label: "元の値とのずれ", value: fmt(float32.error, 12), warn: float32.error !== 0, note: "保存された値から元の値を引いた差。仮数部の打ち切りで生じる" }
             ]}
           />
-          <HintButton id="real-3-2">
+          <HintButton id="real-2-2">
             指数部にはバイアス127を足した値が入ります。指数が3なら 3 + 127 = 130 を2進数で格納します。
             指数がマイナスになることもあるので、127を足してからしまうことで、必ず0以上の数にしています。
           </HintButton>
-          <HintButton id="real-3-1">
+          <HintButton id="real-2-1">
             指数はマイナスになることもあります。そのままだとマイナスをしまう場所がもう1つ必要になるので、あらかじめ127を足して、必ず0以上の数にしてからしまいます。海面より低い土地の標高を「マイナス3m」と書くかわりに、全部に100を足して「97m」と書くようなものです。この127をバイアスといいます。
           </HintButton>
         </>
       )}
 
       {card(
-        4,
+        3,
         "整数に直して誤差を消す",
         "金額を小数のまま足す場合と、円単位の整数で足す場合を比べます。",
         <>
@@ -1747,7 +1739,7 @@ export function RealLab({ card, missionNote, onMissionNote }: LabProps) {
       )}
 
       {card(
-        5,
+        4,
         "購買部の会計プログラムを安全にする",
         "計算したずれを根拠に、どちらの方式を採用するかを決めます。",
         <AreaField
@@ -2556,6 +2548,16 @@ export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "文字数", value: `${sampleChars.length} 文字`, note: "手順①。どの方式でも、かける相手はこの文字数" }
             ]}
           />
+          <Results
+            items={[
+              { label: "1文字8ビットなら", value: "256 種類", note: "2の8乗。ASCII（128）やShift_JISの半角はこの範囲" },
+              { label: "1文字16ビットなら", value: "65,536 種類", note: "2の16乗。Unicodeのよく使う範囲がここに入る" },
+              { label: "1文字あたりのバイト数", value: "ビット数 ÷ 8", note: "8ビット＝1B、16ビット＝2B、24ビット＝3B" }
+            ]}
+          />
+          <HintButton id="text-1-1">
+            1ビット増やすごとに、表せる文字の数は2倍になります。世界中の文字を全部入れようとすると8ビット（256種類）ではとても足りません。座席番号のけたが足りないと同じ席に2人が座ってしまうのと同じで、けたが足りなければ別の文字に同じ番号を割り当てるしかなくなります。
+          </HintButton>
           <Hint>英語中心の文書はUTF-8が小さく、日本語だけの文書はShift_JISやUTF-16が小さくなることもあります。</Hint>
         </>
       )}
@@ -2619,36 +2621,10 @@ export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
         </>
       )}
 
-      {card(
-        3,
-        "ビット数と表せる文字の種類",
-        "何ビットあれば何種類の文字を表せるかを確かめます。",
-        <>
-          <SliderField label="1文字あたりのビット数" value={bits} onChange={setBits} min={5} max={21} unit=" bit" />
-          <Formula>表せる文字の種類数 ＝ 2の（1文字あたりのビット数）乗　／　バイト換算 ＝ ビット数 ÷ 8</Formula>
-          <Steps
-            items={[
-              { label: "① 1文字あたりのビット数", value: `${bits} bit` },
-              { label: "② 2を、そのビット数の回数だけかける", value: `2の${bits}乗`, note: "1ビット増えるごとに2倍になる" },
-              { label: "③ 表せる文字の種類数", value: fmt(charVariations(bits), 0) },
-              { label: "④ バイトに直す（÷8）", value: `${bits} ÷ 8 ＝ ${fmt(bits / 8, 3)} B` }
-            ]}
-          />
-          <Results
-            items={[
-              { label: "表せる文字数", value: fmt(charVariations(bits), 0), note: "手順③。この数を超える文字は、同じ番号が重なってしまう" },
-              { label: "バイト換算", value: `${fmt(bits / 8, 3)} B`, note: "手順④。1文字を保存するのに必要なバイト数" },
-              { label: "代表例", value: bits <= 7 ? "ASCII（128文字）" : bits <= 8 ? "Shift_JIS 半角（256文字）" : bits <= 16 ? "Unicodeのよく使う範囲（65,536文字）" : "Unicode 全体", note: "この種類数で足りる文字集合" }
-            ]}
-          />
-          <HintButton id="text-3-1">
-            1ビット増やすごとに、表せる文字の数は2倍になります。世界中の文字を全部入れようとすると8ビット（256種類）ではとても足りません。座席番号のけたが足りないと同じ席に2人が座ってしまうのと同じで、けたが足りなければ別の文字に同じ番号を割り当てるしかなくなります。
-          </HintButton>
-        </>
-      )}
+      
 
       {card(
-        4,
+        3,
         "文字データ量を計算する",
         "1ページ分の文字データが何キロバイトになるかを求めます。",
         <>
@@ -2665,12 +2641,12 @@ export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "1kB＝1,000B なら", value: `${fmt(totalBytes / 1000, 3)} kB`, note: "世界共通の単位のきまり（SI）。問題文が指定したときはこちら" }
             ]}
           />
-          <HintButton id="text-4-1">1kBを1,000とするか1,024とするかで答えが変わります。問題文の指定を必ず確認しましょう。</HintButton>
+          <HintButton id="text-3-1">1kBを1,000とするか1,024とするかで答えが変わります。問題文の指定を必ず確認しましょう。</HintButton>
         </>
       )}
 
       {card(
-        5,
+        4,
         "文字化けしたCSVを復旧する",
         "元ファイルを壊さずに読み直す手順を書き出します。",
         <AreaField
@@ -2950,7 +2926,7 @@ export function ImageLab({ card, missionNote, onMissionNote }: LabProps) {
   const [cmWidth, setCmWidth] = useState(25.4);
   const [cmHeight, setCmHeight] = useState(38.1);
   const [dpi, setDpi] = useState(600);
-  const [monoArt, setMonoArt] = useState("00000\n01010\n10001\n01010\n01110\n00000\n00110\n00000\n11111\n00100");
+  const [monoArt, setMonoArt] = useState("00000000\n01111110\n01000000\n01000000\n01111100\n01000000\n01000000\n00000000");
   const [colorArt, setColorArt] = useState("0002000000\n0222220012\n0020020034\n0020020056\n0020020070\n0200002000\n0000220000\n0020000000\n0020000000\n0020020000\n0020200000\n0022002222\n0020000000\n0000000000\n0000000000");
   const [useCase, setUseCase] = useState("photo");
 
@@ -2969,6 +2945,9 @@ export function ImageLab({ card, missionNote, onMissionNote }: LabProps) {
   const monoRows = monoArt.split("\n").map((row) => row.replace(/[^01]/g, ""));
   const colorRows = colorArt.split("\n").map((row) => row.replace(/[^0-7]/g, ""));
   const monoPixels = monoRows.reduce((sum, row) => sum + row.length, 0);
+  /* この絵をランレングス法で圧縮したらどうなるか（D10の先取り） */
+  const monoFlat = monoRows.join("");
+  const monoRun = useMemo(() => runLength(monoFlat), [monoFlat]);
   const colorPixels = colorRows.reduce((sum, row) => sum + row.length, 0);
   const recommend = useCase === "photo" ? "JPEG / WebP（非可逆＝もとに完全には戻せない）" : useCase === "logo" ? "PNG / SVG（可逆＝もとに完全に戻せる・透過対応）" : "PNG（可逆＝もとに完全に戻せる）";
 
@@ -3122,8 +3101,8 @@ export function ImageLab({ card, missionNote, onMissionNote }: LabProps) {
 
       {card(
         3,
-        "ドット絵を描いて、色数とデータ量の関係を見る",
-        "左に数字を打ち込むと、右に絵が出ます。1画素に何ビット使うかで、色数とデータ量がどう変わるかを見比べます。",
+        "ドット絵を描いて、色数・データ量・縮み方を見る",
+        "左に数字を打ち込むと、右に絵が出ます。1画素に何ビット使うかで色数とデータ量がどう変わるか、その絵がどれだけ縮むかまで見ます。",
         <>
           <Tabs
             value={artTab}
@@ -3168,6 +3147,20 @@ export function ImageLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "データ量", value: `${fmt(monoPixels / 8, 3)} B`, note: "手順④。マス数 × 1bit ÷ 8 の結果" }
             ]}
           />
+          <Formula>
+            ランレングス法：同じ色が何個続くかを並べる　→　圧縮率(%) ＝ 圧縮後のビット数 ÷ 圧縮前のビット数 × 100
+          </Formula>
+          <Results
+            items={[
+              { label: "連続のかたまり", value: `${monoRun.runs.length} 個`, note: `いちばん長い連続が ${monoRun.maxCount} 個 → その数を表すのに ${monoRun.countBits} bit 必要` },
+              { label: "個数の並び", value: <span className="mono">{monoRun.runs.map((r) => r.count).join(", ")}</span>, note: "左上から右下へ数えた、同じ色が続いた個数" },
+              { label: "圧縮後のビット数", value: `${monoRun.afterCountOnly} bit`, note: `圧縮前は ${monoFlat.length} bit（1画素1bit）` },
+              { label: "圧縮率", value: `${fmt(compressionRate(monoRun.afterCountOnly, monoFlat.length), 1)} %`, warn: monoRun.afterCountOnly >= monoFlat.length, note: monoRun.afterCountOnly < monoFlat.length ? "縮んだ。大きなかたまりのある絵ほどよく縮む" : "増えてしまった。市松模様のように1マスおきに変わる絵は縮まない" }
+            ]}
+          />
+          <Hint>
+            同じ色が長く続く絵ほど、ランレングス法でよく縮みます。市松模様のように1マスおきに色が変わる絵を描くと、逆にデータ量が増えます。圧縮のしくみは D10 でくわしく扱います。
+          </Hint>
           </>
           ) : (
           <>
@@ -3341,7 +3334,7 @@ export function VideoLab({ card, missionNote, onMissionNote }: LabProps) {
           <Formula>データ量 ＝ 横 × 縦 × 色情報 ÷ 8 × fps × 秒数</Formula>
           <Steps
             items={[
-              { label: "1フレーム", value: `${fmt(imageBytes(width, height, colorBits) / 1024 ** 2, 2)} MB` },
+              { label: "1フレーム", value: `${fmt(imageBytes(width, height, colorBits) / 1024 ** 2, 2)} MB`, note: "D8で求めた画像1枚の容量と同じ式（横 × 縦 × 色情報 ÷ 8）" },
               { label: "1秒間", value: `${fmt((imageBytes(width, height, colorBits) * fps) / 1024 ** 2, 1)} MB` },
               { label: `${minutes}分間`, value: `${fmt(raw / 1024 ** 3, 2)} GB` }
             ]}
@@ -3458,7 +3451,6 @@ export function CompressLab({ card, missionNote, onMissionNote }: LabProps) {
   const [before, setBefore] = useState(64);
   const [after, setAfter] = useState(52);
   const [runText, setRunText] = useState("AAAABBBBBAAA");
-  const [art, setArt] = useState("00000000\n01111110\n01000000\n01000000\n01111100\n01000000\n01000000\n00000000");
   const [huffText, setHuffText] = useState("AAAAAAAAAABBBBCCCDDEEF");
 
   const kinds: Record<string, [string, string, string, string]> = {
@@ -3467,9 +3459,6 @@ export function CompressLab({ card, missionNote, onMissionNote }: LabProps) {
   };
 
   const run = useMemo(() => runLength(runText.replace(/\s/g, "")), [runText]);
-  const artRows = art.split("\n").map((row) => row.replace(/[^01]/g, "")).filter((row) => row.length > 0);
-  const artFlat = artRows.join("");
-  const artRun = useMemo(() => runLength(artFlat), [artFlat]);
   const huff = useMemo(() => huffman(huffText), [huffText]);
 
   return (
@@ -3583,51 +3572,10 @@ export function CompressLab({ card, missionNote, onMissionNote }: LabProps) {
         </>
       )}
 
-      {card(
-        3,
-        "白黒の絵をランレングス法で圧縮する",
-        "左に0と1を打ち込むと、右の絵と圧縮率がその場で変わります。",
-        <>
-          <div className="art-split">
-            <div className="art-source">
-              <AreaField label="0と1で絵を描く（0＝白 / 1＝黒）" value={art} onChange={setArt} rows={8} hint="改行で行を分ける" />
-            </div>
-            <div className="art-preview">
-              <span className="art-caption">左の0と1が、そのままこの絵になる</span>
-              <div className="dot-art">
-                {artRows.map((row, y) => (
-                  <div key={y}>
-                    {row.split("").map((cell, x) => (
-                      <i key={x} style={{ background: cell === "1" ? "#111111" : "#ffffff" }} />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <Steps
-            items={[
-              { label: "総画素数", value: `${artFlat.length} 画素`, note: "1画素 1bit" },
-              { label: "圧縮前", value: `${artFlat.length} bit` },
-              { label: "連続のかたまり", value: `${artRun.runs.length} 個`, note: `いちばん長い連続が ${artRun.maxCount} 個 → その数を表すのに ${artRun.countBits} bit 必要` },
-              { label: "圧縮後", value: `${artRun.afterCountOnly} bit` }
-            ]}
-          />
-          <Results
-            items={[
-              { label: "圧縮率", value: `${fmt(compressionRate(artRun.afterCountOnly, artFlat.length), 1)} %`, warn: artRun.afterCountOnly >= artFlat.length, note: "圧縮後のビット数 ÷ 圧縮前のビット数 × 100" },
-              { label: "個数の並び", value: <span className="mono">{artRun.runs.map((r) => r.count).join(", ")}</span>, note: "左上から右下へ数えた、同じ色が続いた個数" },
-              { label: "縮んだか", value: artRun.afterCountOnly < artFlat.length ? "縮んだ" : "増えてしまった", warn: artRun.afterCountOnly >= artFlat.length, note: "圧縮後のビット数が、圧縮前より小さくなったか" }
-            ]}
-          />
-          <Hint>
-            大きなかたまりのある絵ほどよく縮みます。市松模様のように1マスおきに色が変わる絵を描くと、逆にデータ量が増えます。
-          </Hint>
-        </>
-      )}
+      
 
       {card(
-        4,
+        3,
         "ハフマン符号化で文字列を圧縮する",
         "よく出る文字ほど短い符号になります。文字の偏りを変えて試しましょう。",
         <>
@@ -3670,7 +3618,7 @@ export function CompressLab({ card, missionNote, onMissionNote }: LabProps) {
       )}
 
       {card(
-        5,
+        4,
         "配布する教材データの圧縮方法を決める",
         "資料の種類ごとに、どの圧縮を使うかを決めます。",
         <AreaField

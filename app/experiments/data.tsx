@@ -35,6 +35,7 @@ import {
 import {
   AreaField,
   BarChart,
+  Carried,
   BoxPlot,
   DataTable,
   Formula,
@@ -258,7 +259,9 @@ export function OrganizeLab({ card, missionNote, onMissionNote }: LabProps) {
         "階級の幅を決めて、表と図をつくる",
         "階級の幅を変えながら、度数分布表とヒストグラムが同時にどう変わるかを確かめます。",
         <>
-          <AreaField label="20人の身長(cm)　実験1と同じデータです" value={raw} onChange={setRaw} rows={3} />
+          <Carried from="実験1">
+            身長のデータ {values.length} 人ぶん（平均 {fmt(summarize(values)?.mean ?? 0, 1)} cm）
+          </Carried>
           <Row>
             <NumberField label="階級の幅" value={binWidth} onChange={setBinWidth} min={1} max={50} />
             <NumberField label="最初の階級の下限" value={start} onChange={setStart} min={0} max={1000} />
@@ -957,8 +960,8 @@ export function SpreadLab({ card, missionNote, onMissionNote }: LabProps) {
 
       {card(
         2,
-        "z得点を求める",
-        "平均から標準偏差いくつ分離れているかを計算します。",
+        "z得点と偏差値に直す",
+        "平均から標準偏差いくつ分離れているかを求め、そのまま偏差値（平均50・標準偏差10）に置きなおします。",
         <>
           <Row>
             <NumberField label="得点" value={score} onChange={setScore} />
@@ -974,50 +977,37 @@ export function SpreadLab({ card, missionNote, onMissionNote }: LabProps) {
             ]}
           />
           <NormalCurve mean={0} sd={1} marks={[{ value: clamp(z, -3.8, 3.8), label: `z=${fmt(z, 2)}` }]} />
+          <Formula>偏差値 ＝ 50 ＋ 10 × z　　平均を50、標準偏差1個ぶんを10点として置きなおす</Formula>
+          <Steps
+            items={[
+              { label: "④ z得点を10倍する", value: `10 × ${fmt(z, 4)} ＝ ${fmt(10 * z, 3)}` },
+              { label: "⑤ 50を足す", value: `50 ＋ ${fmt(10 * z, 3)}` },
+              { label: "⑥ 偏差値", value: fmt(tScore(score, mean, sd), 2) }
+            ]}
+          />
+          <Results
+            items={[
+              { label: "z得点", value: fmt(z, 4), note: "手順③。平均から標準偏差いくつ分はなれているか" },
+              { label: "偏差値", value: fmt(tScore(score, mean, sd), 2), note: "手順⑥。50 ＋ 10 × z に置きなおした値" },
+              { label: "上位から", value: `${fmt((1 - normalCdf(z)) * 100, 2)} %`, note: "正規分布とみなしたとき、カーブのこの位置より右側にある面積" },
+              { label: "同じ位置の人数（300人中）", value: `${fmt((1 - normalCdf(z)) * 300, 1)} 人`, note: "上位の割合 × 300人。だいたい何位かの目安" }
+            ]}
+          />
+          <HintButton id="spread-2-2">偏差値60はz=1、上位約15.9%。偏差値70はz=2、上位約2.3%です。</HintButton>
           <HintButton id="spread-2-1">
             z得点は「平均から、標準偏差何個ぶん離れているか」を表す数です。ものさしの目盛りを cm から「標準偏差1個ぶん」に取りかえるイメージです。z＝0なら平均ちょうど、z＝2なら平均より標準偏差2個ぶん上、ということです。
           </HintButton>
         </>
       )}
 
-      {card(
-        3,
-        "偏差値に直す",
-        "z得点を平均50・標準偏差10に変換します。",
-        <>
-          <Formula>偏差値 ＝ 50 ＋ 10 × z　　平均を50、標準偏差1個ぶんを10点として置きなおす</Formula>
-          <Steps
-            items={[
-              { label: "① 前の実験で求めたz得点", value: fmt(z, 4) },
-              { label: "② 10倍する", value: `10 × ${fmt(z, 4)} ＝ ${fmt(10 * z, 3)}` },
-              { label: "③ 50を足す", value: `50 ＋ ${fmt(10 * z, 3)}` },
-              { label: "④ 偏差値", value: fmt(tScore(score, mean, sd), 2) }
-            ]}
-          />
-          <Results
-            items={[
-              { label: "z得点", value: fmt(z, 4), note: "平均から標準偏差いくつ分はなれているか" },
-              { label: "偏差値", value: fmt(tScore(score, mean, sd), 2), note: "50 ＋ 10 × z に置きなおした値" },
-              {
-                label: "上位から",
-                value: `${fmt((1 - normalCdf(z)) * 100, 2)} %`,
-                note: "正規分布とみなしたとき、カーブのこの位置より右側にある面積"
-              },
-              {
-                label: "同じ位置の人数（300人中）",
-                value: `${fmt((1 - normalCdf(z)) * 300, 1)} 人`,
-                note: "上位の割合 × 300人。だいたい何位かの目安"
-              }
-            ]}
-          />
-          <HintButton id="spread-3-1">偏差値60はz=1、上位約15.9%。偏差値70はz=2、上位約2.3%です。</HintButton>
-        </>
-      )}
+      
+
+      
 
       {card(
-        4,
-        "2教科の得点を公平に比べる",
-        "平均も標準偏差も違う2教科を、同じ基準で比べ直します。",
+        3,
+        "2教科の得点を公平に比べて、根拠つきで説明する",
+        "平均も標準偏差も違う2教科を同じ基準で比べ直し、どちらが良かったかを言葉で説明します。",
         <>
           <div className="two-column">
             <div>
@@ -1048,20 +1038,15 @@ export function SpreadLab({ card, missionNote, onMissionNote }: LabProps) {
                 : "どちらも同じ位置です。"}
           </Verdict>
           <Hint>テストの点そのものは国語70・数学60でも、平均とばらつきをそろえて比べ直すと、数学のほうが上になることがあります。</Hint>
+        
+          <AreaField
+            label="判断と、その根拠"
+            value={missionNote}
+            onChange={onMissionNote}
+            placeholder="例：素点は国語70・数学60だが、標準偏差が国語8・数学15と違うため、z得点は国語0.63・数学0.67。集団内の位置では数学のほうがわずかに上といえる。"
+            rows={4}
+          />
         </>
-      )}
-
-      {card(
-        5,
-        "2教科の得点を公平に比べる（まとめ）",
-        "計算結果をもとに、どちらが良かったかを説明します。",
-        <AreaField
-          label="判断と、その根拠"
-          value={missionNote}
-          onChange={onMissionNote}
-          placeholder="例：素点は国語70・数学60だが、標準偏差が国語8・数学15と違うため、z得点は国語0.63・数学0.67。集団内の位置では数学のほうがわずかに上といえる。"
-          rows={4}
-        />
       )}
     </>
   );
@@ -1217,10 +1202,9 @@ export function NormalLab({ card, missionNote, onMissionNote }: LabProps) {
         "カーブの「高さ」と「面積」のちがい",
         "確率になるのは「高さ」ではなく「面積」のほうだ、ということを確かめます。",
         <>
-          <Row>
-            <NumberField label="平均 μ（実験2と共通）" value={mean} onChange={(v) => setMean(clamp(Math.round(v), 10, 90))} min={10} max={90} />
-            <NumberField label="標準偏差 σ（実験2と共通）" value={sd} onChange={(v) => setSd(clamp(v, 2, 25))} min={2} max={25} step={0.5} />
-          </Row>
+          <Carried from="実験2">
+            平均 μ = {mean} ／ 標準偏差 σ = {sd}
+          </Carried>
           <DataTable
             head={["値", "カーブの高さ（NORM.DIST の最後を FALSE にした値）", "そこまでの面積（NORM.DIST の最後を TRUE にした値）"]}
             rows={[-2, -1, 0, 1, 2].map((k) => [
@@ -1310,10 +1294,9 @@ export function RelationLab({ card, missionNote, onMissionNote }: LabProps) {
         "共分散を計算する",
         "xの偏差とyの偏差をかけて平均します。",
         <>
-          <Row>
-            <AreaField label="x のデータ（実験1と共通）" value={xs} onChange={setXs} rows={2} />
-            <AreaField label="y のデータ（実験1と共通）" value={ys} onChange={setYs} rows={2} />
-          </Row>
+          <Carried from="実験1">
+            x と y のデータ {n} 組（xの平均 {fmt(sx?.mean ?? 0, 2)} ／ yの平均 {fmt(sy?.mean ?? 0, 2)}）
+          </Carried>
           <Formula>共分散 ＝ (xの偏差 × yの偏差) をぜんぶ足して、データの個数で割る　　偏差とは「値 − 平均」のことです</Formula>
           {sx && sy && (
             <Steps
@@ -1358,10 +1341,9 @@ export function RelationLab({ card, missionNote, onMissionNote }: LabProps) {
         "どんなデータでも −1〜1 で比べられるようにする",
         "共分散を標準偏差の積で割ると、−1〜1に収まります。",
         <>
-          <Row>
-            <AreaField label="x のデータ（実験1と共通）" value={xs} onChange={setXs} rows={2} />
-            <AreaField label="y のデータ（実験1と共通）" value={ys} onChange={setYs} rows={2} />
-          </Row>
+          <Carried from="実験1">
+            x と y のデータ {n} 組（xの平均 {fmt(sx?.mean ?? 0, 2)} ／ yの平均 {fmt(sy?.mean ?? 0, 2)}）
+          </Carried>
           <Formula>
             r ＝ 共分散 ÷ (x の標準偏差 × y の標準偏差)　　r（アール）は相関係数、R²（アールじじょう）は決定係数と読みます
           </Formula>
@@ -1396,10 +1378,9 @@ export function RelationLab({ card, missionNote, onMissionNote }: LabProps) {
         "回帰直線を引いて予測する",
         "点のまん中を通る直線を引いて、xからyを予想します。",
         <>
-          <Row>
-            <AreaField label="x のデータ（実験1と共通）" value={xs} onChange={setXs} rows={2} />
-            <AreaField label="y のデータ（実験1と共通）" value={ys} onChange={setYs} rows={2} />
-          </Row>
+          <Carried from="実験1">
+            x と y のデータ {n} 組（xの平均 {fmt(sx?.mean ?? 0, 2)} ／ yの平均 {fmt(sy?.mean ?? 0, 2)}）
+          </Carried>
           <Scatter xs={xValues} ys={yValues} line={fit} />
           {fit && (
             <>
@@ -1645,10 +1626,9 @@ export function SimulationLab({ card, missionNote, onMissionNote }: LabProps) {
         "仮定を変えて結果を比べる",
         "同じモデルでも、置いた仮定で結論が変わることを確かめます。",
         <>
-          <Row>
-            <NumberField label="平均到着間隔（実験4と共通）" value={arrival} onChange={setArrival} min={0.5} max={20} step={0.5} unit="分" />
-            <NumberField label="1人あたりの処理時間（実験4と共通）" value={service} onChange={setService} min={0.5} max={20} step={0.5} unit="分" />
-          </Row>
+          <Carried from="実験4">
+            平均到着間隔 {arrival} 分 ／ 1人あたりの処理時間 {service} 分
+          </Carried>
           <DataTable
             head={["受付人数", "こみぐあい ρ", "判定", "だいたいの待ち時間（受付1人のときの目安）"]}
             rows={[1, 2, 3, 4].map((k) => {

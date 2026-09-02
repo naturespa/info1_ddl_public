@@ -675,3 +675,14 @@ export function NormalCurve({
     </svg>
   );
 }
+
+/** 前の実験で入れた値をそのまま使うカードで、入力欄のかわりに出す案内 */
+export function Carried({ from, children }: { from: string; children: ReactNode }) {
+  return (
+    <p className="carried">
+      <b>{from}で入れた値を使っています</b>
+      <span>{children}</span>
+      <em>変えたいときは{from}に戻ってください</em>
+    </p>
+  );
+}

@@ -6694,3 +6694,34 @@ footer {
   white-space: nowrap;
   vertical-align: 1px;
 }
+
+/* v33 前の実験の値を引き継いでいることを示す帯 */
+.carried {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 8px 14px;
+  background: var(--accent-bg);
+  border-left: 4px solid var(--accent-soft);
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.carried b {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.carried span {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.carried em {
+  font-style: normal;
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: auto;
+}
