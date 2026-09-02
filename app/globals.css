@@ -6550,3 +6550,108 @@ footer {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* =========================================================================
+   v30-1 理解度ボタン（むらさき）
+   青系はリンクやゲージで使っているので、ここだけ別の色にして「押す場所」を目立たせる。
+   ========================================================================= */
+:root {
+  --learn: #6a2fa0;
+  --learn-soft: #8b5cc7;
+  --learn-bg: #f4edfc;
+  --learn-ring: rgba(106, 47, 160, 0.22);
+}
+
+.understand-bar {
+  border-top: 2px solid var(--learn-bg);
+  background: linear-gradient(180deg, var(--learn-bg), #fff 70%);
+  border-radius: 12px;
+  padding: 10px 12px 12px;
+  margin-top: 4px;
+}
+
+.understand-bar > b {
+  color: var(--learn);
+  font-size: 16px;
+}
+
+.understand-bar > b em {
+  color: #7b6a90;
+}
+
+.understand-bar.recorded > b {
+  color: var(--learn);
+}
+
+.understand-btn {
+  border: 2px solid var(--learn-soft);
+  background: #fff;
+  border-radius: 11px;
+  padding: 8px 10px;
+  position: relative;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.understand-btn span {
+  color: var(--learn);
+  font-size: 15px;
+}
+
+.understand-btn em {
+  color: #6f6280;
+}
+
+.understand-btn:hover {
+  border-color: var(--learn);
+  background: var(--learn-bg);
+  box-shadow: 0 0 0 3px var(--learn-ring);
+}
+
+.understand-btn.on {
+  border-color: var(--learn);
+  background: var(--learn);
+  box-shadow: 0 2px 0 #4d2077;
+}
+
+.understand-btn.on span,
+.understand-btn.on em {
+  color: #fff;
+}
+
+.understand-btn.on::after {
+  content: "✓";
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* =========================================================================
+   v30-2 ASCIIコード表など、全部見せたい表
+   ========================================================================= */
+.table-scroll.full {
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.lab-table.dense th,
+.lab-table.dense td {
+  padding: 1px 8px;
+  line-height: 1.32;
+  font-size: 15px;
+}
+
+.lab-table.dense th {
+  padding: 3px 8px;
+  line-height: 1.25;
+  font-size: 13px;
+}
+
+/* 等幅の数字は見た目が小さくなるので、となりの数値とそろえる */
+.result-card b .mono,
+.calc-steps b .mono {
+  font-size: 1.08em;
+}

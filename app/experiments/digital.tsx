@@ -646,7 +646,6 @@ export function FeatureLab({ card, missionNote, onMissionNote }: LabProps) {
           />
           <Results
             items={[
-              { label: "本当の温度", value: `${temp.toFixed(1)} ℃`, note: "つまみで決めた、段階に置きかえる前の値" },
               { label: "デジタルの表示", value: `${digitalTemp.toFixed(gradation === "1" ? 0 : 1)} ℃`, note: "手順④で求めた、いちばん近い段階の値" },
               { label: "本当の温度とのずれ", value: `${gap.toFixed(2)} ℃`, warn: gap > stepSize / 4, note: "手順⑤の差。段階に丸めたせいで表せなかった分" },
               { label: "1℃あたりの段階数", value: `${fmt(1 / stepSize, 0)} 段階`, note: "1 ÷ きざみ幅。多いほど本当の温度に近づく" }
@@ -1239,8 +1238,7 @@ export function BaseLab({ card, missionNote, onMissionNote }: LabProps) {
               { label: "8ビットで足りるか", value: future <= 256 ? "足りる" : "不足", warn: future > 256, note: "8 bit ＝ 256通りと、将来の必要数を比べた" }
             ]}
           />
-          <Hint>必要数以上になる最小の2のn乗を選びます。足りないと必ずどこかで番号がぶつかります。</Hint>
-          <Results items={[{ label: "現在の台数", value: fmt(needed, 0), note: "手順①で入力した数" }, { label: "推奨ビット数", value: `${requiredBits} bit`, note: "将来の台数から求めた最小ビット数" }, { label: "128ビットなら", value: "3.4×10³⁸ 通り", note: "IPv6と同じ規模。増設の心配がなくなる" }]} />
+          <Hint>必要数以上になる最小の2のn乗を選びます。足りないと必ずどこかで番号がぶつかります。128ビットなら 3.4×10³⁸ 通り（IPv6と同じ規模）で、増設の心配がなくなります。</Hint>
           <AreaField
             label="採用するビット数と、その理由"
             value={missionNote}
@@ -2502,14 +2500,14 @@ export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
           />
           <Results
             items={[
-              { label: "文字", value: info.char, note: "入力した1文字" },
-              { label: "10進数(10)", value: info.dec, note: "手順②。文字コード表で決められた番号" },
-              { label: "16進数(16)", value: info.hex, note: "手順③。同じ番号の別の書き方" },
-              { label: "2進数(2)", value: <span className="mono">{info.bin}</span>, note: "手順④。同じ番号を0と1で書いたもの" }
+              { label: `「${info.char}」の10進数(10)`, value: info.dec, note: "手順②。文字コード表で決められた番号" },
+              { label: `「${info.char}」の16進数(16)`, value: info.hex, note: "手順③。同じ番号の、けたのまとめ方を変えた書き方" },
+              { label: `「${info.char}」の2進数(2)`, value: <span className="mono">{info.bin}</span>, note: "手順④。実際に保存される0と1の並び" }
             ]}
           />
           <Hint>A は65、a は97。大文字と小文字は32（2進数で1けた分）だけ離れています。</Hint>
           <DataTable
+            full
             head={[
               "下位4bit ＼ 上位4bit",
               ...[2, 3, 4, 5, 6, 7].map((col) => (
@@ -2528,7 +2526,7 @@ export function TextLab({ card, missionNote, onMissionNote }: LabProps) {
               ))
             ])}
           />
-          <Hint>入力した文字が、表の中で強調されます。16進数の上位けたが列、下位けたが行にあたります。</Hint>
+          <Hint>入力した文字が表の中で赤くなります。16進数の上のけたが列、下のけたが行です。</Hint>
         </>
       )}
 
@@ -2846,7 +2844,6 @@ export function AudioLab({ card, missionNote, onMissionNote }: LabProps) {
             items={[
               { label: "表せる段階数", value: fmt(levels, 0), note: "手順②。この段数のどれかに波の高さを丸める" },
               { label: "1段階の細かさ（いちばん大きい音の高さを1としたとき）", value: fmt(1 / levels, 8), note: "手順③。丸めで生じる誤差（量子化誤差）の目安" },
-              { label: "1ビット減らすと", value: `${fmt(levels / 2, 0)} 段階`, note: "手順④。段階が粗くなり、誤差は2倍に広がる" },
               { label: "表せる音の大きさの幅（ダイナミックレンジ）の目安", value: `約 ${fmt(quantBits * 6, 0)} dB`, note: "1ビットあたりおよそ6dB。ビット数 × 6 で見積もる" }
             ]}
           />

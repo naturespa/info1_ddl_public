@@ -322,15 +322,18 @@ export function HintButton({
 export function DataTable({
   head,
   rows,
-  highlight
+  highlight,
+  full
 }: {
   head: ReactNode[];
   rows: ReactNode[][];
   highlight?: (rowIndex: number) => boolean;
+  /** 行を詰めて、内側のスクロールなしで全部見せる（ASCIIコード表など） */
+  full?: boolean;
 }) {
   return (
-    <div className="table-scroll">
-      <table className="lab-table">
+    <div className={full ? "table-scroll full" : "table-scroll"}>
+      <table className={full ? "lab-table dense" : "lab-table"}>
         <thead>
           <tr>
             {head.map((cell, index) => (
