@@ -193,11 +193,13 @@ export function Tabs({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="tabs">
+    <div className="tabs" role="tablist">
       {options.map((option) => (
         <button
           type="button"
           key={option.value}
+          role="tab"
+          aria-selected={value === option.value}
           className={value === option.value ? "active" : ""}
           onClick={() => onChange(option.value)}
         >
@@ -216,7 +218,7 @@ export function Row({ children }: { children: ReactNode }) {
 
 export function Results({ items }: { items: { label: string; value: ReactNode; note?: string; warn?: boolean }[] }) {
   return (
-    <div className="result-cards">
+    <div className="result-cards" aria-live="polite">
       {items.map((item, index) => (
         <div className={`result-card ${item.warn ? "warn" : ""}`} key={`${item.label}-${index}`}>
           <span>{item.label}</span>

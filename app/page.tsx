@@ -751,6 +751,9 @@ export default function Home() {
 
   return (
     <main>
+      <a className="skip-link" href="#main">
+        本文へスキップ
+      </a>
       <header className="topbar">
         <button className="brand" onClick={() => setActive("home")}>
           情報I Digital &amp; Data Lab
@@ -781,7 +784,7 @@ export default function Home() {
         </nav>
       </header>
 
-      <div className="shell">
+      <div className="shell" id="main" tabIndex={-1}>
         {active === "home" && (
           <>
             <section className="board">
@@ -809,7 +812,11 @@ export default function Home() {
                           autoComplete="off"
                         />
                       </label>
-                      <div className={`status-pill ${codeDraft.length === 4 && !codeAllowed ? "ng" : ""}`}>
+                      <div
+                        className={`status-pill ${codeDraft.length === 4 && !codeAllowed ? "ng" : ""}`}
+                        role="status"
+                        aria-live="polite"
+                      >
                         {codeDraft.length !== 4
                           ? "半角数字4桁を入力"
                           : codeAllowed
@@ -1087,13 +1094,15 @@ export default function Home() {
                         1回目は不正解でした。<b>もう1回だけ選べます</b>（2回目で正解すると0.5点）。よく読んで選び直しましょう。
                       </p>
                     )}
-                    <div className="choices">
+                    <div className="choices" role="radiogroup" aria-label={`${index + 1}問目の選択肢`}>
                       {question.choices.map((choice, choiceIndex) => {
                         const isFirstPick = !!submitted && first === choiceIndex;
                         const isSecondPick = second === choiceIndex;
                         return (
                           <button
                             key={choice}
+                            role="radio"
+                            aria-checked={awaiting ? isSecondPick : selected === choiceIndex}
                             // 未送信なら自由に選べる。2回目待ちのあいだは、1回目に選んだ選択肢以外を押せる
                             disabled={submitted ? !awaiting || isFirstPick : false}
                             className={[
