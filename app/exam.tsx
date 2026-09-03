@@ -458,7 +458,7 @@ export function ExamView({
   const answered = picked.filter((p) => p >= 0).length;
   const total = served.length;
   /** 満点＝全問の配点の合計 */
-  const maxPoints = useMemo(() => served.reduce((sum, s) => sum + pointsOf(s.question), 0), [served]);
+  const maxPoints = useMemo(() => served.reduce((sum, item) => sum + pointsOf(item.question), 0), [served]);
   const current = served[index];
   const flagCount = flagged.filter(Boolean).length;
 

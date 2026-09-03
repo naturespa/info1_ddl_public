@@ -110,6 +110,9 @@ export default function Home() {
   const [teacherPassword, setTeacherPassword] = useState("");
   const [teacherError, setTeacherError] = useState("");
   const [teacherBusy, setTeacherBusy] = useState(false);
+  /** 教員用のリセット（確認中かどうか／終わった直後かどうか） */
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
   const [active, setActive] = useState("home");
   const [drafts, setDrafts] = useState<Record<string, number[]>>({});
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
@@ -744,6 +747,49 @@ export default function Home() {
    * 共用パソコンで次の人に渡すための機能なので、押し間違いを防ぐため2段階にしている。
    * 記録そのものは消えないので、同じ番号を入れ直せば続きから再開できる。
    */
+  /**
+   * 教員用の番号でだけ使える、記録の消去。
+   *
+   * 何を消すか
+   *   ・その番号の学習記録（実験・確認問題・重要語句・G・レベル・ふり返り）
+   *   ・その番号の分野別テストの結果
+   *   ・その番号の分野別テストの途中経過（未提出のもの・残り時間もふくむ）
+   *
+   * 何を消さないか
+   *   ・他の番号（生徒）の記録には、いっさい触れません
+   *   ・画面の見え方（背景色・文字色・表示倍率）の設定
+   *   ・教員用ログインを通した記録
+   */
+  const resetMyRecord = () => {
+    const code = studentCode;
+    if (!isTeacherCode(code)) return;
+    try {
+      localStorage.removeItem(`${STORAGE_PREFIX}${code}`);
+      localStorage.removeItem(EXAM_RESULTS_KEY(code));
+      // 途中経過は「joho-ddl-exam:<番号>:<セットID>」の形。その番号のぶんだけ消す
+      const prefix = `joho-ddl-exam:${code}:`;
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith(prefix))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {
+      /* 消せない環境では、画面の中身だけ初期化する */
+    }
+    setDrafts({});
+    setSubmissions({});
+    setExperiments({});
+    setUnderstanding({});
+    setWordDrafts({});
+    setWordSubmissions({});
+    setMissionNotes({});
+    setBoughtHints({});
+    setExamResults([]);
+    setLastLesson("");
+    setPracticed({});
+    setResetConfirm(false);
+    setResetDone(true);
+    window.setTimeout(() => setResetDone(false), 6000);
+  };
+
   const endLearning = () => {
     setStudentCode("");
     setCodeDraft("");
@@ -1614,6 +1660,70 @@ export default function Home() {
                 </div>
               ))}
             </div>
+
+            {/* --- 教員用の番号のときだけ出る、記録のリセット --- */}
+            {isTeacherCode(studentCode) && (
+              <section className="dashboard teacher-reset">
+                <div className="dash-head">
+                  <h2>記録のリセット（先生用）</h2>
+                  <span className="muted small">この操作は教員用の番号でだけ出ます</span>
+                </div>
+
+                {resetDone && (
+                  <div className="verdict ok" role="status">
+                    リセットしました。実験・確認問題・重要語句・G・レベル・分野別テストの結果が、
+                    すべてまっさらな状態に戻っています。
+                  </div>
+                )}
+
+                <p className="reset-lead">
+                  <b>いま入っている番号（{studentCode}）の記録だけ</b>を、この端末から消します。
+                  問題を作り直したあとや、次の先生に画面を渡す前に使ってください。
+                </p>
+
+                <dl className="reset-what">
+                  <div>
+                    <dt>消えるもの</dt>
+                    <dd>
+                      実験の記録・確認問題の解答と得点・重要語句・買ったヒント・G・レベル・ふり返り・
+                      <b>分野別テストの結果</b>・受験中だった問題の途中経過（残り時間もふくむ）
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>消えないもの</dt>
+                    <dd>
+                      <b>生徒（他の番号）の記録には、いっさい触れません。</b>
+                      画面の色や表示倍率の設定も、そのまま残ります
+                    </dd>
+                  </div>
+                </dl>
+
+                {resetConfirm ? (
+                  <div className="reset-confirm">
+                    <p>
+                      <b>本当にリセットしますか。取り消せません。</b>
+                      {studentCode} の記録
+                      {examResults.length > 0 ? `（分野別テストの結果 ${examResults.length}件をふくむ）` : ""}
+                      が、この端末から消えます。
+                    </p>
+                    <div className="code-actions">
+                      <button className="ghost" onClick={() => setResetConfirm(false)}>
+                        やめる
+                      </button>
+                      <button className="danger" onClick={resetMyRecord}>
+                        はい、{studentCode} の記録を消す
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="code-actions">
+                    <button className="danger" onClick={() => setResetConfirm(true)}>
+                      {studentCode} の記録をリセットする
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
 
             {examResults.length > 0 && (
               <section className="dashboard exam-results">
