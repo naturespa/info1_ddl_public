@@ -7,7 +7,7 @@ import type { Area, QuestionLevel } from "./types";
 export type Viewpoint = "知識・技能" | "思考・判断・表現";
 
 /** 本試験か追試か */
-export type ExamKind = "本試験" | "追試";
+export type ExamKind = "本試験" | "追試" | "教員用";
 
 /** クラス。4桁番号の2桁目（1年2組05番なら "1205" → 2組） */
 export type ClassNo = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -122,6 +122,11 @@ export type EncryptedBundle = {
   area: Area;
   classNo: ClassNo;
   kind: ExamKind;
+  /**
+   * 制限時間（分）。生成キットの --minutes で先生が決める。
+   * 古いファイルには入っていないので、無いときは既定の50分として扱う。
+   */
+  minutes?: number;
   /** PBKDF2 の塩（base64） */
   salt: string;
   /** AES-GCM の初期化ベクトル（base64） */

@@ -139,6 +139,13 @@ export type ExamProgress = {
   /** もとの並び順（originalIndex順）での選択。未解答は -1 */
   picked: number[];
   startedAt: string;
+  /**
+   * 試験が終わる時刻（ISO）。ページを閉じて開き直しても残り時間が続くように、
+   * 「残り何分」ではなく「何時何分に終わるか」で持っておく。
+   */
+  deadline?: string;
+  /** 「後で見直す」に印を付けた問題（もとの並び順） */
+  flagged?: boolean[];
   /** 提出済みなら結果も持つ */
   result?: ExamResult;
 };
@@ -159,3 +166,53 @@ export const saveProgress = (progress: ExamProgress) => {
     /* 保存できない環境では黙って続行する */
   }
 };
+
+/* ============================================================
+ * 画面の見え方（背景色・文字色・表示倍率）
+ *
+ * IPAのCBTと同じく、操作説明画面で変えた設定が試験本体にも引き継がれる。
+ * この端末のこのブラウザの設定なので、生徒の記録とは別に持っておく。
+ * ========================================================== */
+
+export type ExamView = {
+  bg: string;
+  ink: string;
+  /** 表示倍率（100〜200、10刻み） */
+  zoom: number;
+};
+
+export const DEFAULT_EXAM_VIEW: ExamView = { bg: "#ffffff", ink: "#16202e", zoom: 100 };
+
+const VIEW_KEY = "joho-ddl-exam-view";
+
+export const loadExamView = (): ExamView => {
+  try {
+    const raw = localStorage.getItem(VIEW_KEY);
+    if (!raw) return DEFAULT_EXAM_VIEW;
+    const v = JSON.parse(raw) as Partial<ExamView>;
+    return {
+      bg: typeof v.bg === "string" ? v.bg : DEFAULT_EXAM_VIEW.bg,
+      ink: typeof v.ink === "string" ? v.ink : DEFAULT_EXAM_VIEW.ink,
+      zoom: typeof v.zoom === "number" && v.zoom >= 100 && v.zoom <= 200 ? v.zoom : 100
+    };
+  } catch {
+    return DEFAULT_EXAM_VIEW;
+  }
+};
+
+export const saveExamView = (view: ExamView) => {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify(view));
+  } catch {
+    /* 保存できない環境では黙って続行する */
+  }
+};
+
+/** 秒を「49:58」の形にする。0未満は 00:00 */
+export const formatClock = (seconds: number) => {
+  const s = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+};
+
+/** 選択肢の記号。IPAのCBTと同じ ア・イ・ウ・エ */
+export const choiceLabel = (index: number) => "アイウエオカ"[index] ?? String(index + 1);

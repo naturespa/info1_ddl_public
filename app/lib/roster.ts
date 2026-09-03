@@ -18,8 +18,15 @@ export const SEAT_TO = 41;
 /** 組ごとの予備番号（下2けた）。1組から順に */
 export const EXTRA_SEATS = [88, 77, 88, 77, 88, 77, 88];
 
-/** 試し用。生徒には配りません */
-export const TEACHER_CODES = ["3156", "0808", "8080", "8008"];
+/**
+ * 教員用の番号。生徒には配りません。
+ *
+ *   0001〜0005 … 先生5名分。分野別テストでは「教員用の共通セット」が開きます
+ *   3156 ほか  … 以前から使っている試し用。記録が消えないよう残してあります
+ */
+export const TEACHER_SEATS = ["0001", "0002", "0003", "0004", "0005"];
+const LEGACY_TEACHER_CODES = ["3156", "0808", "8080", "8008"];
+export const TEACHER_CODES = [...TEACHER_SEATS, ...LEGACY_TEACHER_CODES];
 
 const build = () => {
   const list: string[] = [];
@@ -46,7 +53,10 @@ export const isAllowedCode = (code: string) => studentSet.has(code) || teacherSe
 
 /** 画面に出す、その番号の読み方 */
 export const describeCode = (code: string) => {
-  if (teacherSet.has(code)) return "試し用の番号です";
+  if (teacherSet.has(code)) {
+    const n = TEACHER_SEATS.indexOf(code);
+    return n >= 0 ? `教員用の番号（${n + 1}人目）` : "試し用の番号です";
+  }
   if (!studentSet.has(code)) return "";
   const grade = Number(code[0]);
   const cls = Number(code[1]);
@@ -55,7 +65,7 @@ export const describeCode = (code: string) => {
   return seat === extra ? `${grade}年${cls}組の予備の番号` : `${grade}年${cls}組${seat}番`;
 };
 
-/** 分野別テストで使う組。試し用の番号は1組の問題を開く */
+/** 分野別テストで使う組。教員用の番号は、教員用セットが無いときだけ1組の問題を開く */
 export const examClassOf = (code: string): number | null => {
   if (teacherSet.has(code)) return 1;
   if (!studentSet.has(code)) return null;
