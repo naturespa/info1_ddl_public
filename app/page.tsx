@@ -613,13 +613,14 @@ export default function Home() {
     score: r.score,
     max: r.max,
     rate: Math.round((r.score / r.max) * 100),
+    // 観点別は「点／満点」で出す。観点別評価にそのまま使えるようにするため
     knowledge: (() => {
       const v = r.byViewpoint.find((x) => x.key === "知識・技能");
-      return v ? `${v.correct}/${v.total}` : "0/0";
+      return v ? `${v.points ?? v.correct}/${v.maxPoints ?? v.total}` : "0/0";
     })(),
     thinking: (() => {
       const v = r.byViewpoint.find((x) => x.key === "思考・判断・表現");
-      return v ? `${v.correct}/${v.total}` : "0/0";
+      return v ? `${v.points ?? v.correct}/${v.maxPoints ?? v.total}` : "0/0";
     })(),
     startedAt: r.startedAt,
     finishedAt: r.finishedAt,
@@ -1647,7 +1648,7 @@ export default function Home() {
                           <div key={row.key}>
                             <dt>{row.label}</dt>
                             <dd>
-                              {row.correct}/{row.total}（{row.rate}%）
+                              {row.points ?? row.correct}/{row.maxPoints ?? row.total}点（{row.rate}%）
                             </dd>
                           </div>
                         ))}

@@ -26,6 +26,7 @@ import {
   choiceLabel,
   formatClock,
   formatElapsed,
+  pointsOf,
   gradeExam,
   loadExamView,
   loadProgress,
@@ -237,7 +238,10 @@ const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
     title: "問題の解き方（その3）",
     body: (
       <>
-        <p>1画面に1問ずつ出ます。全部で100問、1問1点です。</p>
+        <p>
+          1画面に1問ずつ出ます。<b>知識・技能の問題は1点、思考・判断・表現の問題は2点</b>です。何点の問題かは、
+          問題番号の右に出ています。
+        </p>
         <ol className="cbt-guide-list">
           <li>
             <b>ア・イ・ウ・エ</b>の4つから1つを選びます。押すと選ばれた印が付きます。
@@ -453,6 +457,8 @@ export function ExamView({
 
   const answered = picked.filter((p) => p >= 0).length;
   const total = served.length;
+  /** 満点＝全問の配点の合計 */
+  const maxPoints = useMemo(() => served.reduce((sum, s) => sum + pointsOf(s.question), 0), [served]);
   const current = served[index];
   const flagCount = flagged.filter(Boolean).length;
 
@@ -678,8 +684,12 @@ export function ExamView({
                 <div>
                   <dt>問題数</dt>
                   <dd>
-                    {total}問・{total}点満点（1問1点）
+                    {total}問・{maxPoints}点満点
                   </dd>
+                </div>
+                <div>
+                  <dt>配点</dt>
+                  <dd>知識1点・思考2点</dd>
                 </div>
                 <div>
                   <dt>制限時間</dt>
@@ -720,6 +730,7 @@ export function ExamView({
                   {lessonById(current.question.lessonId)?.title ?? current.question.lessonId}
                 </span>
                 <span className={`level level-${current.question.level}`}>{current.question.level}</span>
+                <span className="cbt-points">{pointsOf(current.question)}点</span>
                 <label className={`cbt-flag ${flagged[current.originalIndex] ? "on" : ""}`}>
                   <input
                     type="checkbox"
@@ -864,11 +875,13 @@ export function ExamView({
                     {result.area}分野・{result.kind}
                   </span>
                   <strong>{result.score}</strong>
-                  <em>/ {result.max}点</em>
+                  <em>
+                    / {result.max}点（正解 {result.correctCount ?? 0}/{result.questionCount ?? result.max}問）
+                  </em>
                 </div>
                 <dl className="area-detail">
                   <div>
-                    <dt>正答率</dt>
+                    <dt>得点率</dt>
                     <dd>{Math.round((result.score / result.max) * 100)}%</dd>
                   </div>
                   <div>
@@ -879,7 +892,7 @@ export function ExamView({
                     <div key={row.key}>
                       <dt>{row.label}</dt>
                       <dd>
-                        {row.correct}/{row.total}（{row.rate}%）
+                        {row.points ?? row.correct}/{row.maxPoints ?? row.total}点（{row.rate}%）
                       </dd>
                     </div>
                   ))}
@@ -946,7 +959,7 @@ export function ExamView({
                       className={reviewFilter === "wrong" ? "active" : ""}
                       onClick={() => setReviewFilter("wrong")}
                     >
-                      間違えた問題だけ（{result.max - result.score}問）
+                      間違えた問題だけ（{(result.questionCount ?? result.max) - (result.correctCount ?? result.score)}問）
                     </button>
                     <button
                       role="tab"
@@ -954,7 +967,7 @@ export function ExamView({
                       className={reviewFilter === "all" ? "active" : ""}
                       onClick={() => setReviewFilter("all")}
                     >
-                      全{result.max}問
+                      全{result.questionCount ?? result.max}問
                     </button>
                   </div>
                 </div>
@@ -971,7 +984,11 @@ export function ExamView({
                           <span className="exam-no">{position + 1}</span>
                           <span className={`level level-${item.question.level}`}>{item.question.level}</span>
                           <span className={`result-tag ${ans.correct ? "first" : "miss"}`}>
-                            {ans.correct ? "正解（1点）" : ans.picked < 0 ? "未解答（0点）" : "不正解（0点）"}
+                            {ans.correct
+                              ? `正解（${pointsOf(item.question)}点）`
+                              : ans.picked < 0
+                                ? "未解答（0点）"
+                                : "不正解（0点）"}
                           </span>
                           {item.question.q}
                         </h3>

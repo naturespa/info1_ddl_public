@@ -60,22 +60,39 @@ export const toScreenChoice = (served: ServedQuestion, originalIndex: number) =>
 
 const rate = (correct: number, total: number) => (total ? Math.round((correct / total) * 100) : 0);
 
+/** 1問の配点。知識・技能は1点、思考・判断・表現は2点（古いファイルは1点） */
+export const pointsOf = (q: { points?: number; viewpoint?: string }) =>
+  q.points ?? (q.viewpoint === "思考・判断・表現" ? 2 : 1);
+
 const tally = <T extends string>(
   questions: ExamQuestion[],
   answers: ExamAnswer[],
   keyOf: (q: ExamQuestion) => T,
   labelOf: (key: T) => string
 ): ExamBreakdown[] => {
-  const map = new Map<T, { correct: number; total: number }>();
+  const map = new Map<T, { correct: number; total: number; points: number; maxPoints: number }>();
   questions.forEach((q, i) => {
     const key = keyOf(q);
-    const cur = map.get(key) ?? { correct: 0, total: 0 };
+    const cur = map.get(key) ?? { correct: 0, total: 0, points: 0, maxPoints: 0 };
+    const p = pointsOf(q);
     cur.total += 1;
-    if (answers[i]?.correct) cur.correct += 1;
+    cur.maxPoints += p;
+    if (answers[i]?.correct) {
+      cur.correct += 1;
+      cur.points += p;
+    }
     map.set(key, cur);
   });
   return [...map.entries()]
-    .map(([key, v]) => ({ key, label: labelOf(key), correct: v.correct, total: v.total, rate: rate(v.correct, v.total) }))
+    .map(([key, v]) => ({
+      key,
+      label: labelOf(key),
+      correct: v.correct,
+      total: v.total,
+      rate: rate(v.correct, v.total),
+      points: v.points,
+      maxPoints: v.maxPoints
+    }))
     .sort((a, b) => a.key.localeCompare(b.key));
 };
 
@@ -93,7 +110,10 @@ export const gradeExam = (
     const p = picked[i] ?? -1;
     return { picked: p, correct: p === q.answer };
   });
-  const score = answers.filter((a) => a.correct).length;
+  // 得点は「正解した問題の配点の合計」。正解数とは別に持つ
+  const score = set.questions.reduce((sum, q, i) => sum + (answers[i].correct ? pointsOf(q) : 0), 0);
+  const max = set.questions.reduce((sum, q) => sum + pointsOf(q), 0);
+  const correctCount = answers.filter((a) => a.correct).length;
   const elapsed = Math.max(0, Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000));
   return {
     setId: set.setId,
@@ -101,7 +121,9 @@ export const gradeExam = (
     classNo: set.classNo,
     kind: set.kind,
     score,
-    max: set.questions.length,
+    max,
+    correctCount,
+    questionCount: set.questions.length,
     answers,
     byLesson: tally(
       set.questions,

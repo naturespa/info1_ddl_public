@@ -59,6 +59,11 @@ export type ExamQuestion = {
   explanation: string;
   level: QuestionLevel;
   viewpoint: Viewpoint;
+  /**
+   * この1問の配点。知識・技能は1点、思考・判断・表現は2点。
+   * 入っていない古いファイルは1点として扱う。
+   */
+  points?: number;
   /** IPA過去問などの出典。自動生成・オリジナルは undefined */
   source?: string;
   /** 自動生成なら true。集計とデバッグ用 */
@@ -88,9 +93,16 @@ export type ExamAnswer = {
 export type ExamBreakdown = {
   key: string;
   label: string;
+  /** 正解した問題数 */
   correct: number;
+  /** 出題された問題数 */
   total: number;
+  /** 正答率（％）。問題数で計算する */
   rate: number;
+  /** 得点（配点の合計） */
+  points: number;
+  /** その区分の満点 */
+  maxPoints: number;
 };
 
 /** 受験結果。1回の受験につき1つ */
@@ -99,9 +111,14 @@ export type ExamResult = {
   area: Area;
   classNo: ClassNo;
   kind: ExamKind;
-  /** 得点＝正解数。満点は questions.length（100点） */
+  /** 得点。正解した問題の配点の合計（知識1点・思考2点） */
   score: number;
+  /** 満点。全問の配点の合計 */
   max: number;
+  /** 正解した問題数 */
+  correctCount: number;
+  /** 出題された問題数 */
+  questionCount: number;
   answers: ExamAnswer[];
   /** 単元別の正答 */
   byLesson: ExamBreakdown[];

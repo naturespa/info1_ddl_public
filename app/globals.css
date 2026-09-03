@@ -7682,3 +7682,14 @@ body.exam-locked footer {
     flex-basis: 100%;
   }
 }
+
+/* v44 1問の配点（知識1点・思考2点）を、問題番号の並びに小さく出す */
+.cbt-points {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border: 2px solid var(--cbt-line);
+  border-radius: 999px;
+  background: var(--cbt-soft);
+  white-space: nowrap;
+}
