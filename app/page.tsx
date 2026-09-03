@@ -69,12 +69,31 @@ const gradeSubmission = (lesson: Lesson, saved: Partial<Submission> | undefined)
 };
 
 /** 分野別テストの結果を読み書きする。分野ごとに最新の1回だけ残す */
+/**
+ * 旧形式（100問・1問1点）の結果かどうか。
+ *
+ * 65問・知識1点／思考2点に変える前の結果が残っていると、満点の違うものが
+ * 並んでしまって読み間違いのもとになる。読み出すときに捨てる。
+ */
+const isOldFormatResult = (r: Partial<ExamResult>) =>
+  typeof r?.questionCount !== "number" || typeof r?.correctCount !== "number";
+
 const loadExamResults = (code: string): ExamResult[] => {
   // デモ用の番号は、前回の結果を持ち越さない
   if (isDemoCode(code)) return [];
   try {
     const raw = localStorage.getItem(EXAM_RESULTS_KEY(code));
-    return raw ? (JSON.parse(raw) as ExamResult[]) : [];
+    const all = raw ? (JSON.parse(raw) as ExamResult[]) : [];
+    const live = all.filter((r) => !isOldFormatResult(r));
+    // 旧形式が混ざっていたら、その場で捨てて保存し直す
+    if (live.length !== all.length) {
+      try {
+        localStorage.setItem(EXAM_RESULTS_KEY(code), JSON.stringify(live));
+      } catch {
+        /* 保存できない環境では、表示から外すだけでよい */
+      }
+    }
+    return live;
   } catch {
     return [];
   }
@@ -931,7 +950,8 @@ export default function Home() {
             <b>デモ・動作確認モード</b>
             <span>
               この番号（{DEMO_CODE}）で触った内容は<b>いっさい保存されません</b>。
-              画面を再読み込みすると、まっさらな状態に戻ります。分野別テストは<b>デモ用の20問・10分</b>です。
+              画面を再読み込みすると、まっさらな状態に戻ります。分野別テストは<b>デモ用の短いセット</b>です
+              （問題数と時間は、テストを開いたときの「試験開始画面」に出ます）。
             </span>
           </div>
         )}

@@ -47,11 +47,17 @@ import { PasswordField } from "./lib/password-field";
 /** 静的書き出しのときの公開パス。GitHub Pages では /info1_ddl_public が前につく */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-/** ファイルに制限時間が入っていないときに使う既定値（分） */
-const DEFAULT_MINUTES = 50;
+/** ファイルに制限時間が入っていないときに使う既定値（分）。生成キットの既定と同じ45分 */
+const DEFAULT_MINUTES = 45;
 
-/** 残り時間がこれを切ったら色を変えて知らせる（秒） */
-const WARN_SECONDS = 5 * 60;
+/**
+ * 残り時間がこれを切ったら、色を変えて知らせる（秒）。
+ *
+ * 5分の固定にすると、10分のデモでは開始5分後から、1分の確認用セットでは
+ * 最初から点滅してしまう。そこで「5分」と「制限時間の20%」の小さいほうを使う。
+ *   45分 → 5分前 ／ 10分 → 2分前 ／ 1分 → 12秒前
+ */
+const warnSecondsFor = (minutes: number) => Math.min(5 * 60, Math.round(minutes * 60 * 0.2));
 
 /**
  * その人が受けられる可能性のあるファイル。上から順に試し、復号できたものが今日のテストになる。
@@ -199,7 +205,7 @@ const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
             その右に<b>残り時間</b>が出ます。0になると自動で試験が終わり、そこまでの解答で採点されます。
           </li>
           <li>
-            残り時間が<b>5分</b>を切ると、色が変わって知らせます。
+            残り時間が<b>少なくなる</b>と、色が変わって知らせます。
           </li>
         </ol>
         <p className="cbt-note">
@@ -267,7 +273,7 @@ const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
         <p>画面の下に、解答の状況と提出のボタンがあります。</p>
         <ol className="cbt-guide-list">
           <li>
-            <b>「解答一覧へ」</b>ボタンで、100問ぶんの番号が並んだ一覧に移ります。
+            <b>「解答一覧へ」</b>ボタンで、全問ぶんの番号が並んだ一覧に移ります。
           </li>
           <li>
             一覧では<b>解答済み・未解答・見直しの印</b>が色で分かります。番号を押すとその問題へ飛べます。
@@ -386,7 +392,14 @@ export function ExamView({
         };
         const limit = bundle.minutes && bundle.minutes > 0 ? bundle.minutes : DEFAULT_MINUTES;
         // デモ用の番号は、前回の続きを読まない（いつも最初から）
-        const saved = ephemeral ? null : loadProgress(studentCode, opened.setId);
+        const found = ephemeral ? null : loadProgress(studentCode, opened.setId);
+        // 問題数が変わった（100問→65問など）あとに残っていた古い途中経過は、
+        // そのまま使うと解答の位置がずれるので捨てて、最初からやり直す
+        const stale =
+          !!found &&
+          ((Array.isArray(found.picked) && found.picked.length !== questions.length) ||
+            (!!found.result && found.result.questionCount !== questions.length));
+        const saved = stale ? null : found;
         setSet(opened);
         setMinutes(limit);
         setServed(serveForStudent(opened, studentCode));
@@ -612,7 +625,11 @@ export function ExamView({
             </div>
           </dl>
           {(phase === "running" || phase === "list") && remaining !== null && (
-            <div className={`cbt-timer ${remaining <= WARN_SECONDS ? "warn" : ""}`} role="timer" aria-label="残り時間">
+            <div
+              className={`cbt-timer ${remaining <= warnSecondsFor(minutes) ? "warn" : ""}`}
+              role="timer"
+              aria-label="残り時間"
+            >
               <span>残り時間</span>
               <strong>{formatClock(remaining)}</strong>
             </div>
