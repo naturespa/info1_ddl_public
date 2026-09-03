@@ -25,8 +25,22 @@ export const EXTRA_SEATS = [88, 77, 88, 77, 88, 77, 88];
  *   3156 ほか  … 以前から使っている試し用。記録が消えないよう残してあります
  */
 export const TEACHER_SEATS = ["0001", "0002", "0003", "0004", "0005"];
-const LEGACY_TEACHER_CODES = ["3156", "0808", "8080", "8008"];
-export const TEACHER_CODES = [...TEACHER_SEATS, ...LEGACY_TEACHER_CODES];
+
+/**
+ * デモ・動作確認用の番号。
+ *
+ * 研修や公開授業で、その場の人に画面を触ってもらうための番号です。
+ *   ・入るときは教員用パスワードが必要（生徒が 8008 を見つけても入れない）
+ *   ・触った記録はいっさい保存しない（再読み込みすれば、まっさらに戻る）
+ *   ・分野別テストは、デモ専用の短いセット（20問・10分）が開く
+ */
+export const DEMO_CODE = "8008";
+
+const LEGACY_TEACHER_CODES = ["3156", "0808", "8080"];
+export const TEACHER_CODES = [...TEACHER_SEATS, DEMO_CODE, ...LEGACY_TEACHER_CODES];
+
+/** デモ用の番号か */
+export const isDemoCode = (code: string) => code === DEMO_CODE;
 
 const build = () => {
   const list: string[] = [];
@@ -53,6 +67,7 @@ export const isAllowedCode = (code: string) => studentSet.has(code) || teacherSe
 
 /** 画面に出す、その番号の読み方 */
 export const describeCode = (code: string) => {
+  if (code === DEMO_CODE) return "デモ・動作確認用の番号";
   if (teacherSet.has(code)) {
     const n = TEACHER_SEATS.indexOf(code);
     return n >= 0 ? `教員用の番号（${n + 1}人目）` : "試し用の番号です";

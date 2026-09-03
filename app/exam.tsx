@@ -40,7 +40,8 @@ import {
 } from "./lib/exam-runtime";
 import { gradeOf, seatOf, type ClassNo, type EncryptedBundle, type ExamResult, type ExamSet } from "./lib/exam-types";
 import { lessonById } from "./lib/lessons";
-import { TEACHER_SEATS, examClassOf, isTeacherCode } from "./lib/roster";
+import { TEACHER_SEATS, examClassOf, isDemoCode, isTeacherCode } from "./lib/roster";
+import { PasswordField } from "./lib/password-field";
 
 /** 静的書き出しのときの公開パス。GitHub Pages では /info1_ddl_public が前につく */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -54,11 +55,19 @@ const WARN_SECONDS = 5 * 60;
 /**
  * その人が受けられる可能性のあるファイル。上から順に試し、復号できたものが今日のテストになる。
  *
+ *   デモ用 … 8008 専用。20問・10分の短いセット。研修や公開授業で流れを見せるためのもの
  *   教員用 … 0001〜0005 の5名共通。1つのパスワードで、どの番号からでも開く
  *   本試験 … そのクラスのもの
  *   追試   … その生徒専用。パスワードに本人の4桁番号が混ざるので、他人の端末では開かない
  */
 const candidateFiles = (classNo: ClassNo, studentCode: string) => [
+  // デモ用の番号は、まず「デモ用の短いセット（20問・10分）」を探す
+  ...(isDemoCode(studentCode)
+    ? [
+        { file: "digital-demo", makeup: false },
+        { file: "data-demo", makeup: false }
+      ]
+    : []),
   ...(isTeacherCode(studentCode)
     ? [
         { file: "digital-teacher", makeup: false },
@@ -372,7 +381,8 @@ export function ExamView({
           questions
         };
         const limit = bundle.minutes && bundle.minutes > 0 ? bundle.minutes : DEFAULT_MINUTES;
-        const saved = loadProgress(studentCode, opened.setId);
+        // デモ用の番号は、前回の続きを読まない（いつも最初から）
+        const saved = ephemeral ? null : loadProgress(studentCode, opened.setId);
         setSet(opened);
         setMinutes(limit);
         setServed(serveForStudent(opened, studentCode));
@@ -402,9 +412,12 @@ export function ExamView({
 
   /* ---------- 途中保存 ---------- */
 
+  /** デモ用の番号は、この端末に何も書き残さない */
+  const ephemeral = isDemoCode(studentCode);
+
   const persist = useCallback(
     (next: number[], marks: boolean[], due: string, finished?: ExamResult) => {
-      if (!set) return;
+      if (!set || ephemeral) return;
       const progress: ExamProgress = {
         setId: set.setId,
         studentCode,
@@ -416,7 +429,7 @@ export function ExamView({
       };
       saveProgress(progress);
     },
-    [set, studentCode, startedAt]
+    [set, studentCode, startedAt, ephemeral]
   );
 
   const choose = (item: ServedQuestion, screenIndex: number) => {
@@ -537,11 +550,13 @@ export function ExamView({
 
   const teacherSeat = TEACHER_SEATS.indexOf(studentCode);
   const who =
-    teacherSeat >= 0
-      ? `教員用 ${teacherSeat + 1}`
-      : isTeacherCode(studentCode)
-        ? "試し用の番号"
-        : `${gradeOf(studentCode)}年${classNo}組${seatOf(studentCode)}番`;
+    isDemoCode(studentCode)
+      ? "デモ・動作確認用"
+      : teacherSeat >= 0
+        ? `教員用 ${teacherSeat + 1}`
+        : isTeacherCode(studentCode)
+          ? "試し用の番号"
+          : `${gradeOf(studentCode)}年${classNo}組${seatOf(studentCode)}番`;
 
   const screenName =
     phase === "password"
@@ -610,27 +625,19 @@ export function ExamView({
             <div className="cbt-gate">
               <h2>受験開始</h2>
               <p>先生の合図があるまで、テストは開きません。合図があったら、先生が言うパスワードを入れてください。</p>
-              <div className="input-row">
-                <label className="field field-wide">
-                  <span className="field-label">
-                    テストのパスワード
-                    <i className="field-hint">大文字・小文字・記号もそのとおりに</i>
-                  </span>
-                  <span className="field-input">
-                    <input
-                      type="text"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") openExam();
-                      }}
-                      autoComplete="off"
-                      spellCheck={false}
-                      placeholder="先生が板書または口頭で伝えます"
-                    />
-                  </span>
-                </label>
-              </div>
+              <PasswordField
+                label="テストのパスワード"
+                hint="大文字・小文字・記号もそのとおりに"
+                value={password}
+                onChange={(v) => {
+                  setPassword(v);
+                  setError("");
+                }}
+                onEnter={openExam}
+                placeholder="先生が板書または口頭で伝えます"
+                autoFocus
+                note="打った文字は ● で伏せています。となりの席から見えません。確かめたいときは「表示」を押してください。"
+              />
               <div className="cbt-foot">
                 <span />
                 <button className="cbt-go" onClick={openExam} disabled={busy}>

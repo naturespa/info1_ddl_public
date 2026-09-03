@@ -14,12 +14,17 @@ import { WORDS_PER_LESSON, words, wordsOf } from "./lib/words";
 import { checkWord } from "./lib/word-check";
 import type { WordItem } from "./lib/words";
 import { hintList } from "./lib/hint-list";
-import { describeCode, isAllowedCode } from "./lib/roster";
+import { DEMO_CODE, describeCode, isAllowedCode, isDemoCode, isTeacherCode } from "./lib/roster";
+import { PasswordField } from "./lib/password-field";
+import { checkTeacherPassword, teacherUnlockKey } from "./lib/teacher-gate";
 import { UNDERSTANDING_CHOICES } from "./lib/types";
 import type { ExamResult } from "./lib/exam-types";
 import { classOf, gradeOf, seatOf } from "./lib/exam-types";
 import { formatElapsed } from "./lib/exam-runtime";
 import { HintShopContext } from "./lib/ui";
+
+/** 静的書き出しのときの公開パス。GitHub Pages では /info1_ddl_public が前につく */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 const STORAGE_PREFIX = "joho-ddl-public-v2:";
 /** 確定した4桁番号を覚えておくキー。次に開いたときも同じ番号で続きから始める */
@@ -65,6 +70,8 @@ const gradeSubmission = (lesson: Lesson, saved: Partial<Submission> | undefined)
 
 /** 分野別テストの結果を読み書きする。分野ごとに最新の1回だけ残す */
 const loadExamResults = (code: string): ExamResult[] => {
+  // デモ用の番号は、前回の結果を持ち越さない
+  if (isDemoCode(code)) return [];
   try {
     const raw = localStorage.getItem(EXAM_RESULTS_KEY(code));
     return raw ? (JSON.parse(raw) as ExamResult[]) : [];
@@ -74,6 +81,8 @@ const loadExamResults = (code: string): ExamResult[] => {
 };
 
 const saveExamResults = (code: string, results: ExamResult[]) => {
+  // デモ用の番号は、何も書き残さない
+  if (isDemoCode(code)) return;
   try {
     localStorage.setItem(EXAM_RESULTS_KEY(code), JSON.stringify(results));
   } catch {
@@ -97,6 +106,10 @@ export default function Home() {
   const [studentCode, setStudentCode] = useState("");
   /** 入力中の番号（まだ確定していない） */
   const [codeDraft, setCodeDraft] = useState("");
+  /** 教員用の番号のときに入れてもらう合いことば */
+  const [teacherPassword, setTeacherPassword] = useState("");
+  const [teacherError, setTeacherError] = useState("");
+  const [teacherBusy, setTeacherBusy] = useState(false);
   const [active, setActive] = useState("home");
   const [drafts, setDrafts] = useState<Record<string, number[]>>({});
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
@@ -348,8 +361,9 @@ export default function Home() {
     setLoaded(true);
     try {
       const saved = normalizeStudentCode(localStorage.getItem(ACTIVE_KEY) ?? "");
-      // 名簿から外れた番号（名簿を入れかえたときなど）では、続きから始めない
-      if (saved.length === 4 && isAllowedCode(saved)) {
+      // 名簿から外れた番号（名簿を入れかえたときなど）では、続きから始めない。
+      // デモ用の番号も、開き直すたびに番号の入力からやり直す。
+      if (saved.length === 4 && isAllowedCode(saved) && !isDemoCode(saved)) {
         setStudentCode(saved);
         setCodeDraft(saved);
         loadRecord(saved);
@@ -404,6 +418,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!loaded || studentCode.length !== 4) return;
+    // デモ用の番号は、この端末に何も書き残さない（次の人にまっさらで渡すため）
+    if (isDemoCode(studentCode)) return;
     const record: StudentRecord = buildRecord();
     try {
       localStorage.setItem(`${STORAGE_PREFIX}${studentCode}`, JSON.stringify(record));
@@ -439,7 +455,10 @@ export default function Home() {
   /** 保存済みの記録を読み出す。旧バージョンのデータもここで採点し直す */
   const loadRecord = (code: string) => {
     try {
-      const saved = JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${code}`) ?? "{}") as Partial<StudentRecord>;
+      // デモ用の番号は、保存されたものを読まない＝いつもまっさらから始まる
+      const saved = (isDemoCode(code)
+        ? {}
+        : JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${code}`) ?? "{}")) as Partial<StudentRecord>;
       const restored: Record<string, Submission> = {};
       lessons.forEach((lesson) => {
         const graded = gradeSubmission(lesson, saved.submissions?.[lesson.id] as Partial<Submission> | undefined);
@@ -482,7 +501,9 @@ export default function Home() {
   const draftPreview = useMemo(() => {
     if (codeDraft.length !== 4 || !loaded || !isAllowedCode(codeDraft)) return null;
     try {
-      const saved = JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${codeDraft}`) ?? "null") as StudentRecord | null;
+      const saved = (isDemoCode(codeDraft)
+        ? null
+        : JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${codeDraft}`) ?? "null")) as StudentRecord | null;
       if (!saved) return { found: false, lessons: 0, experiments: 0 };
       return {
         found: true,
@@ -495,13 +516,57 @@ export default function Home() {
   }, [codeDraft, loaded]);
 
   /** 番号を確定する。確定するともう変えられない */
-  const confirmCode = () => {
+  const confirmCode = async () => {
     // 名簿にない番号では始められない
     if (!isAllowedCode(codeDraft)) return;
     if (codeDraft.length !== 4) return;
+
+    // 教員用の番号は、番号だけでは入れない。合いことばを確かめる。
+    // 一度通った端末では、次から聞き直さない。
+    if (isTeacherCode(codeDraft)) {
+      let already = false;
+      try {
+        // デモ用の番号は「一度通ったら次から省略」をしない。
+        // 貸し出した端末に鍵が開いたまま残らないよう、毎回きく。
+        already = !isDemoCode(codeDraft) && localStorage.getItem(teacherUnlockKey(codeDraft)) === "ok";
+      } catch {
+        already = false;
+      }
+      if (!already) {
+        if (!teacherPassword.trim()) {
+          setTeacherError("教員用のパスワードを入れてください。");
+          return;
+        }
+        setTeacherBusy(true);
+        setTeacherError("");
+        const verdict = await checkTeacherPassword(basePath, teacherPassword);
+        setTeacherBusy(false);
+        if (verdict.state === "wrong") {
+          setTeacherError("教員用のパスワードが違います。");
+          return;
+        }
+        if (verdict.state === "error") {
+          setTeacherError("確認できませんでした。もう一度試してください。");
+          return;
+        }
+        // "none"（鍵をかけていない配置）と "ok" はどちらも通す
+        if (verdict.state === "ok" && !isDemoCode(codeDraft)) {
+          try {
+            localStorage.setItem(teacherUnlockKey(codeDraft), "ok");
+          } catch {
+            /* 保存できない環境では、次回また聞くだけなので黙って続行する */
+          }
+        }
+      }
+    }
+
+    setTeacherPassword("");
+    setTeacherError("");
     setStudentCode(codeDraft);
     loadRecord(codeDraft);
     setExamResults(loadExamResults(codeDraft));
+    // デモ用の番号は「次に開いたときの続き」にもしない
+    if (isDemoCode(codeDraft)) return;
     try {
       localStorage.setItem(ACTIVE_KEY, codeDraft);
     } catch {
@@ -813,6 +878,16 @@ export default function Home() {
       </header>
 
       <div className="shell" id="main" tabIndex={-1}>
+        {/* デモ用の番号のときは、記録が残らないことをはっきり知らせる */}
+        {isDemoCode(studentCode) && (
+          <div className="demo-banner" role="status">
+            <b>デモ・動作確認モード</b>
+            <span>
+              この番号（{DEMO_CODE}）で触った内容は<b>いっさい保存されません</b>。
+              画面を再読み込みすると、まっさらな状態に戻ります。分野別テストは<b>デモ用の20問・10分</b>です。
+            </span>
+          </div>
+        )}
         {active === "home" && (
           <>
             <section className="board">
@@ -883,9 +958,32 @@ export default function Home() {
                         <p className="code-warn">
                           確定すると、番号を変えられなくなります。間違いがないか確かめてください。
                         </p>
+
+                        {/* 教員用の番号は、番号だけでは入れない。合いことばをもう1つ確かめる。 */}
+                        {isTeacherCode(codeDraft) && (
+                          <div className="teacher-gate">
+                            <p className="teacher-gate-lead">
+                              これは<b>教員用の番号</b>です。先生用のパスワードを入れてください。
+                            </p>
+                            <PasswordField
+                              label="教員用パスワード"
+                              hint="先生だけが知っているもの"
+                              value={teacherPassword}
+                              onChange={(v) => {
+                                setTeacherPassword(v);
+                                setTeacherError("");
+                              }}
+                              onEnter={confirmCode}
+                              placeholder="教員用パスワード"
+                              note="打った文字は ● で伏せています。確かめたいときは「表示」を押してください。"
+                            />
+                            {teacherError && <div className="verdict ng">{teacherError}</div>}
+                          </div>
+                        )}
+
                         <div className="code-actions">
-                          <button className="primary" onClick={confirmCode}>
-                            はい、{codeDraft} で始める
+                          <button className="primary" onClick={confirmCode} disabled={teacherBusy}>
+                            {teacherBusy ? "確認しています…" : `はい、${codeDraft} で始める`}
                           </button>
                           <button className="ghost" onClick={() => setCodeDraft("")}>
                             入力し直す
@@ -1834,7 +1932,9 @@ export default function Home() {
         )}
       </div>
       <footer>
-        学習履歴と得点は使用中のブラウザに保存されます。氏名・名簿データは含みません。
+        {isDemoCode(studentCode)
+          ? "デモ・動作確認用の番号なので、学習履歴と得点は保存されません。氏名・名簿データも含みません。"
+          : "学習履歴と得点は使用中のブラウザに保存されます。氏名・名簿データは含みません。"}
         <br />
         単元構成は岡田メソッド（兵庫県立明石南高等学校 岡田）のExcelシートに対応しています。掲載した過去問題の著作権はIPA（情報処理推進機構）に帰属します。
       </footer>

@@ -7,7 +7,7 @@ import type { Area, QuestionLevel } from "./types";
 export type Viewpoint = "知識・技能" | "思考・判断・表現";
 
 /** 本試験か追試か */
-export type ExamKind = "本試験" | "追試" | "教員用";
+export type ExamKind = "本試験" | "追試" | "教員用" | "デモ";
 
 /** クラス。4桁番号の2桁目（1年2組05番なら "1205" → 2組） */
 export type ClassNo = 1 | 2 | 3 | 4 | 5 | 6 | 7;
