@@ -137,6 +137,9 @@ export function MiniSheet({
                   value={inputs[i]}
                   onChange={(e) => setAt(i, e.target.value)}
                   placeholder="= から書き始めます"
+                  /* 同じ画面に同じ placeholder の欄が並ぶので、
+                     どの問いに答える欄なのかを読み上げにも伝える */
+                  aria-label={`${i + 1}つ目の式：${task.ask}`}
                   spellCheck={false}
                   autoComplete="off"
                 />

@@ -173,6 +173,9 @@ export function WordQuiz({
                     value={draft[i] ?? ""}
                     onChange={(e) => onDraft(setAt(draft, i, e.target.value))}
                     placeholder="語句を入力"
+                    /* 5つとも placeholder が同じなので、読み上げでは区別がつかない。
+                       何番の・どの説明に対する欄なのかを持たせておく */
+                    aria-label={`${i + 1}問目の語句：${item.clue}（${answerShape(item.answer)}）`}
                     spellCheck={false}
                     autoComplete="off"
                   />
@@ -186,6 +189,7 @@ export function WordQuiz({
                     value={retryDraft[i] ?? ""}
                     onChange={(e) => setRetryDraft(setAt(retryDraft, i, e.target.value))}
                     placeholder={letterBought ? `${firstLetter(item)} …` : "もう一度入力"}
+                    aria-label={`${i + 1}問目の語句（2回目）：${item.clue}（${answerShape(item.answer)}）`}
                     spellCheck={false}
                     autoComplete="off"
                   />
