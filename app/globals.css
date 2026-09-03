@@ -7533,8 +7533,7 @@ body.exam-locked footer {
 /* 掲示板は暗い配色なので、そのままだと文字色を受け継いで
    「白地に生成り色の●」＝ほぼ見えない、という事故が起きる。
    打った文字が必ず読めるよう、色をここで固定する。 */
-.pw-input,
-.pw-input::placeholder {
+.pw-input {
   color: #16202e;
 }
 .pw-input::placeholder {
@@ -7696,10 +7695,8 @@ body.exam-locked footer {
 
 /* ============================================================================
  * v45 記録のリセット（教員用の番号でだけ出る）
- *   取り返しがつかない操作なので、
- *   ・何が消えて何が消えないかを、押す前に必ず読ませる
- *   ・1回の確認をはさむ
- *   ・生徒の記録に触れないことを、はっきり書く
+ *   取り返しがつかない操作なので、何が消えて何が消えないかを押す前に読ませ、
+ *   確認を1回はさむ。生徒の記録に触れないことをはっきり書く。
  * ========================================================================== */
 
 .teacher-reset {
@@ -7753,14 +7750,6 @@ body.exam-locked footer {
   font-size: 0.95rem;
   line-height: 1.85;
 }
-
-@media (max-width: 700px) {
-  .reset-what > div {
-    grid-template-columns: 1fr;
-    gap: 0.2rem;
-  }
-}
-
 /* 消す操作だとひと目で分かるよう、赤いボタンにする */
 .teacher-reset button.danger,
 .reset-confirm button.danger {
@@ -7779,4 +7768,18 @@ body.exam-locked footer {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
+}
+
+@media (max-width: 700px) {
+  .reset-what > div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}
+
+/* v47 横スクロールする表を、キーボードでも動かせるようにした。
+   フォーカスが当たったことが見えるように枠を出す */
+.table-scroll:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }

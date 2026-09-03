@@ -93,7 +93,7 @@ export function MiniSheet({
         </span>
       </div>
 
-      <div className="table-scroll">
+      <div className="table-scroll" tabIndex={0} role="group" aria-label="表計算の表（横にスクロールできます）">
         <table className="sheet-table">
           <thead>
             <tr>

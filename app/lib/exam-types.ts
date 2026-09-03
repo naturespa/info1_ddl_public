@@ -1,8 +1,5 @@
 // 分野別テストの型定義
-//
-// 1セットは 65問・100点満点。
-//   知識・技能 30問 × 1点 ＝ 30点
-//   思考・判断・表現 35問 × 2点 ＝ 70点
+// 1セットは 65問・100点満点（知識30問×1点＋思考35問×2点）。
 // 普段の学習の200点とは完全に別に扱う。
 
 import type { Area, QuestionLevel } from "./types";
@@ -74,18 +71,18 @@ export type ExamQuestion = {
   generated?: boolean;
 };
 
-/** 1つの分野・1クラス・本試験／追試／教員用／デモ、に対応する1セット */
+/** 1つの分野・1クラス・本試験か追試か、に対応する100問のまとまり */
 export type ExamSet = {
   /** 例: "digital-c3-main"。JSONにそのまま出す */
   setId: string;
   area: Area;
   classNo: ClassNo;
   kind: ExamKind;
-  /** 本試験なら65問。教員用も65問、デモは13問 */
+  /** 100問 */
   questions: ExamQuestion[];
 };
 
-/** 生徒の解答。部分点はなく、正解ならその問題の配点がまるごと入る */
+/** 生徒の解答。1問1点、部分点なし */
 export type ExamAnswer = {
   /** 選んだ選択肢番号。未解答は -1 */
   picked: number;

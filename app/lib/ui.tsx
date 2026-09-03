@@ -334,7 +334,14 @@ export function DataTable({
   full?: boolean;
 }) {
   return (
-    <div className={full ? "table-scroll full" : "table-scroll"}>
+    // せまい画面では表が横スクロールになる。キーボードだけの人も
+    // 矢印キーで動かせるように、この枠自体をフォーカスできるようにしておく。
+    <div
+      className={full ? "table-scroll full" : "table-scroll"}
+      tabIndex={0}
+      role="group"
+      aria-label="表（横にスクロールできます）"
+    >
       <table className={full ? "lab-table dense" : "lab-table"}>
         <thead>
           <tr>
