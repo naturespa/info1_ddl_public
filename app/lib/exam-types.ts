@@ -1,11 +1,13 @@
 // 分野別テストの型定義
-// 1セットは 65問・100点満点（知識30問×1点＋思考35問×2点）。
-// 普段の学習の200点とは完全に別に扱う。
+// デジタル分野100問・100点、データ活用分野100問・100点。普段の学習の200点とは完全に別に扱う。
 
 import type { Area, QuestionLevel } from "./types";
 
-/** 観点。1セット65問を 知識・技能30問／思考・判断・表現35問 に配分する */
+/** 観点。100問全体で 知識・技能60問／思考・判断・表現40問 になるように配分する */
 export type Viewpoint = "知識・技能" | "思考・判断・表現";
+
+/** 観点ごとの配点。65問（知識30＋思考35）で 30 + 70 = 100点 */
+export const VIEWPOINT_POINTS: Record<Viewpoint, number> = { "知識・技能": 1, "思考・判断・表現": 2 };
 
 /** 本試験か追試か */
 export type ExamKind = "本試験" | "追試" | "教員用" | "デモ";
@@ -60,15 +62,15 @@ export type ExamQuestion = {
   explanation: string;
   level: QuestionLevel;
   viewpoint: Viewpoint;
-  /**
-   * この1問の配点。知識・技能は1点、思考・判断・表現は2点。
-   * 入っていない古いファイルは1点として扱う。
-   */
-  points?: number;
   /** IPA過去問などの出典。自動生成・オリジナルは undefined */
   source?: string;
   /** 自動生成なら true。集計とデバッグ用 */
   generated?: boolean;
+  /**
+   * 配点。知識・技能は1点、思考・判断・表現は2点。
+   * 古いファイルには入っていないので、無いときは観点から決める。
+   */
+  points?: number;
 };
 
 /** 1つの分野・1クラス・本試験か追試か、に対応する100問のまとまり */
@@ -96,14 +98,14 @@ export type ExamBreakdown = {
   label: string;
   /** 正解した問題数 */
   correct: number;
-  /** 出題された問題数 */
+  /** 問題数 */
   total: number;
-  /** 正答率（％）。問題数で計算する */
-  rate: number;
   /** 得点（配点の合計） */
   points: number;
-  /** その区分の満点 */
+  /** 満点（配点の合計） */
   maxPoints: number;
+  /** 得点率（％） */
+  rate: number;
 };
 
 /** 受験結果。1回の受験につき1つ */
@@ -112,13 +114,12 @@ export type ExamResult = {
   area: Area;
   classNo: ClassNo;
   kind: ExamKind;
-  /** 得点。正解した問題の配点の合計（知識1点・思考2点） */
+  /** 得点＝配点の合計。満点は max（100点） */
   score: number;
-  /** 満点。全問の配点の合計 */
   max: number;
   /** 正解した問題数 */
   correctCount: number;
-  /** 出題された問題数 */
+  /** 問題数（65問） */
   questionCount: number;
   answers: ExamAnswer[];
   /** 単元別の正答 */
@@ -142,7 +143,7 @@ export type EncryptedBundle = {
   kind: ExamKind;
   /**
    * 制限時間（分）。生成キットの --minutes で先生が決める。
-   * 古いファイルには入っていないので、無いときは既定の45分として扱う。
+   * 古いファイルには入っていないので、無いときは既定の50分として扱う。
    */
   minutes?: number;
   /** PBKDF2 の塩（base64） */

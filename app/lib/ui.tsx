@@ -334,8 +334,6 @@ export function DataTable({
   full?: boolean;
 }) {
   return (
-    // せまい画面では表が横スクロールになる。キーボードだけの人も
-    // 矢印キーで動かせるように、この枠自体をフォーカスできるようにしておく。
     <div
       className={full ? "table-scroll full" : "table-scroll"}
       tabIndex={0}

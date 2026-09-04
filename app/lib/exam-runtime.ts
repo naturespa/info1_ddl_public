@@ -2,7 +2,7 @@
 //
 //  ・出題順と選択肢の順を、生徒の4桁番号で並べ替える（隣の画面を見ても写せない）
 //  ・答えはすぐ「もとの選択肢番号」に直して記録する（集計のときに順番を気にしなくてよい）
-//  ・採点は 知識・技能1点／思考・判断・表現2点。単元別・観点別・難易度別の内訳も出す
+//  ・採点は1問1点。単元別・観点別・難易度別の内訳も出す
 
 import { seededRandom } from "./calc";
 import { lessonById } from "./lessons";
@@ -60,9 +60,8 @@ export const toScreenChoice = (served: ServedQuestion, originalIndex: number) =>
 
 const rate = (correct: number, total: number) => (total ? Math.round((correct / total) * 100) : 0);
 
-/** 1問の配点。知識・技能は1点、思考・判断・表現は2点（古いファイルは1点） */
-export const pointsOf = (q: { points?: number; viewpoint?: string }) =>
-  q.points ?? (q.viewpoint === "思考・判断・表現" ? 2 : 1);
+/** その問題の配点。古いファイル用に、無いときは観点から決める */
+export const pointsOf = (q: ExamQuestion) => q.points ?? (q.viewpoint === "思考・判断・表現" ? 2 : 1);
 
 const tally = <T extends string>(
   questions: ExamQuestion[],
@@ -74,12 +73,12 @@ const tally = <T extends string>(
   questions.forEach((q, i) => {
     const key = keyOf(q);
     const cur = map.get(key) ?? { correct: 0, total: 0, points: 0, maxPoints: 0 };
-    const p = pointsOf(q);
+    const pt = pointsOf(q);
     cur.total += 1;
-    cur.maxPoints += p;
+    cur.maxPoints += pt;
     if (answers[i]?.correct) {
       cur.correct += 1;
-      cur.points += p;
+      cur.points += pt;
     }
     map.set(key, cur);
   });
@@ -89,9 +88,10 @@ const tally = <T extends string>(
       label: labelOf(key),
       correct: v.correct,
       total: v.total,
-      rate: rate(v.correct, v.total),
       points: v.points,
-      maxPoints: v.maxPoints
+      maxPoints: v.maxPoints,
+      // 割合は「点」で見る。思考の問題を落とすと、そのぶん大きく下がる
+      rate: rate(v.points, v.maxPoints)
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 };
@@ -110,10 +110,10 @@ export const gradeExam = (
     const p = picked[i] ?? -1;
     return { picked: p, correct: p === q.answer };
   });
-  // 得点は「正解した問題の配点の合計」。正解数とは別に持つ
-  const score = set.questions.reduce((sum, q, i) => sum + (answers[i].correct ? pointsOf(q) : 0), 0);
-  const max = set.questions.reduce((sum, q) => sum + pointsOf(q), 0);
   const correctCount = answers.filter((a) => a.correct).length;
+  // 得点は配点の合計。知識・技能1点、思考・判断・表現2点
+  const score = set.questions.reduce((sum, q, i) => sum + (answers[i]?.correct ? pointsOf(q) : 0), 0);
+  const max = set.questions.reduce((sum, q) => sum + pointsOf(q), 0);
   const elapsed = Math.max(0, Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000));
   return {
     setId: set.setId,

@@ -68,30 +68,21 @@ const gradeSubmission = (lesson: Lesson, saved: Partial<Submission> | undefined)
   };
 };
 
-/** 分野別テストの結果を読み書きする。分野ごとに最新の1回だけ残す */
 /**
- * 旧形式（100問・1問1点）の結果かどうか。
- * 満点の違うものが並ぶと読み間違いのもとになるので、読み出すときに捨てる。
+ * 100問だったころの古い結果かどうか。
+ * 65問・100点に変えたので、そのまま並べると満点の意味が変わってしまう。読むときに捨てる。
  */
-const isOldFormatResult = (r: Partial<ExamResult>) =>
-  typeof r?.questionCount !== "number" || typeof r?.correctCount !== "number";
+const isOldFormatResult = (r: ExamResult) =>
+  !r || typeof r.max !== "number" || r.max <= 0 || !Array.isArray(r.answers) || r.answers.length > 90;
 
+/** 分野別テストの結果を読み書きする。分野ごとに最新の1回だけ残す */
 const loadExamResults = (code: string): ExamResult[] => {
   // デモ用の番号は、前回の結果を持ち越さない
   if (isDemoCode(code)) return [];
   try {
     const raw = localStorage.getItem(EXAM_RESULTS_KEY(code));
-    const all = raw ? (JSON.parse(raw) as ExamResult[]) : [];
-    const live = all.filter((r) => !isOldFormatResult(r));
-    // 旧形式が混ざっていたら、その場で捨てて保存し直す
-    if (live.length !== all.length) {
-      try {
-        localStorage.setItem(EXAM_RESULTS_KEY(code), JSON.stringify(live));
-      } catch {
-        /* 保存できない環境では、表示から外すだけでよい */
-      }
-    }
-    return live;
+    const list = raw ? (JSON.parse(raw) as ExamResult[]) : [];
+    return Array.isArray(list) ? list.filter((r) => !isOldFormatResult(r)) : [];
   } catch {
     return [];
   }
@@ -127,9 +118,6 @@ export default function Home() {
   const [teacherPassword, setTeacherPassword] = useState("");
   const [teacherError, setTeacherError] = useState("");
   const [teacherBusy, setTeacherBusy] = useState(false);
-  /** 教員用のリセット（確認中かどうか／終わった直後かどうか） */
-  const [resetConfirm, setResetConfirm] = useState(false);
-  const [resetDone, setResetDone] = useState(false);
   const [active, setActive] = useState("home");
   const [drafts, setDrafts] = useState<Record<string, number[]>>({});
   const [submissions, setSubmissions] = useState<Record<string, Submission>>({});
@@ -140,6 +128,8 @@ export default function Home() {
   const [showTerms, setShowTerms] = useState(false);
   /** 「学習を終了」を押したあとの確認中フラグ */
   const [endConfirm, setEndConfirm] = useState(false);
+  /** 教員用の「記録をリセット」の確認段階（0=通常 / 1=確認中 / 2=消し終わった） */
+  const [resetStep, setResetStep] = useState(0);
   /** 分野別テストの結果（分野ごとに最新の1回） */
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
   /** 重要語句テストの入力（送信前） */
@@ -633,14 +623,13 @@ export default function Home() {
     score: r.score,
     max: r.max,
     rate: Math.round((r.score / r.max) * 100),
-    // 観点別は「点／満点」で出す。観点別評価にそのまま使えるようにするため
     knowledge: (() => {
       const v = r.byViewpoint.find((x) => x.key === "知識・技能");
-      return v ? `${v.points ?? v.correct}/${v.maxPoints ?? v.total}` : "0/0";
+      return v ? `${v.correct}/${v.total}` : "0/0";
     })(),
     thinking: (() => {
       const v = r.byViewpoint.find((x) => x.key === "思考・判断・表現");
-      return v ? `${v.points ?? v.correct}/${v.maxPoints ?? v.total}` : "0/0";
+      return v ? `${v.correct}/${v.total}` : "0/0";
     })(),
     startedAt: r.startedAt,
     finishedAt: r.finishedAt,
@@ -764,43 +753,6 @@ export default function Home() {
    * 共用パソコンで次の人に渡すための機能なので、押し間違いを防ぐため2段階にしている。
    * 記録そのものは消えないので、同じ番号を入れ直せば続きから再開できる。
    */
-  /**
-   * 教員用の番号でだけ使える、記録の消去。
-   *
-   * 消えるもの … その番号の学習記録（実験・確認問題・重要語句・G・レベル・ふり返り）と
-   *              分野別テストの結果・受験中だった問題の途中経過
-   * 消えないもの … 他の番号（生徒）の記録／画面の色や表示倍率の設定
-   */
-  const resetMyRecord = () => {
-    const code = studentCode;
-    if (!isTeacherCode(code)) return;
-    try {
-      localStorage.removeItem(`${STORAGE_PREFIX}${code}`);
-      localStorage.removeItem(EXAM_RESULTS_KEY(code));
-      // 途中経過は「joho-ddl-exam:<番号>:<セットID>」の形。その番号のぶんだけ消す
-      const prefix = `joho-ddl-exam:${code}:`;
-      Object.keys(localStorage)
-        .filter((k) => k.startsWith(prefix))
-        .forEach((k) => localStorage.removeItem(k));
-    } catch {
-      /* 消せない環境では、画面の中身だけ初期化する */
-    }
-    setDrafts({});
-    setSubmissions({});
-    setExperiments({});
-    setUnderstanding({});
-    setWordDrafts({});
-    setWordSubmissions({});
-    setMissionNotes({});
-    setBoughtHints({});
-    setExamResults([]);
-    setLastLesson("");
-    setPracticed({});
-    setResetConfirm(false);
-    setResetDone(true);
-    window.setTimeout(() => setResetDone(false), 6000);
-  };
-
   const endLearning = () => {
     setStudentCode("");
     setCodeDraft("");
@@ -822,6 +774,45 @@ export default function Home() {
     } catch {
       /* 消せない環境では黙って続行する */
     }
+  };
+
+  /**
+   * いま入っている番号の記録だけを、まっさらに戻す（教員用の番号だけで使える）。
+   * 何度も試すうちに「解答済み」や「討伐済」が積み上がるので、授業前に戻せるようにしてある。
+   * 消えるのは この番号の記録だけ で、生徒の記録には触れない。
+   */
+  const resetMyRecord = () => {
+    const code = studentCode;
+    if (!isTeacherCode(code) && !isDemoCode(code)) return;
+    // 画面の状態を初期値に戻す
+    setDrafts({});
+    setSubmissions({});
+    setExperiments({});
+    setUnderstanding({});
+    setWordDrafts({});
+    setWordSubmissions({});
+    setMissionNotes({});
+    setBoughtHints({});
+    setPracticed({});
+    setTermDraft({});
+    setLastLesson("");
+    setExamResults([]);
+    // 端末に残っているものも消す
+    try {
+      localStorage.removeItem(`${STORAGE_PREFIX}${code}`);
+      localStorage.removeItem(EXAM_RESULTS_KEY(code));
+      // 分野別テストの途中経過（joho-ddl-exam:番号:セットID）もまとめて消す
+      const prefix = `joho-ddl-exam:${code}:`;
+      const doomed: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) doomed.push(key);
+      }
+      doomed.forEach((key) => localStorage.removeItem(key));
+    } catch {
+      /* 消せない環境では黙って続行する */
+    }
+    setResetStep(2);
   };
 
   /** 実験カードの共通枠。理論 → 操作 → 記録ボタン の順に並べる */
@@ -942,8 +933,7 @@ export default function Home() {
             <b>デモ・動作確認モード</b>
             <span>
               この番号（{DEMO_CODE}）で触った内容は<b>いっさい保存されません</b>。
-              画面を再読み込みすると、まっさらな状態に戻ります。分野別テストは<b>デモ用の短いセット</b>です
-              （問題数と時間は、テストを開いたときの「試験開始画面」に出ます）。
+              画面を再読み込みすると、まっさらな状態に戻ります。分野別テストは<b>デモ用の20問・10分</b>です。
             </span>
           </div>
         )}
@@ -1053,6 +1043,22 @@ export default function Home() {
                   </div>
                   )}
                 </div>
+
+                {studentCode.length !== 4 && (
+                  <div className="board-intro">
+                    <h2>ようこそ挑戦者</h2>
+                    <p>情報I（デジタル分野・データ活用分野）を、試して理解するサイトです。</p>
+                    <p>19の単元に、実験103個・重要語句95語・確認問題153問が入っています。</p>
+                    <p>1単元をやりきると討伐となり、Gが貯まってレベルが上がります。</p>
+                    <p className="intro-lead">分野別テストに備えて、「ちから・かしこさ・こころ」を蓄えよう！</p>
+
+                    <h3>始めかた・続きから</h3>
+                    <p>
+                      左の欄に4桁番号を入れると始まります（1年2組5番なら <code>1205</code>）。
+                    </p>
+                    <p>記録はこのブラウザの中だけに残ります。名前は入力しません。</p>
+                  </div>
+                )}
 
                 {studentCode.length === 4 && (
                   <div className="board-me">
@@ -1617,6 +1623,47 @@ export default function Home() {
               Gは道具を買うためのもので、成績には使いません。
             </p>
 
+            {(isTeacherCode(studentCode) || isDemoCode(studentCode)) && (
+              <div className="teacher-reset">
+                <div className="reset-head">
+                  <b>この番号（{studentCode}）の記録をリセット</b>
+                  <span className="muted small">先生用の機能です。生徒の番号では出ません。</span>
+                </div>
+                <p className="muted small">
+                  実験・確認問題・重要語句・ヒント・G・レベル・分野別テストの結果と途中経過を、
+                  <b>この番号だけ</b>まっさらに戻します。ほかの番号の記録には触れません。
+                  授業前に、動作確認で付いた記録を消すために使ってください。
+                </p>
+                {resetStep === 0 && (
+                  <button type="button" className="reset-btn" onClick={() => setResetStep(1)}>
+                    記録をリセットする
+                  </button>
+                )}
+                {resetStep === 1 && (
+                  <div className="reset-confirm">
+                    <b>本当に消しますか？ 元には戻せません。</b>
+                    <div className="reset-actions">
+                      <button type="button" className="reset-btn danger" onClick={resetMyRecord}>
+                        はい、{studentCode} の記録を消す
+                      </button>
+                      <button type="button" className="ghost" onClick={() => setResetStep(0)}>
+                        やめる
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {resetStep === 2 && (
+                  <div className="reset-done">
+                    <b>リセットしました。</b>
+                    <span className="muted small">まっさらな状態から始められます。</span>
+                    <button type="button" className="ghost" onClick={() => setResetStep(0)}>
+                      閉じる
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="area-grid">
               {summary.areas.map((area) => (
                 <div className="area-card" key={area.area}>
@@ -1672,70 +1719,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
-            {/* --- 教員用の番号のときだけ出る、記録のリセット --- */}
-            {isTeacherCode(studentCode) && (
-              <section className="dashboard teacher-reset">
-                <div className="dash-head">
-                  <h2>記録のリセット（先生用）</h2>
-                  <span className="muted small">この操作は教員用の番号でだけ出ます</span>
-                </div>
-
-                {resetDone && (
-                  <div className="verdict ok" role="status">
-                    リセットしました。実験・確認問題・重要語句・G・レベル・分野別テストの結果が、
-                    すべてまっさらな状態に戻っています。
-                  </div>
-                )}
-
-                <p className="reset-lead">
-                  <b>いま入っている番号（{studentCode}）の記録だけ</b>を、この端末から消します。
-                  問題を作り直したあとや、次の先生に画面を渡す前に使ってください。
-                </p>
-
-                <dl className="reset-what">
-                  <div>
-                    <dt>消えるもの</dt>
-                    <dd>
-                      実験の記録・確認問題の解答と得点・重要語句・買ったヒント・G・レベル・ふり返り・
-                      <b>分野別テストの結果</b>・受験中だった問題の途中経過（残り時間もふくむ）
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>消えないもの</dt>
-                    <dd>
-                      <b>生徒（他の番号）の記録には、いっさい触れません。</b>
-                      画面の色や表示倍率の設定も、そのまま残ります
-                    </dd>
-                  </div>
-                </dl>
-
-                {resetConfirm ? (
-                  <div className="reset-confirm">
-                    <p>
-                      <b>本当にリセットしますか。取り消せません。</b>
-                      {studentCode} の記録
-                      {examResults.length > 0 ? `（分野別テストの結果 ${examResults.length}件をふくむ）` : ""}
-                      が、この端末から消えます。
-                    </p>
-                    <div className="code-actions">
-                      <button className="ghost" onClick={() => setResetConfirm(false)}>
-                        やめる
-                      </button>
-                      <button className="danger" onClick={resetMyRecord}>
-                        はい、{studentCode} の記録を消す
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="code-actions">
-                    <button className="danger" onClick={() => setResetConfirm(true)}>
-                      {studentCode} の記録をリセットする
-                    </button>
-                  </div>
-                )}
-              </section>
-            )}
 
             {examResults.length > 0 && (
               <section className="dashboard exam-results">

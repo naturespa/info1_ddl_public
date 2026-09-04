@@ -93,7 +93,7 @@ export function MiniSheet({
         </span>
       </div>
 
-      <div className="table-scroll" tabIndex={0} role="group" aria-label="表計算の表（横にスクロールできます）">
+      <div className="table-scroll" tabIndex={0} role="group" aria-label="表計算のシート（横にスクロールできます）">
         <table className="sheet-table">
           <thead>
             <tr>
@@ -137,8 +137,6 @@ export function MiniSheet({
                   value={inputs[i]}
                   onChange={(e) => setAt(i, e.target.value)}
                   placeholder="= から書き始めます"
-                  /* 同じ画面に同じ placeholder の欄が並ぶので、
-                     どの問いに答える欄なのかを読み上げにも伝える */
                   aria-label={`${i + 1}つ目の式：${task.ask}`}
                   spellCheck={false}
                   autoComplete="off"
