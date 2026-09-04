@@ -1072,11 +1072,49 @@ export function BaseLab({ card, missionNote, onMissionNote }: LabProps) {
           <Formula>
             けたごとに　元の値のけた ＋ 加える値のけた ＋ 下から来たくり上がり　を足し、2以上なら和のけたに（合計−2）を書いて上のけたへ1を送る
           </Formula>
-          <div className="calc-sheet">
-            <div><span>くり上がり(2)</span><b className="mono">{add.carries}</b></div>
-            <div><span>元の値(2)</span><b className="mono">{add.a}</b></div>
-            <div><span>加える値(2)</span><b className="mono">{add.b}</b></div>
-            <div className="sum"><span>結果(2)</span><b className="mono">{add.sum}</b></div>
+          {/*
+            紙の筆算と同じ並びにする。
+            add.carries[i] は「i けた目が上へ送った1」なので、置く場所は i けた目の
+            ひとつ左になる。そのため、けたの箱を9つ用意して、
+            くり上がりの行だけ左に1つずらして描く（右端は必ず空になる）。
+          */}
+          <div className="bin-add" role="group" aria-label="2進数の筆算">
+            <div className="bin-row">
+              <span className="bin-label">くり上がり</span>
+              {Array.from({ length: 9 }, (_, p) => (
+                <b key={p} className={`bin-cell carry ${p < 8 && add.carries[p] === "1" ? "on" : ""}`}>
+                  {p < 8 ? add.carries[p] : ""}
+                </b>
+              ))}
+            </div>
+            <div className="bin-row">
+              <span className="bin-label">元の値</span>
+              <b className="bin-cell blank" />
+              {add.a.split("").map((bit, p) => (
+                <b key={p} className="bin-cell">{bit}</b>
+              ))}
+            </div>
+            <div className="bin-row">
+              <span className="bin-label">＋ 加える値</span>
+              <b className="bin-cell blank" />
+              {add.b.split("").map((bit, p) => (
+                <b key={p} className="bin-cell">{bit}</b>
+              ))}
+            </div>
+            <div className="bin-row sum">
+              <span className="bin-label">結果</span>
+              <b className={`bin-cell ${add.overflow ? "over" : "blank"}`}>{add.overflow ? "1" : ""}</b>
+              {add.sum.split("").map((bit, p) => (
+                <b key={p} className="bin-cell hot">{bit}</b>
+              ))}
+            </div>
+            <p className="bin-note">
+              くり上がりの行は<b>1つ左</b>にずれています。あるけたで 2 以上になったとき、その1は
+              <b>ひとつ上（左）のけた</b>へ送られるからです。
+              {add.overflow
+                ? "　いちばん左からさらに出た1は、8けたに入らないので捨てられます（オーバーフロー）。"
+                : "　いちばん左からのくり上がりは出ませんでした。"}
+            </p>
           </div>
           <DataTable
             head={["けた（右から）", "けたの重み", "元の値", "加える値", "下から来たくり上がり", "足した合計", "和のけた", "上へ送るくり上がり"]}

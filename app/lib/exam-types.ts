@@ -117,9 +117,8 @@ export type ExamResult = {
   /** 得点＝配点の合計。満点は max（100点） */
   score: number;
   max: number;
-  /** 正解した問題数 */
   correctCount: number;
-  /** 問題数（65問） */
+  /** 問題数（65問。ExamResult 側の実数） */
   questionCount: number;
   answers: ExamAnswer[];
   /** 単元別の正答 */

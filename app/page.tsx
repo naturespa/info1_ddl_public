@@ -128,8 +128,6 @@ export default function Home() {
   const [showTerms, setShowTerms] = useState(false);
   /** 「学習を終了」を押したあとの確認中フラグ */
   const [endConfirm, setEndConfirm] = useState(false);
-  /** 教員用の「記録をリセット」の確認段階（0=通常 / 1=確認中 / 2=消し終わった） */
-  const [resetStep, setResetStep] = useState(0);
   /** 分野別テストの結果（分野ごとに最新の1回） */
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
   /** 重要語句テストの入力（送信前） */
@@ -144,6 +142,14 @@ export default function Home() {
   const [lastLesson, setLastLesson] = useState("");
   /** そうびの中で打ち直して覚えた語。得点は動かさず、集めたかどうかだけが変わる */
   const [practiced, setPracticed] = useState<Record<string, boolean>>({});
+  /** 学び直しでリセットした回数。キーは `${lessonId}:quiz` / `${lessonId}:word` */
+  const [retakes, setRetakes] = useState<Record<string, number>>({});
+  /** リセット時に凍結したG。キーは `${lessonId}:quiz` / `:word` / `:clear` */
+  const [gLocks, setGLocks] = useState<Record<string, number>>({});
+  /** 学び直しの確認中のキー（2段階にして押し間違いを防ぐ） */
+  const [retakeAsk, setRetakeAsk] = useState("");
+  /** 教員用の「記録をリセット」の確認段階（0=通常 / 1=確認中 / 2=消し終わった） */
+  const [resetStep, setResetStep] = useState(0);
   /** そうびで打ちこみ中の文字（保存しない） */
   const [termDraft, setTermDraft] = useState<Record<string, string>>({});
 
@@ -173,7 +179,10 @@ export default function Home() {
           quizScore += submission.score;
           firstCorrect += submission.correct;
           secondCorrect += submission.secondCorrect;
-          earned += submission.correct * COIN.first + submission.secondCorrect * COIN.second;
+          // 学び直しでリセットした部分は、そのときのGで凍結してある（解き直しても増減しない）
+          earned += gLocks[`${lesson.id}:quiz`] ?? submission.correct * COIN.first + submission.secondCorrect * COIN.second;
+        } else {
+          earned += gLocks[`${lesson.id}:quiz`] ?? 0;
         }
         // 重要語句
         const wordSub = wordSubmissions[lesson.id];
@@ -182,7 +191,9 @@ export default function Home() {
           wordScore += wordSub.score;
           wordFirst += wordSub.correct;
           wordSecond += wordSub.secondCorrect;
-          earned += wordSub.correct * COIN.first + wordSub.secondCorrect * COIN.second;
+          earned += gLocks[`${lesson.id}:word`] ?? wordSub.correct * COIN.first + wordSub.secondCorrect * COIN.second;
+        } else {
+          earned += gLocks[`${lesson.id}:word`] ?? 0;
         }
         const expTotal = experimentCount(lesson);
         const missionIndex = expTotal - 1;
@@ -208,7 +219,10 @@ export default function Home() {
         const wordDone = !!wordSub && !wordSub.results.includes("2回目待ち");
         if (allExp && quizDone && wordDone) {
           completedLessons += 1;
-          earned += COIN.lessonClear;
+          earned += gLocks[`${lesson.id}:clear`] ?? COIN.lessonClear;
+        } else {
+          // 討伐済のときにリセットしたぶんは、討伐が外れてもGは減らさない
+          earned += gLocks[`${lesson.id}:clear`] ?? 0;
         }
       });
       // 知識・技能は「確認問題＋重要語句」
@@ -271,12 +285,18 @@ export default function Home() {
       lessonCount: whole.lessonCount,
       earned: whole.earned,
       /** つかったG。かせいだGを超えないようにする（値段を変えたときの数え直し対策） */
-      spent: Math.min(whole.earned, Object.values(boughtHints).filter(Boolean).length * COIN.hint),
+      spent: Math.min(
+        whole.earned,
+        Object.values(boughtHints).filter(Boolean).length * COIN.hint +
+          Object.values(retakes).reduce((sum, n) => sum + (n > 0 ? n : 0), 0) * COIN.retake
+      ),
+      /** 学び直しをした回数の合計 */
+      retakeCount: Object.values(retakes).reduce((sum, n) => sum + (n > 0 ? n : 0), 0),
       reflection: whole.reflection,
       clear: whole.clear,
       areas
     };
-  }, [submissions, experiments, understanding, wordSubmissions, missionNotes, boughtHints]);
+  }, [submissions, experiments, understanding, wordSubmissions, missionNotes, boughtHints, retakes, gLocks]);
 
   /** 成績ページのダッシュボード用に、単元別・難易度別の理解度を集計する */
   const analysis = useMemo(() => {
@@ -400,6 +420,8 @@ export default function Home() {
     boughtHints,
     lastLesson,
     practiced,
+    retakes,
+    gLocks,
     coins: {
       earned: summary.earned,
       spent: summary.spent,
@@ -489,6 +511,8 @@ export default function Home() {
       setBoughtHints(pickLiveHints(saved.boughtHints));
       setLastLesson(saved.lastLesson ?? "");
       setPracticed(saved.practiced ?? {});
+      setRetakes(saved.retakes ?? {});
+      setGLocks(saved.gLocks ?? {});
       setExamResults(loadExamResults(code));
     } catch {
       setDrafts({});
@@ -501,6 +525,8 @@ export default function Home() {
       setBoughtHints({});
       setLastLesson("");
       setPracticed({});
+      setRetakes({});
+      setGLocks({});
     }
   };
 
@@ -768,6 +794,8 @@ export default function Home() {
     setBoughtHints({});
     setLastLesson("");
     setPracticed({});
+    setRetakes({});
+    setGLocks({});
     setActive("home");
     try {
       localStorage.removeItem(ACTIVE_KEY);
@@ -776,15 +804,77 @@ export default function Home() {
     }
   };
 
+  /* ============================================================
+   * 学び直し（Gを払って、確認問題または重要語句を解き直す）
+   *
+   * ・払った10Gは戻らない。解き直しても新しくGは入らない
+   *   （リセットの瞬間に、その単元でかせいだGを凍結して固定する）
+   * ・そのため「リセット→満点→またリセット」でGは増やせない
+   * ・点数と正誤は上書きされるので、学び直した成果は成績に反映される
+   * ・討伐済だった単元は、いったん未討伐に戻る（解き直して出せばまた討伐済になる）
+   * ========================================================== */
+
+  /** その単元・その種類を、いま学び直せるか */
+  const canRetake = (lesson: Lesson, kind: "quiz" | "word") =>
+    !!(kind === "quiz" ? submissions[lesson.id] : wordSubmissions[lesson.id]) && balance >= COIN.retake;
+
+  const retakeLesson = (lesson: Lesson, kind: "quiz" | "word") => {
+    if (!canRetake(lesson, kind)) return;
+    const key = `${lesson.id}:${kind}`;
+    const clearKey = `${lesson.id}:clear`;
+    const wasCleared = clearedLesson(lesson);
+
+    // ① いま持っているGを凍結する（リセットでGが減らないように）
+    setGLocks((prev) => {
+      const next = { ...prev };
+      if (next[key] === undefined) {
+        const sub = kind === "quiz" ? submissions[lesson.id] : wordSubmissions[lesson.id];
+        next[key] = sub ? sub.correct * COIN.first + sub.secondCorrect * COIN.second : 0;
+      }
+      // 討伐済のときだけ、単元完走の3Gも凍結する。
+      // まだ討伐していない単元は凍結しない（このあと討伐すれば、ちゃんと3Gがもらえる）
+      if (wasCleared && next[clearKey] === undefined) next[clearKey] = COIN.lessonClear;
+      return next;
+    });
+
+    // ② 回数を1つ増やす（× 10G が「つかったG」になる）
+    setRetakes((prev) => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
+
+    // ③ 解答を消す
+    if (kind === "quiz") {
+      setSubmissions((prev) => {
+        const next = { ...prev };
+        delete next[lesson.id];
+        return next;
+      });
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[lesson.id];
+        return next;
+      });
+    } else {
+      setWordSubmissions((prev) => {
+        const next = { ...prev };
+        delete next[lesson.id];
+        return next;
+      });
+      setWordDrafts((prev) => {
+        const next = { ...prev };
+        delete next[lesson.id];
+        return next;
+      });
+    }
+    setRetakeAsk("");
+  };
+
   /**
-   * いま入っている番号の記録だけを、まっさらに戻す（教員用の番号だけで使える）。
+   * いま入っている番号の記録だけを、まっさらに戻す（教員用・デモ用の番号だけで使える）。
    * 何度も試すうちに「解答済み」や「討伐済」が積み上がるので、授業前に戻せるようにしてある。
    * 消えるのは この番号の記録だけ で、生徒の記録には触れない。
    */
   const resetMyRecord = () => {
     const code = studentCode;
     if (!isTeacherCode(code) && !isDemoCode(code)) return;
-    // 画面の状態を初期値に戻す
     setDrafts({});
     setSubmissions({});
     setExperiments({});
@@ -794,10 +884,11 @@ export default function Home() {
     setMissionNotes({});
     setBoughtHints({});
     setPracticed({});
-    setTermDraft({});
+    setRetakes({});
+    setGLocks({});
+    setRetakeAsk("");
     setLastLesson("");
     setExamResults([]);
-    // 端末に残っているものも消す
     try {
       localStorage.removeItem(`${STORAGE_PREFIX}${code}`);
       localStorage.removeItem(EXAM_RESULTS_KEY(code));
@@ -813,6 +904,56 @@ export default function Home() {
       /* 消せない環境では黙って続行する */
     }
     setResetStep(2);
+  };
+
+  /** 学び直しの枠。確認問題のうしろと、重要語句のうしろに同じ形で置く */
+  const retakeBox = (lesson: Lesson, kind: "quiz" | "word") => {
+    const key = `${lesson.id}:${kind}`;
+    const name = kind === "quiz" ? "確認問題" : "重要語句";
+    const done = kind === "quiz" ? submissions[lesson.id] : wordSubmissions[lesson.id];
+    if (!done) return null;
+    const times = retakes[key] ?? 0;
+    const short = COIN.retake - balance;
+    const asking = retakeAsk === key;
+    return (
+      <div className="retake">
+        <div className="retake-head">
+          <b>学び直し ── {name}をもう一度解く</b>
+          <span className="retake-price">{COIN.retake} G</span>
+        </div>
+        <p className="muted small">
+          この単元の{name}の解答をぜんぶ消して、1問目からやり直します。
+          <b>点数はやり直した結果で書きかわります</b>が、
+          <b>Gは増えません</b>（払った{COIN.retake}Gも戻りません）。討伐済のときは、いったん未討伐に戻ります。
+          {times > 0 && <>　これまで <b>{times}回</b> 学び直しています。</>}
+        </p>
+        {!asking && (
+          <button
+            type="button"
+            className="retake-btn"
+            disabled={balance < COIN.retake}
+            onClick={() => setRetakeAsk(key)}
+          >
+            {balance < COIN.retake ? `あと ${short}G たりません` : `${COIN.retake}G 払って解き直す`}
+          </button>
+        )}
+        {asking && (
+          <div className="retake-confirm">
+            <b>
+              {name}の解答を消して、{COIN.retake}G を払います。よろしいですか？
+            </b>
+            <div className="retake-actions">
+              <button type="button" className="retake-btn danger" onClick={() => retakeLesson(lesson, kind)}>
+                はい、消して解き直す
+              </button>
+              <button type="button" className="ghost" onClick={() => setRetakeAsk("")}>
+                やめる
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   /** 実験カードの共通枠。理論 → 操作 → 記録ボタン の順に並べる */
@@ -1251,6 +1392,8 @@ export default function Home() {
               />
             </HintShopContext.Provider>
 
+            {retakeBox(current, "word")}
+
             <section className="quiz">
               <h2>確認問題 {current.questions.length}問</h2>
               <p className="muted small">
@@ -1356,6 +1499,8 @@ export default function Home() {
                   );
                 })()
               )}
+
+              {retakeBox(current, "quiz")}
             </section>
 
           </section>

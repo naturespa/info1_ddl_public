@@ -261,6 +261,16 @@ export type StudentRecord = {
   lastLesson: string;
   /** そうびの中で覚え直して集めた語。キーは語句そのもの。得点には影響しない */
   practiced: Record<string, boolean>;
+  /**
+   * 学び直しでリセットした回数。キーは `${lessonId}:quiz` / `${lessonId}:word`。
+   * 1回につき10G。先生が「どこを解き直したか」を見るための記録でもある。
+   */
+  retakes: Record<string, number>;
+  /**
+   * リセットした時点で凍結したG。キーは `${lessonId}:quiz` / `:word` / `:clear`。
+   * ここに値があるあいだ、その部分のGは何度解き直しても増えも減りもしない。
+   */
+  gLocks: Record<string, number>;
   /** G の収支。成績には使いません */
   coins: { earned: number; spent: number; balance: number; hintsBought: string[]; level: number };
   /** 主体的に学習に取り組む態度 */

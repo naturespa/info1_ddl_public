@@ -7684,8 +7684,71 @@ body.exam-locked footer {
 }
 
 /* ============================================================
+   2進数の筆算（D1 実験4）
+   くり上がりは「そのけたが上へ送った1」なので、けたの箱を9つ用意し、
+   くり上がりの行だけ1つ左にずらして紙の筆算と同じ見た目にする。
+   ========================================================== */
+.bin-add {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.bin-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.bin-row .bin-label {
+  flex: 0 0 auto;
+  width: 8.5em;
+  text-align: right;
+  padding-right: 10px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.bin-cell {
+  flex: 0 0 auto;
+  width: 1.7em;
+  text-align: center;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.9;
+}
+.bin-cell.blank {
+  color: transparent;
+}
+.bin-cell.carry {
+  font-size: 0.9375rem;
+  color: #9aa4b2;
+}
+.bin-cell.carry.on {
+  color: #b4451a;
+  font-weight: 800;
+}
+.bin-cell.over {
+  color: #b4451a;
+  font-weight: 800;
+  text-decoration: line-through;
+}
+.bin-row.sum {
+  border-top: 2px solid var(--ink);
+  margin-top: 3px;
+  padding-top: 3px;
+}
+.bin-note {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+
+/* ============================================================
    配点バッジ（CBTの問題見出し）
-   知識・技能は1点、思考・判断・表現は2点。何点の問題かをその場で示す。
    ========================================================== */
 .cbt-points {
   display: inline-flex;
@@ -7703,7 +7766,6 @@ body.exam-locked footer {
 
 /* ============================================================
    教員用「記録をリセット」（ステータス画面）
-   生徒の番号では表示されない。押し間違い防止に2段階にしてある。
    ========================================================== */
 .teacher-reset {
   margin-top: 18px;
@@ -7815,4 +7877,160 @@ body.exam-locked footer {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
   border-radius: 10px;
+}
+
+/* ============================================================
+   2進数の筆算（D1 実験4）
+   くり上がりは「そのけたが上へ送った1」なので、けたの箱を9つ用意し、
+   くり上がりの行だけ1つ左にずらして紙の筆算と同じ見た目にする。
+   ========================================================== */
+.bin-add {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.bin-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.bin-row .bin-label {
+  flex: 0 0 auto;
+  width: 8.5em;
+  text-align: right;
+  padding-right: 10px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.bin-cell {
+  flex: 0 0 auto;
+  width: 1.7em;
+  text-align: center;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.9;
+}
+.bin-cell.blank {
+  color: transparent;
+}
+.bin-cell.carry {
+  font-size: 0.9375rem;
+  color: #6b7683;
+}
+.bin-cell.carry.on {
+  color: #9e2b16;
+  font-weight: 800;
+}
+.bin-cell.over {
+  color: #9e2b16;
+  font-weight: 800;
+  text-decoration: line-through;
+}
+.bin-row.sum {
+  border-top: 2px solid var(--ink);
+  margin-top: 3px;
+  padding-top: 3px;
+}
+.bin-note {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+/* ============================================================
+   学び直し（Gを払って確認問題・重要語句を解き直す）
+   ========================================================== */
+.retake {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 2px dashed #7d94b8;
+  border-radius: 14px;
+  background: #f5f8fd;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.retake-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.retake-head b {
+  font-size: 1.0625rem;
+  color: #24405f;
+}
+.retake-price {
+  flex: 0 0 auto;
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1px solid #7d94b8;
+  background: #fff;
+  color: #24405f;
+  font-weight: 800;
+  font-size: 0.9375rem;
+}
+.retake p {
+  margin: 0;
+  line-height: 1.8;
+}
+.retake-btn {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 11px;
+  border: 2px solid #3d5f8a;
+  background: #e8f0fb;
+
+  color: #1f3554;
+  font-weight: 700;
+  cursor: pointer;
+}
+.retake-btn:hover:not(:disabled) {
+  background: #d7e5f8;
+}
+.retake-btn:disabled {
+  border-color: #b3bcc8;
+  background: #eef1f5;
+  color: #5c6673;
+  cursor: not-allowed;
+}
+.retake-btn.danger {
+  border-color: #9e2b16;
+  background: #fdeeea;
+  color: #7d1f0d;
+}
+.retake-btn.danger:hover:not(:disabled) {
+  background: #fbdcd4;
+}
+.retake-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.retake-confirm b {
+  color: #7d1f0d;
+}
+.retake-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* v49 「最初の1文字を見る」ボタンの中のG表示。
+   うすい金色（--gold-soft）に白字だとコントラストが 2.24:1 しかなく読めない。
+   濃い金色の地に白字にして 5.2:1 まで上げる。
+   （押せないときは opacity が下がるので、そのぶんも見込んで濃くしている） */
+.word-msg .word-buy b,
+.word-buy b,
+.word-buy:disabled b {
+  background: var(--gold);
+  color: #fff;
 }

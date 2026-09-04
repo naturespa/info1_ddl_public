@@ -932,7 +932,7 @@ export function ExamView({
                       </div>
                       <b>{row.rate}%</b>
                       <em>
-                        {row.points}/{row.maxPoints}点
+                        {row.correct}/{row.total}問
                       </em>
                     </div>
                   ))}
@@ -956,7 +956,7 @@ export function ExamView({
                         </div>
                         <b>{row.rate}%</b>
                         <em>
-                          {row.points}/{row.maxPoints}点
+                          {row.correct}/{row.total}問
                         </em>
                       </div>
                     ))}
