@@ -1075,8 +1075,9 @@ export function BaseLab({ card, missionNote, onMissionNote }: LabProps) {
           {/*
             紙の筆算と同じ並びにする。
             add.carries[i] は「i けた目が上へ送った1」なので、置く場所は i けた目の
-            ひとつ左になる。そのため、けたの箱を9つ用意して、
-            くり上がりの行だけ左に1つずらして描く（右端は必ず空になる）。
+            ひとつ左になる。けたの箱を9つ用意し、くり上がりの行だけ左に1つずらす。
+            箱の幅は rem で固定してある（em だと、この行だけ文字が小さいぶん箱も細くなり、
+            右へ行くほど列がずれる）。
           */}
           <div className="bin-add" role="group" aria-label="2進数の筆算">
             <div className="bin-row">

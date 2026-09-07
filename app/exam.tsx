@@ -52,8 +52,7 @@ const DEFAULT_MINUTES = 45;
 
 /**
  * 残り時間がこれを切ったら色を変えて知らせる（秒）。
- * 本試験（45分）なら5分前、デモ（10分）なら2分前になるように、
- * 制限時間の2割・最大5分とする。
+ * 本試験（45分）なら5分前、デモ（10分）なら2分前になるように、制限時間の2割・最大5分。
  */
 const warnSecondsFor = (minutes: number) => Math.min(5 * 60, Math.round(minutes * 60 * 0.2));
 
@@ -932,7 +931,7 @@ export function ExamView({
                       </div>
                       <b>{row.rate}%</b>
                       <em>
-                        {row.correct}/{row.total}問
+                        {row.points}/{row.maxPoints}点
                       </em>
                     </div>
                   ))}
@@ -956,7 +955,7 @@ export function ExamView({
                         </div>
                         <b>{row.rate}%</b>
                         <em>
-                          {row.correct}/{row.total}問
+                          {row.points}/{row.maxPoints}点
                         </em>
                       </div>
                     ))}

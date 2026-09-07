@@ -7684,70 +7684,6 @@ body.exam-locked footer {
 }
 
 /* ============================================================
-   2進数の筆算（D1 実験4）
-   くり上がりは「そのけたが上へ送った1」なので、けたの箱を9つ用意し、
-   くり上がりの行だけ1つ左にずらして紙の筆算と同じ見た目にする。
-   ========================================================== */
-.bin-add {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px 14px;
-  overflow-x: auto;
-}
-.bin-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  white-space: nowrap;
-}
-.bin-row .bin-label {
-  flex: 0 0 auto;
-  width: 8.5em;
-  text-align: right;
-  padding-right: 10px;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-.bin-cell {
-  flex: 0 0 auto;
-  width: 1.7em;
-  text-align: center;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  line-height: 1.9;
-}
-.bin-cell.blank {
-  color: transparent;
-}
-.bin-cell.carry {
-  font-size: 0.9375rem;
-  color: #9aa4b2;
-}
-.bin-cell.carry.on {
-  color: #b4451a;
-  font-weight: 800;
-}
-.bin-cell.over {
-  color: #b4451a;
-  font-weight: 800;
-  text-decoration: line-through;
-}
-.bin-row.sum {
-  border-top: 2px solid var(--ink);
-  margin-top: 3px;
-  padding-top: 3px;
-}
-.bin-note {
-  margin: 8px 0 0;
-  font-size: 0.875rem;
-  line-height: 1.8;
-  color: var(--muted);
-}
-
-
-/* ============================================================
    配点バッジ（CBTの問題見出し）
    ========================================================== */
 .cbt-points {
@@ -7802,17 +7738,9 @@ body.exam-locked footer {
   font-weight: 700;
   cursor: pointer;
 }
-.reset-btn:hover {
-  background: #ffeeae;
-}
-.reset-btn.danger {
-  border-color: #9e2b16;
-  background: #fdeeea;
-  color: #7d1f0d;
-}
-.reset-btn.danger:hover {
-  background: #fbdcd4;
-}
+.reset-btn:hover { background: #ffeeae; }
+.reset-btn.danger { border-color: #9e2b16; background: #fdeeea; color: #7d1f0d; }
+.reset-btn.danger:hover { background: #fbdcd4; }
 .reset-confirm,
 .reset-done {
   display: flex;
@@ -7820,17 +7748,9 @@ body.exam-locked footer {
   align-items: center;
   gap: 10px;
 }
-.reset-confirm b {
-  color: #7d1f0d;
-}
-.reset-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.reset-done b {
-  color: #1d6b3a;
-}
+.reset-confirm b { color: #7d1f0d; }
+.reset-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.reset-done b { color: #1d6b3a; }
 
 /* ============================================================
    トップページ右側の案内（4桁番号を入れる前だけ出る）
@@ -7844,11 +7764,7 @@ body.exam-locked footer {
   flex-direction: column;
   gap: 8px;
 }
-.board-intro h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  letter-spacing: 0.04em;
-}
+.board-intro h2 { margin: 0; font-size: 1.25rem; letter-spacing: 0.04em; }
 .board-intro h3 {
   margin: 10px 0 0;
   font-size: 1rem;
@@ -7856,13 +7772,8 @@ body.exam-locked footer {
   padding-top: 10px;
   border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
 }
-.board-intro p {
-  margin: 0;
-  line-height: 1.85;
-}
-.board-intro .intro-lead {
-  font-weight: 700;
-}
+.board-intro p { margin: 0; line-height: 1.85; }
+.board-intro .intro-lead { font-weight: 700; }
 .board-intro code {
   padding: 1px 7px;
   border-radius: 6px;
@@ -7907,29 +7818,20 @@ body.exam-locked footer {
 }
 .bin-cell {
   flex: 0 0 auto;
-  width: 1.7em;
+  /* 幅は em ではなく rem で決める。
+     くり上がりの行だけ文字を小さくしてあるので、em にすると
+     その行の箱だけ細くなり、右へ行くほど列がずれてしまう。 */
+  width: 1.8rem;
   text-align: center;
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 1.0625rem;
   font-weight: 600;
   line-height: 1.9;
 }
-.bin-cell.blank {
-  color: transparent;
-}
-.bin-cell.carry {
-  font-size: 0.9375rem;
-  color: #6b7683;
-}
-.bin-cell.carry.on {
-  color: #9e2b16;
-  font-weight: 800;
-}
-.bin-cell.over {
-  color: #9e2b16;
-  font-weight: 800;
-  text-decoration: line-through;
-}
+.bin-cell.blank { color: transparent; }
+.bin-cell.carry { font-size: 0.9375rem; color: #6b7683; }
+.bin-cell.carry.on { color: #9e2b16; font-weight: 800; }
+.bin-cell.over { color: #9e2b16; font-weight: 800; text-decoration: line-through; }
 .bin-row.sum {
   border-top: 2px solid var(--ink);
   margin-top: 3px;
@@ -7962,10 +7864,7 @@ body.exam-locked footer {
   justify-content: space-between;
   gap: 10px;
 }
-.retake-head b {
-  font-size: 1.0625rem;
-  color: #24405f;
-}
+.retake-head b { font-size: 1.0625rem; color: #24405f; }
 .retake-price {
   flex: 0 0 auto;
   padding: 2px 12px;
@@ -7976,10 +7875,7 @@ body.exam-locked footer {
   font-weight: 800;
   font-size: 0.9375rem;
 }
-.retake p {
-  margin: 0;
-  line-height: 1.8;
-}
+.retake p { margin: 0; line-height: 1.8; }
 .retake-btn {
   align-self: flex-start;
   min-height: 44px;
@@ -7987,47 +7883,25 @@ body.exam-locked footer {
   border-radius: 11px;
   border: 2px solid #3d5f8a;
   background: #e8f0fb;
-
   color: #1f3554;
   font-weight: 700;
   cursor: pointer;
 }
-.retake-btn:hover:not(:disabled) {
-  background: #d7e5f8;
-}
+.retake-btn:hover:not(:disabled) { background: #d7e5f8; }
 .retake-btn:disabled {
   border-color: #b3bcc8;
   background: #eef1f5;
   color: #5c6673;
   cursor: not-allowed;
 }
-.retake-btn.danger {
-  border-color: #9e2b16;
-  background: #fdeeea;
-  color: #7d1f0d;
-}
-.retake-btn.danger:hover:not(:disabled) {
-  background: #fbdcd4;
-}
-.retake-confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-.retake-confirm b {
-  color: #7d1f0d;
-}
-.retake-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+.retake-btn.danger { border-color: #9e2b16; background: #fdeeea; color: #7d1f0d; }
+.retake-btn.danger:hover:not(:disabled) { background: #fbdcd4; }
+.retake-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.retake-confirm b { color: #7d1f0d; }
+.retake-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
-/* v49 「最初の1文字を見る」ボタンの中のG表示。
-   うすい金色（--gold-soft）に白字だとコントラストが 2.24:1 しかなく読めない。
-   濃い金色の地に白字にして 5.2:1 まで上げる。
-   （押せないときは opacity が下がるので、そのぶんも見込んで濃くしている） */
+/* 「最初の1文字を見る」ボタンの中のG表示。
+   うすい金色に白字だと 2.24:1 しかなく読めないので、濃い金色にして 5.2:1 にする。 */
 .word-msg .word-buy b,
 .word-buy b,
 .word-buy:disabled b {

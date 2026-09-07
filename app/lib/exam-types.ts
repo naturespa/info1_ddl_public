@@ -66,10 +66,7 @@ export type ExamQuestion = {
   source?: string;
   /** 自動生成なら true。集計とデバッグ用 */
   generated?: boolean;
-  /**
-   * 配点。知識・技能は1点、思考・判断・表現は2点。
-   * 古いファイルには入っていないので、無いときは観点から決める。
-   */
+  /** 配点。知識・技能1点、思考・判断・表現2点。古いファイルには無いので観点から決める */
   points?: number;
 };
 
@@ -118,7 +115,7 @@ export type ExamResult = {
   score: number;
   max: number;
   correctCount: number;
-  /** 問題数（65問。ExamResult 側の実数） */
+  /** 問題数（65問） */
   questionCount: number;
   answers: ExamAnswer[];
   /** 単元別の正答 */

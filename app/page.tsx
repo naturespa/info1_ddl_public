@@ -811,10 +811,9 @@ export default function Home() {
    *   （リセットの瞬間に、その単元でかせいだGを凍結して固定する）
    * ・そのため「リセット→満点→またリセット」でGは増やせない
    * ・点数と正誤は上書きされるので、学び直した成果は成績に反映される
-   * ・討伐済だった単元は、いったん未討伐に戻る（解き直して出せばまた討伐済になる）
+   * ・討伐済だった単元は、いったん未討伐に戻る
    * ========================================================== */
 
-  /** その単元・その種類を、いま学び直せるか */
   const canRetake = (lesson: Lesson, kind: "quiz" | "word") =>
     !!(kind === "quiz" ? submissions[lesson.id] : wordSubmissions[lesson.id]) && balance >= COIN.retake;
 
@@ -831,8 +830,7 @@ export default function Home() {
         const sub = kind === "quiz" ? submissions[lesson.id] : wordSubmissions[lesson.id];
         next[key] = sub ? sub.correct * COIN.first + sub.secondCorrect * COIN.second : 0;
       }
-      // 討伐済のときだけ、単元完走の3Gも凍結する。
-      // まだ討伐していない単元は凍結しない（このあと討伐すれば、ちゃんと3Gがもらえる）
+      // 討伐済のときだけ、単元完走の3Gも凍結する
       if (wasCleared && next[clearKey] === undefined) next[clearKey] = COIN.lessonClear;
       return next;
     });
@@ -841,69 +839,19 @@ export default function Home() {
     setRetakes((prev) => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
 
     // ③ 解答を消す
+    const drop = <T,>(prev: Record<string, T>) => {
+      const next = { ...prev };
+      delete next[lesson.id];
+      return next;
+    };
     if (kind === "quiz") {
-      setSubmissions((prev) => {
-        const next = { ...prev };
-        delete next[lesson.id];
-        return next;
-      });
-      setDrafts((prev) => {
-        const next = { ...prev };
-        delete next[lesson.id];
-        return next;
-      });
+      setSubmissions(drop);
+      setDrafts(drop);
     } else {
-      setWordSubmissions((prev) => {
-        const next = { ...prev };
-        delete next[lesson.id];
-        return next;
-      });
-      setWordDrafts((prev) => {
-        const next = { ...prev };
-        delete next[lesson.id];
-        return next;
-      });
+      setWordSubmissions(drop);
+      setWordDrafts(drop);
     }
     setRetakeAsk("");
-  };
-
-  /**
-   * いま入っている番号の記録だけを、まっさらに戻す（教員用・デモ用の番号だけで使える）。
-   * 何度も試すうちに「解答済み」や「討伐済」が積み上がるので、授業前に戻せるようにしてある。
-   * 消えるのは この番号の記録だけ で、生徒の記録には触れない。
-   */
-  const resetMyRecord = () => {
-    const code = studentCode;
-    if (!isTeacherCode(code) && !isDemoCode(code)) return;
-    setDrafts({});
-    setSubmissions({});
-    setExperiments({});
-    setUnderstanding({});
-    setWordDrafts({});
-    setWordSubmissions({});
-    setMissionNotes({});
-    setBoughtHints({});
-    setPracticed({});
-    setRetakes({});
-    setGLocks({});
-    setRetakeAsk("");
-    setLastLesson("");
-    setExamResults([]);
-    try {
-      localStorage.removeItem(`${STORAGE_PREFIX}${code}`);
-      localStorage.removeItem(EXAM_RESULTS_KEY(code));
-      // 分野別テストの途中経過（joho-ddl-exam:番号:セットID）もまとめて消す
-      const prefix = `joho-ddl-exam:${code}:`;
-      const doomed: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(prefix)) doomed.push(key);
-      }
-      doomed.forEach((key) => localStorage.removeItem(key));
-    } catch {
-      /* 消せない環境では黙って続行する */
-    }
-    setResetStep(2);
   };
 
   /** 学び直しの枠。確認問題のうしろと、重要語句のうしろに同じ形で置く */
@@ -923,8 +871,8 @@ export default function Home() {
         </div>
         <p className="muted small">
           この単元の{name}の解答をぜんぶ消して、1問目からやり直します。
-          <b>点数はやり直した結果で書きかわります</b>が、
-          <b>Gは増えません</b>（払った{COIN.retake}Gも戻りません）。討伐済のときは、いったん未討伐に戻ります。
+          <b>点数はやり直した結果で書きかわります</b>が、<b>Gは増えません</b>
+          （払った{COIN.retake}Gも戻りません）。討伐済のときは、いったん未討伐に戻ります。
           {times > 0 && <>　これまで <b>{times}回</b> 学び直しています。</>}
         </p>
         {!asking && (
@@ -954,6 +902,44 @@ export default function Home() {
         )}
       </div>
     );
+  };
+
+  /**
+   * いま入っている番号の記録だけを、まっさらに戻す（教員用・デモ用の番号だけ）。
+   * 消えるのは この番号の記録だけ で、生徒の記録には触れない。
+   */
+  const resetMyRecord = () => {
+    const code = studentCode;
+    if (!isTeacherCode(code) && !isDemoCode(code)) return;
+    setDrafts({});
+    setSubmissions({});
+    setExperiments({});
+    setUnderstanding({});
+    setWordDrafts({});
+    setWordSubmissions({});
+    setMissionNotes({});
+    setBoughtHints({});
+    setPracticed({});
+    setRetakes({});
+    setGLocks({});
+    setRetakeAsk("");
+    setLastLesson("");
+    setExamResults([]);
+    try {
+      localStorage.removeItem(`${STORAGE_PREFIX}${code}`);
+      localStorage.removeItem(EXAM_RESULTS_KEY(code));
+      // 分野別テストの途中経過（joho-ddl-exam:番号:セットID）もまとめて消す
+      const prefix = `joho-ddl-exam:${code}:`;
+      const doomed: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(prefix)) doomed.push(k);
+      }
+      doomed.forEach((k) => localStorage.removeItem(k));
+    } catch {
+      /* 消せない環境では黙って続行する */
+    }
+    setResetStep(2);
   };
 
   /** 実験カードの共通枠。理論 → 操作 → 記録ボタン の順に並べる */
