@@ -192,7 +192,7 @@ const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
     body: (
       <>
         <p>
-          この画面は、ITパスポート試験のCBT（コンピュータで受ける試験）と同じ作りにしてあります。本番の練習にもなります。
+          この画面は、ITパスポート試験のCBT（コンピュータで受ける試験）の画面に似せて作成しています。本番の練習にもなります。
         </p>
         <ol className="cbt-guide-list">
           <li>
