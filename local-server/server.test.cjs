@@ -1,0 +1,151 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const http = require('node:http');
+const vm = require('node:vm');
+const { createServer, lanAddresses } = require('./server.cjs');
+const record = { version: 6, studentCode: '1101', exportedAt: new Date().toISOString(), lastLesson: '', exams: [], examDetails: [] };
+for (const key of ['drafts','submissions','experiments','understanding','wordDrafts','wordSubmissions','missionNotes','boughtHints','practiced','coins','attitude','summary','retakes','gLocks']) record[key] = {};
+
+test('receive, persist unchanged, reject invalid requests, and never overwrite', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ddl-test-'));
+  const server = createServer({ dataDir: dir });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${server.address().port}/api/submissions`;
+  const post = (body, origin = 'https://naturespa.github.io') => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: typeof body === 'string' ? body : JSON.stringify(body) });
+  try {
+    const preflight = await fetch(url, { method: 'OPTIONS', headers: { Origin: 'https://naturespa.github.io', 'Access-Control-Request-Private-Network': 'true' } });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get('access-control-allow-origin'), 'https://naturespa.github.io');
+    assert.equal(preflight.headers.get('access-control-allow-private-network'), 'true');
+    const a = await post(record); assert.equal(a.status, 201);
+    const receipt = await a.json(); assert.equal(receipt.ok, true); assert.equal(receipt.studentCode, '1101');
+    const files = await fs.readdir(dir); assert.equal(files.length, 1);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(dir, files[0]), 'utf8')), record);
+    const b = await post(record); assert.equal(b.status, 201); assert.notEqual((await b.json()).receiptId, receipt.receiptId);
+    assert.equal((await fs.readdir(dir)).length, 2);
+    assert.equal((await post(record, 'https://untrusted.example')).status, 403);
+    assert.equal((await post('{')).status, 400);
+    assert.equal((await post({ ...record, studentCode: '../x' })).status, 400);
+    assert.equal((await post({ ...record, version: 5 })).status, 400);
+    assert.equal((await post({ ...record, summary: null })).status, 400);
+    assert.equal((await post({ ...record, retakes: undefined })).status, 400);
+    assert.equal((await post({ ...record, gLocks: undefined })).status, 400);
+    assert.equal((await post('x'.repeat(2 * 1024 * 1024 + 1))).status, 413);
+    assert.equal((await fetch(url)).status, 405);
+    assert.equal((await fetch(url.replace('/api/submissions', '/data/' + files[0]))).status, 404);
+    assert.equal((await fs.readdir(dir)).length, 2);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('disk failure must not return a success receipt', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ddl-fail-'));
+  const file = path.join(dir, 'not-a-directory');
+  await fs.writeFile(file, 'test');
+  const server = createServer({ dataDir: file });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/submissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(record) });
+    assert.equal(response.status, 500); assert.equal((await response.json()).ok, false);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('offline admin lists real submissions, exports CSV and JSON, and rejects nonlocal hosts and origins', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ddl-admin-'));
+  const server = createServer({ dataDir: dir });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const root = `http://127.0.0.1:${server.address().port}`;
+  const value = { ...record, summary: { totalScore: 142, totalMax: 200, areas: [{ area: 'デジタル', totalScore: 72, totalMax: 100 }, { area: 'データ活用', totalScore: 70, totalMax: 100 }], perspective: { knowledge: 80, thinking: 70, attitude: 66 }, completedLessons: 8, lessonCount: 10 }, exams: [{ area: 'digital', kind: 'main', setId: '=HYPERLINK("evil")', score: 16, max: 20, rate: 80, finishedAt: record.exportedAt }] };
+  try {
+    const sent = await fetch(root + '/api/submissions', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://naturespa.github.io' }, body: JSON.stringify(value) });
+    assert.equal(sent.status, 201);
+    const admin = await fetch(root + '/admin');
+    assert.equal(admin.status, 200);
+    const html = await admin.text();
+    assert.match(html, /<style nonce="[0-9a-f-]+">/);
+    assert.match(html, /<script nonce="[0-9a-f-]+">/);
+    assert.match(html, /生徒に伝えるIPアドレス/);
+    assert.match(html, /1年次 JSON提出管理/);
+    assert.match(html, /#facc15/);
+    assert.doesNotMatch(html, /admin\.css|admin\.js|__DDL_NONCE__/);
+    assert.match(admin.headers.get('content-security-policy'), /script-src 'nonce-/);
+    assert.equal((await fetch(root + '/admin/admin.js')).status, 404);
+    const network = await (await fetch(root + '/api/admin/network')).json();
+    assert.equal(network.ok, true);
+    assert.equal(network.port, server.address().port);
+    assert.ok(Array.isArray(network.addresses));
+    const listing = await (await fetch(root + '/api/admin/submissions')).json();
+    assert.equal(listing.records.length, 1);
+    assert.equal(listing.records[0].totalScore, 142);
+    assert.equal(listing.records[0].digitalScore, 72);
+    assert.equal(listing.records[0].dataScore, 70);
+    assert.equal(listing.records[0].examCount, 1);
+    const file = listing.records[0].file;
+    assert.deepEqual(await (await fetch(root + `/api/admin/files/${file}`)).json(), value);
+    const summary = await (await fetch(root + '/api/admin/summary.csv')).text();
+    assert.match(summary, /受験番号/); assert.match(summary, /データ活用得点/); assert.match(summary, /"142"/);
+    const exams = await (await fetch(root + '/api/admin/exams.csv')).text();
+    assert.match(exams, /'\=HYPERLINK/);
+    assert.equal((await fetch(root + '/api/admin/files/..%2fserver.cjs')).status, 404);
+    const nonlocalHost = await new Promise((resolve, reject) => {
+      http.get({ hostname: '127.0.0.1', port: server.address().port, path: '/admin', headers: { Host: '192.168.1.50:3003' } }, response => { response.resume(); resolve(response.statusCode); }).on('error', reject);
+    });
+    assert.equal(nonlocalHost, 403);
+    assert.equal((await fetch(root + '/api/admin/submissions', { headers: { Origin: 'https://naturespa.github.io' } })).status, 403);
+    assert.equal((await fetch(root + '/api/admin/network', { headers: { Origin: 'https://naturespa.github.io' } })).status, 403);
+    assert.equal((await fetch(root + '/api/admin/submissions', { method: 'POST' })).status, 405);
+    assert.equal((await fetch(root + '/api/admin/nope')).status, 404);
+    await fs.writeFile(path.join(dir, '1101_2026-09-29T01-01-01-000Z_00000000-0000-0000-0000-000000000000.json'), '{broken');
+    assert.equal((await (await fetch(root + '/api/admin/submissions')).json()).skipped, 1);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('LAN display lists all usable IPv4 interfaces without loopback or link-local', () => {
+  assert.deepEqual(lanAddresses({
+    Ethernet: [{ family: 'IPv4', address: '192.168.88.13', internal: false }],
+    WiFi: [{ family: 'IPv4', address: '172.20.10.2', internal: false }],
+    Loopback: [{ family: 'IPv4', address: '127.0.0.1', internal: true }],
+    Disconnected: [{ family: 'IPv4', address: '169.254.1.2', internal: false }]
+  }), [
+    { interfaceName: 'Ethernet', address: '192.168.88.13' },
+    { interfaceName: 'WiFi', address: '172.20.10.2' }
+  ]);
+});
+
+test('opening admin.html as a file guides and redirects to the local server', async () => {
+  const html = await fs.readFile(path.join(__dirname, 'admin.html'), 'utf8');
+  const script = html.match(/<script nonce="__DDL_NONCE__">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  const elements = new Map();
+  const get = id => {
+    if (!elements.has(id)) elements.set(id, {
+      textContent: '', children: [], disabled: false,
+      addEventListener() {}, replaceChildren() { this.children = []; },
+      append(child) { this.children.push(child); }
+    });
+    return elements.get(id);
+  };
+  const location = { protocol: 'file:', replaced: null, replace(url) { this.replaced = url; } };
+  let scheduled;
+  vm.runInNewContext(script, {
+    document: { getElementById: get, querySelectorAll: () => [], createElement: () => ({}) },
+    location, setTimeout: callback => { scheduled = callback; }
+  });
+  assert.equal(get('addresses').children[0].href, 'http://localhost:3003/admin');
+  assert.notEqual(get('addresses').children[0].textContent, 'IPアドレスを取得中…');
+  assert.match(get('message').textContent, /直接開いています/);
+  assert.equal(get('refresh').disabled, true);
+  scheduled();
+  assert.equal(location.replaced, 'http://localhost:3003/admin');
+});
