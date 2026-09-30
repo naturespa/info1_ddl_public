@@ -6,7 +6,7 @@ const path = require('node:path');
 const http = require('node:http');
 const vm = require('node:vm');
 const { createServer, lanAddresses } = require('./server.cjs');
-const record = { version: 6, studentCode: '1101', exportedAt: new Date().toISOString(), lastLesson: '', exams: [], examDetails: [] };
+const record = { version: 6, studentCode: '1101', studentName: '山田 太郎', exportedAt: new Date().toISOString(), lastLesson: '', exams: [], examDetails: [] };
 for (const key of ['drafts','submissions','experiments','understanding','wordDrafts','wordSubmissions','missionNotes','boughtHints','practiced','coins','attitude','summary','retakes','gLocks']) record[key] = {};
 
 test('receive, persist unchanged, reject invalid requests, and never overwrite', async () => {
@@ -31,6 +31,8 @@ test('receive, persist unchanged, reject invalid requests, and never overwrite',
     assert.equal((await post({ ...record, studentCode: '../x' })).status, 400);
     assert.equal((await post({ ...record, version: 5 })).status, 400);
     assert.equal((await post({ ...record, summary: null })).status, 400);
+    assert.equal((await post({ ...record, studentName: '山田太郎' })).status, 400);
+    assert.equal((await post({ ...record, studentName: '山田  太郎' })).status, 400);
     assert.equal((await post({ ...record, retakes: undefined })).status, 400);
     assert.equal((await post({ ...record, gLocks: undefined })).status, 400);
     assert.equal((await post('x'.repeat(2 * 1024 * 1024 + 1))).status, 413);
@@ -85,14 +87,16 @@ test('offline admin lists real submissions, exports CSV and JSON, and rejects no
     const listing = await (await fetch(root + '/api/admin/submissions')).json();
     assert.equal(listing.records.length, 1);
     assert.equal(listing.records[0].totalScore, 142);
+    assert.equal(listing.records[0].studentName, '山田 太郎');
     assert.equal(listing.records[0].digitalScore, 72);
     assert.equal(listing.records[0].dataScore, 70);
     assert.equal(listing.records[0].examCount, 1);
     const file = listing.records[0].file;
     assert.deepEqual(await (await fetch(root + `/api/admin/files/${file}`)).json(), value);
     const summary = await (await fetch(root + '/api/admin/summary.csv')).text();
-    assert.match(summary, /受験番号/); assert.match(summary, /データ活用得点/); assert.match(summary, /"142"/);
+    assert.match(summary, /受験番号/); assert.match(summary, /"山田 太郎"/); assert.match(summary, /データ活用得点/); assert.match(summary, /"142"/);
     const exams = await (await fetch(root + '/api/admin/exams.csv')).text();
+    assert.match(exams, /"山田 太郎"/);
     assert.match(exams, /'\=HYPERLINK/);
     assert.equal((await fetch(root + '/api/admin/files/..%2fserver.cjs')).status, 404);
     const nonlocalHost = await new Promise((resolve, reject) => {
@@ -105,6 +109,25 @@ test('offline admin lists real submissions, exports CSV and JSON, and rejects no
     assert.equal((await fetch(root + '/api/admin/nope')).status, 404);
     await fs.writeFile(path.join(dir, '1101_2026-09-29T01-01-01-000Z_00000000-0000-0000-0000-000000000000.json'), '{broken');
     assert.equal((await (await fetch(root + '/api/admin/submissions')).json()).skipped, 1);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('old submissions without a name remain readable and show a blank CSV name', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ddl1-legacy-'));
+  const server = createServer({ dataDir: dir });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const old = { ...record }; delete old.studentName;
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/api/submissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(old) });
+    assert.equal(res.status, 201);
+    const root = `http://127.0.0.1:${server.address().port}`;
+    const listing = await (await fetch(root + '/api/admin/submissions')).json();
+    assert.equal(listing.records[0].studentName, '');
+    const csv = await (await fetch(root + '/api/admin/summary.csv')).text();
+    assert.match(csv, /"1101",""/);
   } finally {
     await new Promise(resolve => server.close(resolve));
     await fs.rm(dir, { recursive: true, force: true });

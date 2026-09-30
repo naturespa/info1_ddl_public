@@ -21,11 +21,12 @@ async function listRecords(dataDir) {
       if (value.version !== 6 || value.studentCode !== match[1]) throw new Error('Unexpected record');
       const summary = value.summary ?? {};
       const perspective = summary.perspective ?? {};
+      const studentName = typeof value.studentName === 'string' && /^\S+ \S+$/.test(value.studentName) && value.studentName.length <= 80 ? value.studentName : '';
       const areas = Array.isArray(summary.areas) ? summary.areas : [];
       const digital = areas.find(item => item.area === 'デジタル');
       const data = areas.find(item => item.area === 'データ活用');
       records.push({
-        file: name, studentCode: value.studentCode, receivedAt: match[2].replace(/^(\d{4}-\d\d-\d\d)T(\d\d)-(\d\d)-(\d\d)-(\d{3})Z$/, '$1T$2:$3:$4.$5Z'),
+        file: name, studentCode: value.studentCode, studentName, receivedAt: match[2].replace(/^(\d{4}-\d\d-\d\d)T(\d\d)-(\d\d)-(\d\d)-(\d{3})Z$/, '$1T$2:$3:$4.$5Z'),
         receiptId: match[3], exportedAt: value.exportedAt,
         totalScore: summary.totalScore ?? null, totalMax: summary.totalMax ?? null,
         digitalScore: digital?.totalScore ?? null, digitalMax: digital?.totalMax ?? null,
@@ -50,14 +51,14 @@ function csvCell(value) {
 function csv(rows) { return '\ufeff' + rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n'; }
 function summaryCsv(records) {
   return csv([
-    ['受験番号','受信日時(UTC)','送信日時','受付番号','総合点','満点','デジタル得点','デジタル満点','データ活用得点','データ活用満点','知識・技能(%)','思考・判断・表現(%)','主体的態度(%)','完走単元','全単元','分野別テスト件数','保存ファイル'],
-    ...records.map(r => [r.studentCode,r.receivedAt,r.exportedAt,r.receiptId,r.totalScore,r.totalMax,r.digitalScore,r.digitalMax,r.dataScore,r.dataMax,r.knowledge,r.thinking,r.attitude,r.completedLessons,r.lessonCount,r.examCount,r.file])
+    ['受験番号','名前','受信日時(UTC)','送信日時','受付番号','総合点','満点','デジタル得点','デジタル満点','データ活用得点','データ活用満点','知識・技能(%)','思考・判断・表現(%)','主体的態度(%)','完走単元','全単元','分野別テスト件数','保存ファイル'],
+    ...records.map(r => [r.studentCode,r.studentName,r.receivedAt,r.exportedAt,r.receiptId,r.totalScore,r.totalMax,r.digitalScore,r.digitalMax,r.dataScore,r.dataMax,r.knowledge,r.thinking,r.attitude,r.completedLessons,r.lessonCount,r.examCount,r.file])
   ]);
 }
 function examsCsv(records) {
   return csv([
-    ['受験番号','受信日時(UTC)','受付番号','分野','種類','セットID','得点','満点','得点率','テスト終了日時','保存ファイル'],
-    ...records.flatMap(r => r.exams.map(e => [r.studentCode,r.receivedAt,r.receiptId,e.area,e.kind,e.setId,e.score,e.max,e.rate,e.finishedAt,r.file]))
+    ['受験番号','名前','受信日時(UTC)','受付番号','分野','種類','セットID','得点','満点','得点率','テスト終了日時','保存ファイル'],
+    ...records.flatMap(r => r.exams.map(e => [r.studentCode,r.studentName,r.receivedAt,r.receiptId,e.area,e.kind,e.setId,e.score,e.max,e.rate,e.finishedAt,r.file]))
   ]);
 }
 
@@ -75,6 +76,7 @@ const isObject = (value) => value !== null && typeof value === 'object' && !Arra
 
 function validRecord(record) {
   return isObject(record) && record.version === 6 && /^\d{4}$/.test(record.studentCode) && typeof record.studentCode === 'string'
+    && (record.studentName === undefined || (typeof record.studentName === 'string' && /^\S+ \S+$/.test(record.studentName) && record.studentName.length <= 80))
     && typeof record.exportedAt === 'string' && Number.isFinite(Date.parse(record.exportedAt))
     && ['drafts', 'submissions', 'experiments', 'understanding', 'wordDrafts', 'wordSubmissions', 'missionNotes', 'boughtHints', 'practiced', 'coins', 'attitude', 'summary', 'retakes', 'gLocks'].every((key) => isObject(record[key]))
     && typeof record.lastLesson === 'string' && Array.isArray(record.exams) && Array.isArray(record.examDetails);

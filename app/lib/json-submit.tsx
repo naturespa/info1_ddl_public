@@ -24,6 +24,11 @@ export function JsonSubmit({ studentCode, buildRecord }: { studentCode: string; 
 
   async function send() {
     if (sending.current || !/^\d{4}$/.test(studentCode)) return;
+    const record = { ...buildRecord(), exportedAt: new Date().toISOString() };
+    if (typeof record.studentName !== "string" || !/^\S+ \S+$/.test(record.studentName) || record.studentName.length > 80) {
+      setStatus("名前を「姓 名」の形で入力してください（姓と名の間はスペース1文字）。");
+      return;
+    }
     const ip = serverIp.trim();
     if (!validIPv4(ip)) {
       setStatus("先生から指定された学校サーバーのIPv4アドレスだけを入力してください（例：192.168.1.50）。");
@@ -31,14 +36,13 @@ export function JsonSubmit({ studentCode, buildRecord }: { studentCode: string; 
     }
     const endpoint = `http://${ip}:${SERVER_PORT}/api/submissions`;
     const serverAddress = `http://${ip}:${SERVER_PORT}`;
-    if (!window.confirm(`受験番号 ${studentCode} の学習記録・得点・記述内容を学校サーバー（${ip}）に送信します。先生から指定されたIPアドレスで間違いありませんか？`)) return;
+    if (!window.confirm(`受験番号 ${studentCode}・名前 ${record.studentName} の学習記録・得点・記述内容を学校サーバー（${ip}）に送信します。番号・名前・IPアドレスで間違いありませんか？`)) return;
     sending.current = true;
     setBusy(true);
     setStatus("送信中です…");
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
-      const record = { ...buildRecord(), exportedAt: new Date().toISOString() };
       const response = await fetch(endpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(record), signal: controller.signal, credentials: "omit", redirect: "error"
@@ -60,7 +64,7 @@ export function JsonSubmit({ studentCode, buildRecord }: { studentCode: string; 
 
   return <div className="json-submit">
     <h3>JSON送信</h3>
-    <p>先生が指定したサーバーへ、JSON保存と同じ学習記録・得点・記述内容を送信します。</p>
+    <p>先生が指定したサーバーへ、4桁番号・名前・学習記録・得点・記述内容を送信します。名前はトップ画面で入力・確認できます。</p>
     <label htmlFor="json-server">学校サーバーのIPアドレス（先生から指定）</label>
     <div className="actions">
       <input id="json-server" type="text" inputMode="decimal" autoComplete="off" spellCheck={false} placeholder="例：192.168.1.50" value={serverIp} disabled={busy} onChange={(e) => { setServerIp(e.target.value); setStatus(""); }} />
