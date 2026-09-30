@@ -7908,16 +7908,3 @@ body.exam-locked footer {
   background: var(--gold);
   color: #fff;
 }
-
-/* 学習記録の手動送信 */
-.json-submit { margin-top: 24px; padding: 20px; border: 1px solid #d9b84d; border-radius: 12px; background: #fffaf0; }
-.json-submit label { display: block; margin-bottom: 8px; font-weight: 700; }
-.json-submit input { flex: 1 1 260px; min-width: 0; max-width: 100%; padding: 10px; font: inherit; }
-.json-submit [role="status"] { overflow-wrap: anywhere; }
-
-.student-name-field { display: flex; flex-direction: column; gap: 6px; max-width: 350px; color: #e7dfca; font-weight: 700; font-size: .9375rem; }
-.student-name-field input { width: 100%; padding: 9px 12px; border: 1px solid #9ba8bc; border-radius: 10px; background: #fff; color: #18243a; font: inherit; }
-.student-name-field small { color: #dbca9b; font-weight: 400; line-height: 1.5; }
-.student-name-field input:focus-visible { outline: 3px solid #e8c76e; outline-offset: 2px; }
-.student-name-field input[aria-invalid="true"] { border-color: #d77b5f; }
-.active-name-field { margin: 7px 0; }

@@ -244,8 +244,6 @@ export type StudentRecord = {
   version: 6;
   exportedAt?: string;
   studentCode: string;
-  /** 氏名。姓と名の間は半角スペース1文字。旧記録には存在しない */
-  studentName?: string;
   drafts: Record<string, number[]>;
   submissions: Record<string, Submission>;
   experiments: Record<string, boolean>;

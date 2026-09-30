@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { JsonSubmit } from "./lib/json-submit";
 import { ExamView } from "./exam";
 import { Experiments } from "./experiments";
 import { QuestionFigure } from "./lib/question-figures";
@@ -105,9 +104,6 @@ const normalizeStudentCode = (value: string) =>
     .replace(/[^0-9]/g, "")
     .slice(0, 4);
 
-const normalizeStudentName = (value: string) => value.trim().replace(/[\s\u3000]+/g, " ");
-const validStudentName = (value: string) => /^\S+ \S+$/.test(value) && value.length <= 80;
-
 const todayNumber = () => {
   const now = new Date();
   return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
@@ -118,8 +114,6 @@ export default function Home() {
   const [studentCode, setStudentCode] = useState("");
   /** 入力中の番号（まだ確定していない） */
   const [codeDraft, setCodeDraft] = useState("");
-  const [nameDraft, setNameDraft] = useState("");
-  const [studentName, setStudentName] = useState("");
   /** 教員用の番号のときに入れてもらう合いことば */
   const [teacherPassword, setTeacherPassword] = useState("");
   const [teacherError, setTeacherError] = useState("");
@@ -416,7 +410,6 @@ export default function Home() {
   const buildRecord = (): StudentRecord => ({
     version: 6,
     studentCode,
-    studentName: normalizeStudentName(studentName),
     drafts,
     submissions,
     experiments,
@@ -466,7 +459,7 @@ export default function Home() {
       /* 保存できない環境では黙って続行する */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, studentCode, studentName, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints, lastLesson, practiced]);
+  }, [loaded, studentCode, drafts, submissions, experiments, understanding, summary, examResults, wordDrafts, wordSubmissions, missionNotes, boughtHints, lastLesson, practiced]);
 
   /**
    * 実験カードを統合・削除した版を挟むと、`${単元}-${実験番号}` のキーがずれる。
@@ -498,7 +491,6 @@ export default function Home() {
       const saved = (isDemoCode(code)
         ? {}
         : JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${code}`) ?? "{}")) as Partial<StudentRecord>;
-      setStudentName(typeof saved.studentName === "string" ? normalizeStudentName(saved.studentName) : "");
       const restored: Record<string, Submission> = {};
       lessons.forEach((lesson) => {
         const graded = gradeSubmission(lesson, saved.submissions?.[lesson.id] as Partial<Submission> | undefined);
@@ -523,7 +515,6 @@ export default function Home() {
       setGLocks(saved.gLocks ?? {});
       setExamResults(loadExamResults(code));
     } catch {
-      setStudentName("");
       setDrafts({});
       setSubmissions({});
       setExperiments({});
@@ -565,8 +556,6 @@ export default function Home() {
     // 名簿にない番号では始められない
     if (!isAllowedCode(codeDraft)) return;
     if (codeDraft.length !== 4) return;
-    const normalizedName = normalizeStudentName(nameDraft);
-    if (!validStudentName(normalizedName)) return;
 
     // 教員用の番号は、番号だけでは入れない。合いことばを確かめる。
     // 一度通った端末では、次から聞き直さない。
@@ -611,7 +600,6 @@ export default function Home() {
     setTeacherError("");
     setStudentCode(codeDraft);
     loadRecord(codeDraft);
-    setStudentName(normalizedName);
     setExamResults(loadExamResults(codeDraft));
     // デモ用の番号は「次に開いたときの続き」にもしない
     if (isDemoCode(codeDraft)) return;
@@ -794,8 +782,6 @@ export default function Home() {
   const endLearning = () => {
     setStudentCode("");
     setCodeDraft("");
-    setStudentName("");
-    setNameDraft("");
     setEndConfirm(false);
     setExamResults([]);
     setDrafts({});
@@ -1073,7 +1059,7 @@ export default function Home() {
           <div className="demo-banner" role="status">
             <b>デモ・動作確認モード</b>
             <span>
-              この番号（{DEMO_CODE}）で触った内容は<b>ブラウザに自動保存されません</b>。JSON保存・JSON送信は手動で実行できます。
+              この番号（{DEMO_CODE}）で触った内容は<b>いっさい保存されません</b>。
               画面を再読み込みすると、まっさらな状態に戻ります。分野別テストは<b>デモ用の20問・10分</b>です。
             </span>
           </div>
@@ -1117,21 +1103,6 @@ export default function Home() {
                             : "この番号は使えません"}
                       </div>
                     </div>
-                    <label className="student-name-field">
-                      名前（姓と名の間はスペース1文字）
-                      <input
-                        type="text"
-                        value={nameDraft}
-                        onChange={(e) => setNameDraft(e.target.value)}
-                        onBlur={() => setNameDraft(normalizeStudentName(nameDraft))}
-                        onKeyDown={(e) => { if (e.key === "Enter") confirmCode(); }}
-                        placeholder="例：山田 太郎"
-                        autoComplete="name"
-                        maxLength={80}
-                        aria-invalid={nameDraft.trim().length > 0 && !validStudentName(normalizeStudentName(nameDraft))}
-                      />
-                      <small>例：山田 太郎。全角スペースで入力した場合も、保存時に半角スペース1文字へそろえます。</small>
-                    </label>
 
                     {codeDraft.length === 4 && !codeAllowed && (
                       <div className="code-confirm ng">
@@ -1187,7 +1158,7 @@ export default function Home() {
                         )}
 
                         <div className="code-actions">
-                          <button className="primary" onClick={confirmCode} disabled={teacherBusy || !validStudentName(normalizeStudentName(nameDraft))}>
+                          <button className="primary" onClick={confirmCode} disabled={teacherBusy}>
                             {teacherBusy ? "確認しています…" : `はい、${codeDraft} で始める`}
                           </button>
                           <button className="ghost" onClick={() => setCodeDraft("")}>
@@ -1212,7 +1183,7 @@ export default function Home() {
                     <p>
                       左の欄に4桁番号を入れると始まります（1年2組5番なら <code>1205</code>）。
                     </p>
-                    <p>4桁番号の下に名前も入力します。記録はこのブラウザに残り、JSON送信したときだけ学校PCにも保存されます。</p>
+                    <p>記録はこのブラウザの中だけに残ります。名前は入力しません。</p>
                   </div>
                 )}
 
@@ -1225,22 +1196,9 @@ export default function Home() {
                     </div>
                     <div className="me-body">
                       <div className="me-head">
-                        <b>No.{studentCode} {studentName || "（名前未入力）"} の記録</b>
+                        <b>No.{studentCode} の記録</b>
                         <span className="me-g">{balance} G</span>
                       </div>
-                      <label className="student-name-field active-name-field">
-                        名前（姓と名の間はスペース1文字）
-                        <input
-                          type="text"
-                          value={studentName}
-                          onChange={(e) => setStudentName(e.target.value)}
-                          onBlur={() => setStudentName(normalizeStudentName(studentName))}
-                          placeholder="例：山田 太郎"
-                          autoComplete="name"
-                          maxLength={80}
-                        />
-                        {!validStudentName(normalizeStudentName(studentName)) && <small>JSON送信前に、姓と名をスペースで区切って入力してください。</small>}
-                      </label>
                       <p className="me-next">
                         {level.maxed ? "最高レベルに到達している。" : `つぎのレベルまで あと ${level.toNext}G。`}
                       </p>
@@ -2200,21 +2158,20 @@ export default function Home() {
               ))}
             </div>
             <div className="actions">
-              <button className="primary" disabled={studentCode.length !== 4 || !validStudentName(normalizeStudentName(studentName))} onClick={exportJson}>
+              <button className="primary" disabled={studentCode.length !== 4} onClick={exportJson}>
                 JSONを保存
               </button>
               <span className="muted">
                 {studentCode.length === 4 ? `保存ファイル名: ${studentCode}_ddl_${todayNumber()}.json` : "4桁番号を入力するとJSON出力できます。"}
               </span>
             </div>
-            <JsonSubmit studentCode={studentCode} buildRecord={buildRecord} />
           </section>
         )}
       </div>
       <footer>
         {isDemoCode(studentCode)
-          ? "デモ番号の記録はブラウザに自動保存されません。JSON保存・JSON送信は手動で実行できます。入力した名前もJSONに含まれます。"
-          : "学習履歴・得点・入力した名前は使用中のブラウザに保存されます。JSON送信すると指定サーバーにも保存されます。"}
+          ? "デモ・動作確認用の番号なので、学習履歴と得点は保存されません。氏名・名簿データも含みません。"
+          : "学習履歴と得点は使用中のブラウザに保存されます。氏名・名簿データは含みません。"}
         <br />
         単元構成は岡田メソッド（兵庫県立明石南高等学校 岡田）のExcelシートに対応しています。掲載した過去問題の著作権はIPA（情報処理推進機構）に帰属します。
       </footer>
