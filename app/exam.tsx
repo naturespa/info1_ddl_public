@@ -16,6 +16,7 @@
 //   ・選択肢は ア・イ・ウ・エ
 //   ・「後で見直す」に印を付けられ、解答一覧から飛べる
 //   ・受験中はサイト上部のメニューを隠す
+//   ・「試験開始」で全画面表示に入り、提出・時間切れで通常表示に戻る
 //
 // 問題は暗号化された状態で置いてあるので、パスワードを聞くまで誰も読めない。
 
@@ -318,7 +319,73 @@ export function ExamView({
   const [reviewFilter, setReviewFilter] = useState<"all" | "wrong">("wrong");
   const [view, setView] = useState<ExamViewSetting>(DEFAULT_EXAM_VIEW);
   const [now, setNow] = useState<number | null>(null);
+  const [fullscreenError, setFullscreenError] = useState("");
+  const [fullscreenLost, setFullscreenLost] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+
+  /* ---------- 分野別テストだけ、開始時に全画面表示 ---------- */
+
+  const enterExamFullscreen = useCallback(async () => {
+    setFullscreenError("");
+    if (typeof document === "undefined") return false;
+
+    if (document.fullscreenElement) {
+      setFullscreenLost(false);
+      return true;
+    }
+
+    if (!document.fullscreenEnabled || !document.documentElement.requestFullscreen) {
+      setFullscreenError(
+        "このブラウザでは全画面表示を利用できません。対応ブラウザの設定・許可を確認して、もう一度「試験開始」を押してください。"
+      );
+      return false;
+    }
+
+    try {
+      await document.documentElement.requestFullscreen();
+      if (document.fullscreenElement !== document.documentElement) {
+        throw new Error("fullscreen_failed");
+      }
+      setFullscreenLost(false);
+      return true;
+    } catch {
+      setFullscreenError(
+        "全画面表示に切り替えられませんでした。ブラウザの全画面表示を許可して、もう一度「試験開始」を押してください。"
+      );
+      return false;
+    }
+  }, []);
+
+  const exitExamFullscreen = useCallback(async () => {
+    if (typeof document === "undefined" || !document.fullscreenElement) return;
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // すでにブラウザ側で解除済みの場合もあるため、終了処理自体は止めない。
+    }
+  }, []);
+
+  useEffect(() => {
+    const active = phase === "running" || phase === "list";
+    if (!active) {
+      setFullscreenLost(false);
+      return;
+    }
+
+    const checkFullscreen = () => {
+      setFullscreenLost(!document.fullscreenElement);
+    };
+
+    checkFullscreen();
+    document.addEventListener("fullscreenchange", checkFullscreen);
+    return () => document.removeEventListener("fullscreenchange", checkFullscreen);
+  }, [phase]);
+
+  useEffect(() => {
+    return () => {
+      void exitExamFullscreen();
+    };
+  }, [exitExamFullscreen]);
 
   /* ---------- 時計。1秒ごとに動かす ---------- */
 
@@ -492,11 +559,12 @@ export function ExamView({
       persist(live.picked, live.flagged, live.deadline, finished);
       onResult(finished);
       setTimeUp(byTimeUp);
+      void exitExamFullscreen();
       setPhase("done");
       setConfirmSubmit(false);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [persist, onResult]
+    [persist, onResult, exitExamFullscreen]
   );
 
   // 0分0秒になったら自動で終了する
@@ -512,7 +580,11 @@ export function ExamView({
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const startExam = () => {
+  const startExam = async () => {
+    // requestFullscreen はユーザー操作の直後に呼ぶ必要があるため、開始処理の最初に実行する。
+    const entered = await enterExamFullscreen();
+    if (!entered) return;
+
     // まだ始めていなければ、ここで終了時刻を決める
     const due = deadline || new Date(Date.now() + minutes * 60 * 1000).toISOString();
     setDeadline(due);
@@ -523,6 +595,7 @@ export function ExamView({
 
   /** もう一方の分野を受けるために、パスワード画面へ戻る（提出済みの結果は保存されたまま） */
   const openAnother = () => {
+    void exitExamFullscreen();
     setSet(null);
     setServed([]);
     setPicked([]);
@@ -627,6 +700,21 @@ export function ExamView({
           )}
         </div>
 
+        {fullscreenLost && (phase === "running" || phase === "list") && (
+          <div className="verdict ng">
+            全画面表示が解除されています。試験時間は進んでいます。
+            <button
+              type="button"
+              className="cbt-go"
+              onClick={() => {
+                void enterExamFullscreen();
+              }}
+            >
+              全画面に戻る
+            </button>
+          </div>
+        )}
+
         {/* --- ツールバー。操作説明でも試験中でも使える --- */}
         {phase !== "password" && (
           <ViewTools view={view} onChange={changeView} onReset={() => changeView(DEFAULT_EXAM_VIEW)} />
@@ -716,8 +804,10 @@ export function ExamView({
                 </div>
               )}
               <p className="cbt-note">
-                <b>「試験開始」を押すと、その時点から時間が動き始めます。</b>先生の合図を待ってから押してください。
+                <b>「試験開始」を押すと全画面表示に切り替わり、その時点から時間が動き始めます。</b>
+                先生の合図を待ってから押してください。提出または時間終了後は、自動で通常表示に戻ります。
               </p>
+              {fullscreenError && <div className="verdict ng">{fullscreenError}</div>}
               <div className="cbt-foot">
                 <button className="cbt-nav" onClick={() => setPhase("guide")}>
                   {"<< 操作説明へもどる"}
