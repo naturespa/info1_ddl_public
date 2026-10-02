@@ -381,6 +381,16 @@ export function ExamView({
     return () => document.removeEventListener("fullscreenchange", checkFullscreen);
   }, [phase]);
 
+  // 全画面が解除された間は、問題・解答ボタンを操作できないようにする。
+  useEffect(() => {
+    const examUi = topRef.current?.querySelector(".cbt") as HTMLElement | null;
+    if (!examUi) return;
+    examUi.inert = fullscreenLost && (phase === "running" || phase === "list");
+    return () => {
+      examUi.inert = false;
+    };
+  }, [fullscreenLost, phase]);
+
   useEffect(() => {
     return () => {
       void exitExamFullscreen();
@@ -701,17 +711,45 @@ export function ExamView({
         </div>
 
         {fullscreenLost && (phase === "running" || phase === "list") && (
-          <div className="verdict ng">
-            全画面表示が解除されています。試験時間は進んでいます。
-            <button
-              type="button"
-              className="cbt-go"
-              onClick={() => {
-                void enterExamFullscreen();
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="全画面表示に戻る"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 10000,
+              display: "grid",
+              placeItems: "center",
+              padding: "24px",
+              background: "rgba(0, 0, 0, 0.72)"
+            }}
+          >
+            <div
+              style={{
+                width: "min(620px, 100%)",
+                padding: "28px",
+                borderRadius: "16px",
+                background: "#ffffff",
+                color: "#17263c",
+                boxShadow: "0 16px 48px rgba(0, 0, 0, 0.35)"
               }}
             >
-              全画面に戻る
-            </button>
+              <h2 style={{ marginTop: 0 }}>全画面表示が解除されています</h2>
+              <p>
+                試験時間は進んでいます。解答を続けるには、下のボタンを押して全画面表示に戻ってください。
+              </p>
+              {fullscreenError && <p className="verdict ng">{fullscreenError}</p>}
+              <button
+                type="button"
+                className="cbt-go"
+                onClick={() => {
+                  void enterExamFullscreen();
+                }}
+              >
+                全画面に戻る
+              </button>
+            </div>
           </div>
         )}
 
