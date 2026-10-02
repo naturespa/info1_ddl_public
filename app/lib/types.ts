@@ -244,6 +244,8 @@ export type StudentRecord = {
   version: 6;
   exportedAt?: string;
   studentCode: string;
+  /** 学校サーバー送信用。現在の教材JSONでは未設定の場合もある */
+  studentName?: string;
   drafts: Record<string, number[]>;
   submissions: Record<string, Submission>;
   experiments: Record<string, boolean>;
