@@ -710,49 +710,6 @@ export function ExamView({
           )}
         </div>
 
-        {fullscreenLost && (phase === "running" || phase === "list") && (
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-label="全画面表示に戻る"
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 10000,
-              display: "grid",
-              placeItems: "center",
-              padding: "24px",
-              background: "rgba(0, 0, 0, 0.72)"
-            }}
-          >
-            <div
-              style={{
-                width: "min(620px, 100%)",
-                padding: "28px",
-                borderRadius: "16px",
-                background: "#ffffff",
-                color: "#17263c",
-                boxShadow: "0 16px 48px rgba(0, 0, 0, 0.35)"
-              }}
-            >
-              <h2 style={{ marginTop: 0 }}>全画面表示が解除されています</h2>
-              <p>
-                試験時間は進んでいます。解答を続けるには、下のボタンを押して全画面表示に戻ってください。
-              </p>
-              {fullscreenError && <p className="verdict ng">{fullscreenError}</p>}
-              <button
-                type="button"
-                className="cbt-go"
-                onClick={() => {
-                  void enterExamFullscreen();
-                }}
-              >
-                全画面に戻る
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* --- ツールバー。操作説明でも試験中でも使える --- */}
         {phase !== "password" && (
           <ViewTools view={view} onChange={changeView} onReset={() => changeView(DEFAULT_EXAM_VIEW)} />
@@ -1187,6 +1144,51 @@ export function ExamView({
           </div>
         )}
       </div>
+
+      {/* 全画面解除時の復帰UIは .cbt の外に置く。
+          .cbt 自体を inert にしても、このボタンだけは操作できるようにする。 */}
+      {fullscreenLost && (phase === "running" || phase === "list") && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="全画面表示に戻る"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            display: "grid",
+            placeItems: "center",
+            padding: "24px",
+            background: "rgba(0, 0, 0, 0.72)"
+          }}
+        >
+          <div
+            style={{
+              width: "min(620px, 100%)",
+              padding: "28px",
+              borderRadius: "16px",
+              background: "#ffffff",
+              color: "#17263c",
+              boxShadow: "0 16px 48px rgba(0, 0, 0, 0.35)"
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>全画面表示が解除されています</h2>
+            <p>
+              試験時間は進んでいます。解答を続けるには、下のボタンを押して全画面表示に戻ってください。
+            </p>
+            {fullscreenError && <p className="verdict ng">{fullscreenError}</p>}
+            <button
+              type="button"
+              className="cbt-go"
+              onClick={() => {
+                void enterExamFullscreen();
+              }}
+            >
+              全画面に戻る
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
