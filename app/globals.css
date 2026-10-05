@@ -7920,3 +7920,10 @@ body.exam-locked footer {
 .student-name-field input:focus-visible { outline: 3px solid #e8c76e; outline-offset: 2px; }
 .student-name-field input[aria-invalid="true"] { border-color: #d77b5f; }
 .active-name-field { margin: 7px 0; }
+
+/* 分野別テストの注意事項は全項目を1ページにまとめる。 */
+.cbt-guide-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.cbt-guide-sections .cbt-guide-body{min-width:0}
+.cbt-guide-sections h3{font-size:1rem;margin:0 0 10px}
+.cbt-guide-sections .cbt-guide-list{line-height:1.75}
+@media(max-width:760px){.cbt-guide-sections{grid-template-columns:1fr}}

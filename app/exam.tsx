@@ -5,7 +5,7 @@
 // 流れ
 //   1. 先生が言うパスワードを入れる
 //   2. その人が受けられる暗号ファイルを取りに行き、復号できたものが今日のテストになる
-//   3. 操作説明（4ページ）を読む
+//   3. 操作説明（1ページ）を読む
 //   4. 1画面1問で解く。残り時間は常時表示。0になったら自動で提出される
 //   5. 提出すると採点し、その場で正解と解説が出る
 //
@@ -184,12 +184,12 @@ function ViewTools({
 }
 
 /* ============================================================
- * 操作説明（4ページ）
+ * 操作説明（1ページ）
  * ========================================================== */
 
-const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
+const GUIDE_SECTIONS: { title: string; body: React.ReactNode }[] = [
   {
-    title: "この画面について（その1）",
+    title: "この画面について",
     body: (
       <>
         <p>
@@ -213,7 +213,7 @@ const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
     )
   },
   {
-    title: "見えづらいときは（その2）",
+    title: "見えづらいときは",
     body: (
       <>
         <p>上のボタンで、画面の見え方を変えられます。ここで変えた設定は、そのまま問題の画面にも引き継がれます。</p>
@@ -239,10 +239,10 @@ const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
     )
   },
   {
-    title: "問題の解き方（その3）",
+    title: "問題の解き方",
     body: (
       <>
-        <p>1画面に1問ずつ出ます。全部で100問、1問1点です。</p>
+        <p>1画面に1問ずつ出ます。問題数と満点は、次の試験開始画面で確認してください。</p>
         <ol className="cbt-guide-list">
           <li>
             <b>ア・イ・ウ・エ</b>の4つから1つを選びます。押すと選ばれた印が付きます。
@@ -262,13 +262,13 @@ const GUIDE_PAGES: { title: string; body: React.ReactNode }[] = [
     )
   },
   {
-    title: "見直しと提出（その4）",
+    title: "見直しと提出",
     body: (
       <>
         <p>画面の下に、解答の状況と提出のボタンがあります。</p>
         <ol className="cbt-guide-list">
           <li>
-            <b>「解答一覧へ」</b>ボタンで、100問ぶんの番号が並んだ一覧に移ります。
+            <b>「解答一覧へ」</b>ボタンで、出題された問題の番号が並んだ一覧に移ります。
           </li>
           <li>
             一覧では<b>解答済み・未解答・見直しの印</b>が色で分かります。番号を押すとその問題へ飛べます。
@@ -313,7 +313,6 @@ export function ExamView({
   const [deadline, setDeadline] = useState<string>("");
   const [result, setResult] = useState<ExamResult | null>(null);
   const [index, setIndex] = useState(0);
-  const [guidePage, setGuidePage] = useState(0);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [timeUp, setTimeUp] = useState(false);
   const [reviewFilter, setReviewFilter] = useState<"all" | "wrong">("wrong");
@@ -480,7 +479,6 @@ export function ExamView({
         setStartedAt(saved?.startedAt ?? new Date().toISOString());
         setDeadline(saved?.deadline ?? "");
         setIndex(0);
-        setGuidePage(0);
         setTimeUp(false);
         if (saved?.result) {
           setResult(saved.result);
@@ -616,7 +614,6 @@ export function ExamView({
     setPassword("");
     setError("");
     setIndex(0);
-    setGuidePage(0);
     setTimeUp(false);
     setConfirmSubmit(false);
     setReviewFilter("wrong");
@@ -752,12 +749,16 @@ export function ExamView({
           {phase === "guide" && (
             <div className="cbt-guide">
               <div className="cbt-guide-head">
-                <h2>{GUIDE_PAGES[guidePage].title}</h2>
-                <span className="cbt-guide-page">
-                  {guidePage + 1}/{GUIDE_PAGES.length}ページ
-                </span>
+                <h2>受験前の注意事項</h2>
               </div>
-              <div className="cbt-guide-body">{GUIDE_PAGES[guidePage].body}</div>
+              <div className="cbt-guide-sections">
+                {GUIDE_SECTIONS.map((section) => (
+                  <section className="cbt-guide-body" key={section.title}>
+                    <h3>{section.title}</h3>
+                    {section.body}
+                  </section>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1121,23 +1122,6 @@ export function ExamView({
         {/* --- 操作説明のときだけ、画面のいちばん下に本番と同じボタン列を出す --- */}
         {phase === "guide" && (
           <div className="cbt-foot cbt-foot-fixed">
-            <button className="cbt-nav" onClick={() => setGuidePage(0)} disabled={guidePage === 0}>
-              {"<< 操作説明の最初へ"}
-            </button>
-            <button
-              className="cbt-nav"
-              onClick={() => setGuidePage((p) => Math.max(0, p - 1))}
-              disabled={guidePage === 0}
-            >
-              {"< 前へ"}
-            </button>
-            <button
-              className="cbt-nav"
-              onClick={() => setGuidePage((p) => Math.min(GUIDE_PAGES.length - 1, p + 1))}
-              disabled={guidePage >= GUIDE_PAGES.length - 1}
-            >
-              {"次へ >"}
-            </button>
             <button className="cbt-go" onClick={() => setPhase("ready")}>
               試験開始画面へ
             </button>
