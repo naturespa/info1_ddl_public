@@ -142,6 +142,7 @@ function createServer({ dataDir = path.join(__dirname, 'data'), allowedOrigins =
     if (req.method === 'GET' && req.url === '/health') return reply(200, { ok: true, service: 'info1-ddl-json' });
     if (req.url !== '/api/submissions') return reply(404, { ok: false, error: 'Not found' });
     if (req.method !== 'POST') return reply(405, { ok: false, error: 'POST required' });
+    if (req.headers['content-encoding'] && req.headers['content-encoding'].toLowerCase() !== 'identity') return reply(415, { ok: false, error: 'Compressed requests are not supported' });
     if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] || '')) return reply(415, { ok: false, error: 'application/json required' });
     try {
       const chunks = [];

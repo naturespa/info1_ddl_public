@@ -21,6 +21,10 @@ test('receive, persist unchanged, reject invalid requests, and never overwrite',
     assert.equal(preflight.headers.get('access-control-allow-origin'), 'https://naturespa.github.io');
     assert.equal(preflight.headers.get('access-control-allow-private-network'), 'true');
     const a = await post(record); assert.equal(a.status, 201);
+    for (const encoding of ['br', 'gzip', 'deflate']) {
+      const compressed = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Encoding': encoding }, body: JSON.stringify(record) });
+      assert.equal(compressed.status, 415);
+    }
     const receipt = await a.json(); assert.equal(receipt.ok, true); assert.equal(receipt.studentCode, '1101');
     const files = await fs.readdir(dir); assert.equal(files.length, 1);
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(dir, files[0]), 'utf8')), record);
