@@ -60,6 +60,13 @@ export const toScreenChoice = (served: ServedQuestion, originalIndex: number) =>
 
 const rate = (correct: number, total: number) => (total ? Math.round((correct / total) * 100) : 0);
 
+/**
+ * 点数を小数第1位にそろえる。
+ * データ活用分野（85問）は1問あたり 30/39点・70/46点 と割り切れない配点なので、
+ * 足し合わせたあとにここで丸める。デジタル分野（1点・2点）は丸めても値が変わらない。
+ */
+export const roundPoint = (n: number) => Math.round(n * 10) / 10;
+
 /** その問題の配点。古いファイル用に、無いときは観点から決める */
 export const pointsOf = (q: ExamQuestion) => q.points ?? (q.viewpoint === "思考・判断・表現" ? 2 : 1);
 
@@ -88,8 +95,8 @@ const tally = <T extends string>(
       label: labelOf(key),
       correct: v.correct,
       total: v.total,
-      points: v.points,
-      maxPoints: v.maxPoints,
+      points: roundPoint(v.points),
+      maxPoints: roundPoint(v.maxPoints),
       // 割合は「点」で見る。思考の問題を落とすと、そのぶん大きく下がる
       rate: rate(v.points, v.maxPoints)
     }))
@@ -112,8 +119,8 @@ export const gradeExam = (
   });
   const correctCount = answers.filter((a) => a.correct).length;
   // 得点は配点の合計。知識・技能1点、思考・判断・表現2点
-  const score = set.questions.reduce((sum, q, i) => sum + (answers[i]?.correct ? pointsOf(q) : 0), 0);
-  const max = set.questions.reduce((sum, q) => sum + pointsOf(q), 0);
+  const score = roundPoint(set.questions.reduce((sum, q, i) => sum + (answers[i]?.correct ? pointsOf(q) : 0), 0));
+  const max = roundPoint(set.questions.reduce((sum, q) => sum + pointsOf(q), 0));
   const elapsed = Math.max(0, Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000));
   return {
     setId: set.setId,

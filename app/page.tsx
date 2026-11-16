@@ -678,7 +678,8 @@ export default function Home() {
   const acceptExamResult = (result: ExamResult) => {
     setExamResults((prev) => {
       const same = prev.find((r) => r.setId === result.setId && r.finishedAt === result.finishedAt);
-      if (same) return prev;
+      // 同じ受験の結果は二重に入れない。ただし、あとからアンケートが付いたときだけ入れ替える
+      if (same && (same.survey || !result.survey)) return prev;
       const next = [...prev.filter((r) => !(r.area === result.area && r.kind === result.kind)), result].sort((a, b) =>
         a.area === b.area ? a.kind.localeCompare(b.kind) : a.area.localeCompare(b.area)
       );

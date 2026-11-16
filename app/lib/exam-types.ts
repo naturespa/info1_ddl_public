@@ -105,6 +105,41 @@ export type ExamBreakdown = {
   rate: number;
 };
 
+/**
+ * テストのあとのアンケート（データ活用分野）。得点・G・成績には一切使わない。
+ * 集計するときは、未回答（null・空）と「判断できない／機会がなかった」（0）を0点として数えないこと。
+ */
+export type ExamSurvey = {
+  version: 1;
+  /** 送った時刻（ISO） */
+  answeredAt: string;
+  /** 「回答せずに結果を見る」を選んだとき true */
+  skipped: boolean;
+  /** Q1〜Q6「学ぶ前を振り返った自分」。1〜5、0＝判断できない、null＝未回答 */
+  before: (number | null)[];
+  /** Q1〜Q6「現在の自分」。値の意味は before と同じ */
+  now: (number | null)[];
+  /** Q7・Q8：1（あてはまらない）〜5（あてはまる） */
+  q7: number | null;
+  q8: number | null;
+  /** Q9：1（一度もなかった）〜4（何度もあった）、0＝機会がなかった */
+  q9: number | null;
+  /** Q10：1〜5、0＝判断できない */
+  q10: number | null;
+  /** Q11：役立ったもの（3つまで） */
+  q11: string[];
+  /** Q12：困ったこと */
+  q12: string[];
+  q12Note: string;
+  /** Q13：「へぇ」と思ったこと */
+  q13: string[];
+  q13Before: string;
+  q13Now: string;
+  /** Q14：調べてみたい分野（1つ）と、その疑問 */
+  q14: string;
+  q14Note: string;
+};
+
 /** 受験結果。1回の受験につき1つ */
 export type ExamResult = {
   setId: string;
@@ -128,6 +163,8 @@ export type ExamResult = {
   finishedAt: string;
   /** 所要時間（秒） */
   elapsedSeconds: number;
+  /** テスト後のアンケート。出していない分野・まだ答えていないときは無い */
+  survey?: ExamSurvey;
 };
 
 /** 暗号化して配布する1ファイルぶんの中身 */

@@ -31,6 +31,7 @@ import {
   loadExamView,
   loadProgress,
   pointsOf,
+  roundPoint,
   saveExamView,
   saveProgress,
   serveForStudent,
@@ -40,10 +41,19 @@ import {
   type ExamView as ExamViewSetting,
   type ServedQuestion
 } from "./lib/exam-runtime";
-import { gradeOf, seatOf, type ClassNo, type EncryptedBundle, type ExamResult, type ExamSet } from "./lib/exam-types";
+import {
+  gradeOf,
+  seatOf,
+  type ClassNo,
+  type EncryptedBundle,
+  type ExamResult,
+  type ExamSet,
+  type ExamSurvey
+} from "./lib/exam-types";
 import { lessonById } from "./lib/lessons";
 import { TEACHER_SEATS, examClassOf, isDemoCode, isTeacherCode } from "./lib/roster";
 import { PasswordField } from "./lib/password-field";
+import { ExamSurveyForm, skippedSurvey } from "./lib/exam-survey";
 
 /** 静的書き出しのときの公開パス。GitHub Pages では /info1_ddl_public が前につく */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -85,7 +95,13 @@ const candidateFiles = (classNo: ClassNo, studentCode: string) => [
   { file: `data-makeup-${studentCode}`, makeup: true }
 ];
 
-type Phase = "password" | "guide" | "ready" | "running" | "list" | "done";
+type Phase = "password" | "guide" | "ready" | "running" | "list" | "survey" | "done";
+
+/**
+ * 提出のあとにアンケートを出すかどうか。
+ * データ活用分野だけに出す。すでに答えた（または「回答しない」を選んだ）人には出さない。
+ */
+const wantsSurvey = (r: ExamResult) => r.area === "データ活用" && !r.survey;
 
 /* ============================================================
  * 画面上部のツールバー（白黒反転・背景色・文字色・表示倍率）
@@ -482,7 +498,8 @@ export function ExamView({
         setTimeUp(false);
         if (saved?.result) {
           setResult(saved.result);
-          setPhase("done");
+          // 提出だけしてアンケートの前に閉じた人には、開き直したときに出す
+          setPhase(wantsSurvey(saved.result) ? "survey" : "done");
         } else {
           // 途中の人はそのまま試験へ。はじめての人は操作説明から
           setPhase(saved?.deadline ? "ready" : "guide");
@@ -541,7 +558,14 @@ export function ExamView({
   const answered = picked.filter((p) => p >= 0).length;
   const total = served.length;
   /** このセットの満点（知識1点・思考2点の合計） */
-  const maxPoints = served.reduce((sum, item) => sum + pointsOf(item.question), 0);
+  const maxPoints = roundPoint(served.reduce((sum, item) => sum + pointsOf(item.question), 0));
+  /** 1点・2点のように割り切れる配点か。データ活用分野（85問）は観点ごとの換算なので false になる */
+  const wholePoints = served.every((item) => Number.isInteger(pointsOf(item.question)));
+  /** 観点ごとの「何問で何点か」。換算配点のセットで、試験開始画面に出す */
+  const viewpointPlan = (["知識・技能", "思考・判断・表現"] as const).map((v) => {
+    const own = served.filter((item) => item.question.viewpoint === v);
+    return { name: v, count: own.length, points: roundPoint(own.reduce((sum, item) => sum + pointsOf(item.question), 0)) };
+  });
   const current = served[index];
   const flagCount = flagged.filter(Boolean).length;
 
@@ -568,12 +592,24 @@ export function ExamView({
       onResult(finished);
       setTimeUp(byTimeUp);
       void exitExamFullscreen();
-      setPhase("done");
+      // 点数はここで確定・保存済み。アンケートはそのあと、制限時間の外で答える
+      setPhase(wantsSurvey(finished) ? "survey" : "done");
       setConfirmSubmit(false);
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     [persist, onResult, exitExamFullscreen]
   );
+
+  /** アンケートを結果に付けて保存し、結果の画面へ進む。得点には何も足さない */
+  const saveSurvey = (survey: ExamSurvey) => {
+    if (!result) return;
+    const next: ExamResult = { ...result, survey };
+    setResult(next);
+    persist(picked, flagged, deadline, next);
+    onResult(next);
+    setPhase("done");
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   // 0分0秒になったら自動で終了する
   useEffect(() => {
@@ -661,8 +697,10 @@ export function ExamView({
           ? "試験開始画面"
           : phase === "list"
             ? "解答一覧"
-            : phase === "done"
-              ? "試験結果"
+            : phase === "survey"
+              ? "アンケート"
+              : phase === "done"
+                ? "試験結果"
               : "問題表示・解答";
 
   const cbtStyle = {
@@ -779,7 +817,9 @@ export function ExamView({
                     {total}問・{maxPoints}点満点
                     <br />
                     <small className="muted">
-                      知識・技能 1点 ／ 思考・判断・表現 2点（問題ごとに配点が出ます）
+                      {wholePoints
+                        ? "知識・技能 1点 ／ 思考・判断・表現 2点（問題ごとに配点が出ます）"
+                        : `${viewpointPlan.map((v) => `${v.name} ${v.count}問で${v.points}点`).join(" ／ ")}（正解した割合で点数が決まります）`}
                     </small>
                   </dd>
                 </div>
@@ -824,7 +864,9 @@ export function ExamView({
                   {lessonById(current.question.lessonId)?.title ?? current.question.lessonId}
                 </span>
                 <span className={`level level-${current.question.level}`}>{current.question.level}</span>
-                <span className="cbt-points">{pointsOf(current.question)}点</span>
+                <span className="cbt-points">
+                  {wholePoints ? pointsOf(current.question) : `約${pointsOf(current.question).toFixed(1)}`}点
+                </span>
                 <label className={`cbt-flag ${flagged[current.originalIndex] ? "on" : ""}`}>
                   <input
                     type="checkbox"
@@ -958,6 +1000,16 @@ export function ExamView({
           )}
 
           {/* ===== 結果 ===== */}
+          {/* ===== アンケート（データ活用分野・提出後） ===== */}
+          {phase === "survey" && result && (
+            <>
+              {timeUp && (
+                <div className="verdict ng">時間になりました。そこまでの解答で採点しています。未解答は0点です。</div>
+              )}
+              <ExamSurveyForm onSubmit={saveSurvey} onSkip={() => saveSurvey(skippedSurvey())} />
+            </>
+          )}
+
           {phase === "done" && set && result && (
             <div className="cbt-result">
               {timeUp && (
@@ -996,6 +1048,12 @@ export function ExamView({
                     </div>
                   ))}
                 </dl>
+                {result.survey && (
+                  <p className="muted small survey-status">
+                    アンケート：{result.survey.skipped ? "回答していません" : "回答を受け取りました。ありがとうございました"}
+                    （点数・成績には関係ありません）
+                  </p>
+                )}
                 <div className="exam-score-actions">
                   <button type="button" className="ghost" onClick={openAnother}>
                     別の分野のテストを受ける

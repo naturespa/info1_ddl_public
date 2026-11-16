@@ -7927,3 +7927,160 @@ body.exam-locked footer {
 .cbt-guide-sections h3{font-size:1rem;margin:0 0 10px}
 .cbt-guide-sections .cbt-guide-list{line-height:1.75}
 @media(max-width:760px){.cbt-guide-sections{grid-template-columns:1fr}}
+
+/* ============================================================
+   テスト後のアンケート（データ活用分野）
+   色は CBT 画面と同じ --cbt-bg / --cbt-ink から作るので、
+   白黒反転や色の変更をしていても読める。
+   ========================================================== */
+.survey {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.survey-lead {
+  border: 2px solid var(--cbt-line);
+  border-radius: 8px;
+  background: var(--cbt-soft);
+  padding: 0.75rem 1rem;
+}
+.survey-lead p {
+  margin: 0.25rem 0;
+  line-height: 1.8;
+}
+.survey-part {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.survey-part h3 {
+  margin: 0.5rem 0 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--cbt-line);
+  font-size: 1.05rem;
+}
+.survey-note {
+  margin: 0;
+  line-height: 1.8;
+}
+.survey-q {
+  margin: 0;
+  min-width: 0;
+  border: 1px solid var(--cbt-line);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.survey-q legend {
+  padding: 0 0.35rem;
+  line-height: 1.7;
+  font-weight: 500;
+}
+.survey-pair {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.survey-when {
+  flex: 0 0 4.2em;
+  padding-top: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.survey-scale,
+.survey-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.survey-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.3rem 0.7rem;
+  border: 2px solid var(--cbt-line);
+  border-radius: 6px;
+  background: var(--cbt-bg);
+  color: var(--cbt-ink);
+  cursor: pointer;
+  line-height: 1.4;
+}
+.survey-opt input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--cbt-ink);
+}
+.survey-opt.on {
+  background: var(--cbt-pick);
+  border-color: var(--cbt-ink);
+  font-weight: 700;
+}
+.survey-opt.blocked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.survey-opt:focus-within {
+  outline: 3px solid var(--cbt-ink);
+  outline-offset: 2px;
+}
+.survey-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  line-height: 1.7;
+}
+.survey-text textarea,
+.survey-fill input {
+  font: inherit;
+  color: var(--cbt-ink);
+  background: var(--cbt-bg);
+  border: 2px solid var(--cbt-line);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  min-height: 44px;
+}
+.survey-text textarea {
+  width: 100%;
+  resize: vertical;
+}
+.survey-fill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.survey-fill p {
+  margin: 0;
+  line-height: 1.7;
+}
+.survey-fill label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+.survey-fill input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.survey-foot {
+  margin-top: 0.25rem;
+}
+.survey-status {
+  margin: 0.4rem 0 0;
+}
+@media (max-width: 560px) {
+  .survey-pair {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .survey-when {
+    flex: none;
+    padding-top: 0;
+  }
+}
