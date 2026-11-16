@@ -22,6 +22,7 @@ import { UNDERSTANDING_CHOICES } from "./lib/types";
 import type { ExamResult } from "./lib/exam-types";
 import { classOf, gradeOf, seatOf } from "./lib/exam-types";
 import { formatElapsed } from "./lib/exam-runtime";
+import { isCurrentData95Result, mergeExamResult } from "./lib/data-exam95";
 import { HintShopContext } from "./lib/ui";
 
 /** 静的書き出しのときの公開パス。GitHub Pages では /info1_ddl_public が前につく */
@@ -74,7 +75,8 @@ const gradeSubmission = (lesson: Lesson, saved: Partial<Submission> | undefined)
  * 65問・100点に変えたので、そのまま並べると満点の意味が変わってしまう。読むときに捨てる。
  */
 const isOldFormatResult = (r: ExamResult) =>
-  !r || typeof r.max !== "number" || r.max <= 0 || !Array.isArray(r.answers) || r.answers.length > 90;
+  !r || typeof r.max !== "number" || r.max <= 0 || !Array.isArray(r.answers) ||
+  (r.answers.length > 90 && !isCurrentData95Result(r));
 
 /** 分野別テストの結果を読み書きする。分野ごとに最新の1回だけ残す */
 const loadExamResults = (code: string): ExamResult[] => {
@@ -679,9 +681,7 @@ export default function Home() {
     setExamResults((prev) => {
       const same = prev.find((r) => r.setId === result.setId && r.finishedAt === result.finishedAt);
       if (same) return prev;
-      const next = [...prev.filter((r) => !(r.area === result.area && r.kind === result.kind)), result].sort((a, b) =>
-        a.area === b.area ? a.kind.localeCompare(b.kind) : a.area.localeCompare(b.area)
-      );
+      const next = mergeExamResult(prev, result);
       saveExamResults(studentCode, next);
       return next;
     });

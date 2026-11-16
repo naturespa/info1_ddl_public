@@ -1,0 +1,14 @@
+.page { max-width: 960px; margin: 0 auto; padding: 16px 4px 28px; }
+.intro { line-height: 1.9; margin-bottom: 24px; }
+.field { border: 1px solid currentColor; border-radius: 10px; margin: 20px 0; padding: 16px 20px 20px; min-width: 0; }
+.field legend { padding: 0 8px; font-weight: 700; line-height: 1.7; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.label { display: grid; gap: 8px; font-size: 1rem; line-height: 1.7; }
+.select { display: block; width: 100%; max-width: 100%; min-height: 46px; padding: 8px; color: var(--cbt-ink); background: var(--cbt-bg); border: 1px solid currentColor; border-radius: 6px; font: inherit; }
+.options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; }
+.option { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; line-height: 1.7; cursor: pointer; }
+.option input { width: 20px; height: 20px; margin: 3px 0 0; flex-shrink: 0; }
+.text { width: 100%; min-height: 110px; margin-top: 10px; padding: 12px; border: 1px solid currentColor; border-radius: 6px; color: var(--cbt-ink); background: var(--cbt-bg); font: inherit; resize: vertical; }
+.note { font-size: .92rem; line-height: 1.8; }
+.select:focus-visible, .text:focus-visible, .option input:focus-visible { outline: 3px solid #3385e6; outline-offset: 3px; }
+@media (max-width: 680px) { .pair, .options { grid-template-columns: 1fr; } .field { padding: 12px; } }

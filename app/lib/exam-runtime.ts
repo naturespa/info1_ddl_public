@@ -9,6 +9,8 @@ import { lessonById } from "./lessons";
 import { seedFrom } from "./exam-types";
 import type { ExamAnswer, ExamBreakdown, ExamQuestion, ExamResult, ExamSet, Viewpoint } from "./exam-types";
 import type { QuestionLevel } from "./types";
+import { data95QuestionPoints, isDataExam95, roundExamPoints, validateDataExam95 } from "./data-exam95";
+import type { DataSurvey } from "./data-survey";
 
 /** 生徒の画面に出す1問。もとの位置と選択肢の対応を持ち歩く */
 export type ServedQuestion = {
@@ -61,19 +63,21 @@ export const toScreenChoice = (served: ServedQuestion, originalIndex: number) =>
 const rate = (correct: number, total: number) => (total ? Math.round((correct / total) * 100) : 0);
 
 /** その問題の配点。古いファイル用に、無いときは観点から決める */
-export const pointsOf = (q: ExamQuestion) => q.points ?? (q.viewpoint === "思考・判断・表現" ? 2 : 1);
+export const pointsOf = (q: ExamQuestion, set?: ExamSet | null) =>
+  set && isDataExam95(set) ? data95QuestionPoints(q) : q.points ?? (q.viewpoint === "思考・判断・表現" ? 2 : 1);
 
 const tally = <T extends string>(
   questions: ExamQuestion[],
   answers: ExamAnswer[],
   keyOf: (q: ExamQuestion) => T,
-  labelOf: (key: T) => string
+  labelOf: (key: T) => string,
+  set?: ExamSet
 ): ExamBreakdown[] => {
   const map = new Map<T, { correct: number; total: number; points: number; maxPoints: number }>();
   questions.forEach((q, i) => {
     const key = keyOf(q);
     const cur = map.get(key) ?? { correct: 0, total: 0, points: 0, maxPoints: 0 };
-    const pt = pointsOf(q);
+    const pt = pointsOf(q, set);
     cur.total += 1;
     cur.maxPoints += pt;
     if (answers[i]?.correct) {
@@ -88,8 +92,8 @@ const tally = <T extends string>(
       label: labelOf(key),
       correct: v.correct,
       total: v.total,
-      points: v.points,
-      maxPoints: v.maxPoints,
+      points: set && isDataExam95(set) ? roundExamPoints(v.points) : v.points,
+      maxPoints: set && isDataExam95(set) ? roundExamPoints(v.maxPoints) : v.maxPoints,
       // 割合は「点」で見る。思考の問題を落とすと、そのぶん大きく下がる
       rate: rate(v.points, v.maxPoints)
     }))
@@ -106,14 +110,16 @@ export const gradeExam = (
   startedAt: string,
   finishedAt: string
 ): ExamResult => {
+  validateDataExam95(set);
   const answers: ExamAnswer[] = set.questions.map((q, i) => {
     const p = picked[i] ?? -1;
     return { picked: p, correct: p === q.answer };
   });
   const correctCount = answers.filter((a) => a.correct).length;
   // 得点は配点の合計。知識・技能1点、思考・判断・表現2点
-  const score = set.questions.reduce((sum, q, i) => sum + (answers[i]?.correct ? pointsOf(q) : 0), 0);
-  const max = set.questions.reduce((sum, q) => sum + pointsOf(q), 0);
+  const rawScore = set.questions.reduce((sum, q, i) => sum + (answers[i]?.correct ? pointsOf(q, set) : 0), 0);
+  const score = isDataExam95(set) ? roundExamPoints(rawScore) : rawScore;
+  const max = isDataExam95(set) ? 100 : set.questions.reduce((sum, q) => sum + pointsOf(q), 0);
   const elapsed = Math.max(0, Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000));
   return {
     setId: set.setId,
@@ -132,10 +138,11 @@ export const gradeExam = (
       (key) => {
         const lesson = lessonById(key);
         return lesson ? `${lesson.no} ${lesson.title}` : key;
-      }
+      },
+      set
     ),
-    byViewpoint: tally(set.questions, answers, (q) => q.viewpoint as Viewpoint, (k) => k),
-    byLevel: tally(set.questions, answers, (q) => q.level as QuestionLevel, (k) => k),
+    byViewpoint: tally(set.questions, answers, (q) => q.viewpoint as Viewpoint, (k) => k, set),
+    byLevel: tally(set.questions, answers, (q) => q.level as QuestionLevel, (k) => k, set),
     startedAt,
     finishedAt,
     elapsedSeconds: elapsed
@@ -170,6 +177,9 @@ export type ExamProgress = {
   flagged?: boolean[];
   /** 提出済みなら結果も持つ */
   result?: ExamResult;
+  /** アンケートを答案とは別に保存する。旧データには存在しない。 */
+  dataSurvey?: DataSurvey;
+  page?: "questions" | "survey";
 };
 
 export const loadProgress = (studentCode: string, setId: string): ExamProgress | null => {

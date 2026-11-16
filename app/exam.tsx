@@ -44,6 +44,9 @@ import { gradeOf, seatOf, type ClassNo, type EncryptedBundle, type ExamResult, t
 import { lessonById } from "./lib/lessons";
 import { TEACHER_SEATS, examClassOf, isDemoCode, isTeacherCode } from "./lib/roster";
 import { PasswordField } from "./lib/password-field";
+import { DATA95_MINUTES, DATA95_SUFFIX, formatExamPoints, isDataExam95, validateDataExam95 } from "./lib/data-exam95";
+import { newDataSurvey, surveyResponseCount, type DataSurvey } from "./lib/data-survey";
+import { DataSurveyPage } from "./lib/data-survey-view";
 
 /** 静的書き出しのときの公開パス。GitHub Pages では /info1_ddl_public が前につく */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -76,16 +79,19 @@ const candidateFiles = (classNo: ClassNo, studentCode: string) => [
   ...(isTeacherCode(studentCode)
     ? [
         { file: "digital-teacher", makeup: false },
+        { file: `data-teacher${DATA95_SUFFIX}`, makeup: false },
         { file: "data-teacher", makeup: false }
       ]
     : []),
   { file: `digital-c${classNo}-main`, makeup: false },
+  { file: `data-c${classNo}-main${DATA95_SUFFIX}`, makeup: false },
   { file: `data-c${classNo}-main`, makeup: false },
   { file: `digital-makeup-${studentCode}`, makeup: true },
+  { file: `data-makeup-${studentCode}${DATA95_SUFFIX}`, makeup: true },
   { file: `data-makeup-${studentCode}`, makeup: true }
 ];
 
-type Phase = "password" | "guide" | "ready" | "running" | "list" | "done";
+type Phase = "password" | "guide" | "ready" | "running" | "survey" | "list" | "done";
 
 /* ============================================================
  * 画面上部のツールバー（白黒反転・背景色・文字色・表示倍率）
@@ -320,7 +326,11 @@ export function ExamView({
   const [now, setNow] = useState<number | null>(null);
   const [fullscreenError, setFullscreenError] = useState("");
   const [fullscreenLost, setFullscreenLost] = useState(false);
+  const [dataSurvey, setDataSurvey] = useState<DataSurvey>(newDataSurvey);
+  const [resumeSurvey, setResumeSurvey] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const activeExam = phase === "running" || phase === "list" || phase === "survey";
+  const hasSurvey = !!set && isDataExam95(set);
 
   /* ---------- 分野別テストだけ、開始時に全画面表示 ---------- */
 
@@ -365,7 +375,7 @@ export function ExamView({
   }, []);
 
   useEffect(() => {
-    const active = phase === "running" || phase === "list";
+    const active = activeExam;
     if (!active) {
       setFullscreenLost(false);
       return;
@@ -378,17 +388,17 @@ export function ExamView({
     checkFullscreen();
     document.addEventListener("fullscreenchange", checkFullscreen);
     return () => document.removeEventListener("fullscreenchange", checkFullscreen);
-  }, [phase]);
+  }, [activeExam]);
 
   // 全画面が解除された間は、問題・解答ボタンを操作できないようにする。
   useEffect(() => {
     const examUi = topRef.current?.querySelector(".cbt") as HTMLElement | null;
     if (!examUi) return;
-    examUi.inert = fullscreenLost && (phase === "running" || phase === "list");
+    examUi.inert = fullscreenLost && activeExam;
     return () => {
       examUi.inert = false;
     };
-  }, [fullscreenLost, phase]);
+  }, [fullscreenLost, activeExam]);
 
   useEffect(() => {
     return () => {
@@ -408,10 +418,10 @@ export function ExamView({
   //   本番のCBTと同じく、試験が始まったら他の画面へ行けないようにする。
   //   （閉じてしまっても、同じ番号で開けば残り時間ごと続きから再開できる）
   useEffect(() => {
-    const locked = phase === "running" || phase === "list";
+    const locked = activeExam;
     document.body.classList.toggle("exam-locked", locked);
     return () => document.body.classList.remove("exam-locked");
-  }, [phase]);
+  }, [activeExam]);
 
   /* ---------- 見え方の設定は、この端末に覚えておく ---------- */
 
@@ -460,7 +470,14 @@ export function ExamView({
           kind: bundle.kind,
           questions
         };
-        const limit = bundle.minutes && bundle.minutes > 0 ? bundle.minutes : DEFAULT_MINUTES;
+        try {
+          validateDataExam95(opened);
+        } catch (validationError) {
+          setError(validationError instanceof Error ? validationError.message : "新版の問題データを確認してください。");
+          setBusy(false);
+          return;
+        }
+        const limit = isDataExam95(opened) ? DATA95_MINUTES : bundle.minutes && bundle.minutes > 0 ? bundle.minutes : DEFAULT_MINUTES;
         // デモ用の番号は、前回の続きを読まない（いつも最初から）
         const stored = ephemeral ? null : loadProgress(studentCode, opened.setId);
         // 問題数を変えた前後で残っている古い途中データは、そのまま使うと画面が壊れる。
@@ -476,6 +493,8 @@ export function ExamView({
         setServed(serveForStudent(opened, studentCode));
         setPicked(saved?.picked ?? new Array(questions.length).fill(-1));
         setFlagged(saved?.flagged ?? new Array(questions.length).fill(false));
+        setDataSurvey(isDataExam95(opened) ? saved?.dataSurvey ?? newDataSurvey() : newDataSurvey());
+        setResumeSurvey(isDataExam95(opened) && saved?.page === "survey");
         setStartedAt(saved?.startedAt ?? new Date().toISOString());
         setDeadline(saved?.deadline ?? "");
         setIndex(0);
@@ -503,7 +522,7 @@ export function ExamView({
   const ephemeral = isDemoCode(studentCode);
 
   const persist = useCallback(
-    (next: number[], marks: boolean[], due: string, finished?: ExamResult) => {
+    (next: number[], marks: boolean[], due: string, finished?: ExamResult, survey?: DataSurvey, page?: "questions" | "survey") => {
       if (!set || ephemeral) return;
       const progress: ExamProgress = {
         setId: set.setId,
@@ -512,11 +531,12 @@ export function ExamView({
         flagged: marks,
         startedAt,
         ...(due ? { deadline: due } : {}),
-        ...(finished ? { result: finished } : {})
+        ...(finished ? { result: finished } : {}),
+        ...(isDataExam95(set) ? { dataSurvey: survey ?? dataSurvey, page: page ?? (phase === "survey" ? "survey" : "questions") } : {})
       };
       saveProgress(progress);
     },
-    [set, studentCode, startedAt, ephemeral]
+    [set, studentCode, startedAt, ephemeral, dataSurvey, phase]
   );
 
   const choose = (item: ServedQuestion, screenIndex: number) => {
@@ -541,7 +561,7 @@ export function ExamView({
   const answered = picked.filter((p) => p >= 0).length;
   const total = served.length;
   /** このセットの満点（知識1点・思考2点の合計） */
-  const maxPoints = served.reduce((sum, item) => sum + pointsOf(item.question), 0);
+  const maxPoints = hasSurvey ? 100 : served.reduce((sum, item) => sum + pointsOf(item.question), 0);
   const current = served[index];
   const flagCount = flagged.filter(Boolean).length;
 
@@ -555,16 +575,18 @@ export function ExamView({
   /* ---------- 提出 ---------- */
 
   // 時間切れのときも最新の解答で採点できるように、参照で持っておく
-  const liveRef = useRef({ set, picked, flagged, startedAt, deadline });
-  liveRef.current = { set, picked, flagged, startedAt, deadline };
+  const liveRef = useRef({ set, picked, flagged, startedAt, deadline, dataSurvey });
+  liveRef.current = { set, picked, flagged, startedAt, deadline, dataSurvey };
 
   const finish = useCallback(
     (byTimeUp: boolean) => {
       const live = liveRef.current;
       if (!live.set) return;
-      const finished = gradeExam(live.set, live.picked, live.startedAt, new Date().toISOString());
+      const finishedAt = new Date().toISOString();
+      const submittedSurvey = isDataExam95(live.set) ? { ...live.dataSurvey, submittedAt: finishedAt } : undefined;
+      const finished = { ...gradeExam(live.set, live.picked, live.startedAt, finishedAt), ...(submittedSurvey ? { dataSurvey: submittedSurvey } : {}) };
       setResult(finished);
-      persist(live.picked, live.flagged, live.deadline, finished);
+      persist(live.picked, live.flagged, live.deadline, finished, submittedSurvey);
       onResult(finished);
       setTimeUp(byTimeUp);
       void exitExamFullscreen();
@@ -577,13 +599,24 @@ export function ExamView({
 
   // 0分0秒になったら自動で終了する
   useEffect(() => {
-    if ((phase === "running" || phase === "list") && remaining === 0) finish(true);
-  }, [phase, remaining, finish]);
+    if (activeExam && remaining === 0) finish(true);
+  }, [activeExam, remaining, finish]);
 
   /* ---------- 移動 ---------- */
 
   const goTo = (next: number) => {
+    if (next >= total && hasSurvey) {
+      const viewed = { ...dataSurvey, viewed: true, updatedAt: new Date().toISOString() };
+      setDataSurvey(viewed);
+      setResumeSurvey(true);
+      persist(picked, flagged, deadline, undefined, viewed, "survey");
+      setPhase("survey");
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     setIndex(Math.max(0, Math.min(total - 1, next)));
+    setResumeSurvey(false);
+    if (hasSurvey) persist(picked, flagged, deadline, undefined, dataSurvey, "questions");
     setPhase("running");
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -597,7 +630,7 @@ export function ExamView({
     const due = deadline || new Date(Date.now() + minutes * 60 * 1000).toISOString();
     setDeadline(due);
     persist(picked, flagged, due);
-    setPhase("running");
+    setPhase(hasSurvey && resumeSurvey ? "survey" : "running");
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -609,6 +642,8 @@ export function ExamView({
     setPicked([]);
     setFlagged([]);
     setResult(null);
+    setDataSurvey(newDataSurvey());
+    setResumeSurvey(false);
     setStartedAt("");
     setDeadline("");
     setPassword("");
@@ -659,6 +694,8 @@ export function ExamView({
         ? "操作説明"
         : phase === "ready"
           ? "試験開始画面"
+          : phase === "survey"
+            ? "学習ふり返りアンケート"
           : phase === "list"
             ? "解答一覧"
             : phase === "done"
@@ -699,7 +736,7 @@ export function ExamView({
               <dd>{who}</dd>
             </div>
           </dl>
-          {(phase === "running" || phase === "list") && remaining !== null && (
+          {activeExam && remaining !== null && (
             <div className={`cbt-timer ${remaining <= warnSecondsFor(minutes) ? "warn" : ""}`} role="timer" aria-label="残り時間">
               <span>残り時間</span>
               <strong>{formatClock(remaining)}</strong>
@@ -751,6 +788,7 @@ export function ExamView({
               <div className="cbt-guide-head">
                 <h2>受験前の注意事項</h2>
               </div>
+              {hasSurvey && <p className="cbt-note">データ活用新版は95問・100点満点、知識・技能40点／思考・判断・表現60点です。問95の「次へ」で、採点対象外のアンケート14項目を1ページに表示します。アンケートを含め制限時間は40分です。</p>}
               <div className="cbt-guide-sections">
                 {GUIDE_SECTIONS.map((section) => (
                   <section className="cbt-guide-body" key={section.title}>
@@ -779,7 +817,7 @@ export function ExamView({
                     {total}問・{maxPoints}点満点
                     <br />
                     <small className="muted">
-                      知識・技能 1点 ／ 思考・判断・表現 2点（問題ごとに配点が出ます）
+                      {hasSurvey ? "知識・技能38問で40点 ／ 思考・判断・表現57問で60点（観点別に換算）" : "知識・技能 1点 ／ 思考・判断・表現 2点（問題ごとに配点が出ます）"}
                     </small>
                   </dd>
                 </div>
@@ -824,7 +862,7 @@ export function ExamView({
                   {lessonById(current.question.lessonId)?.title ?? current.question.lessonId}
                 </span>
                 <span className={`level level-${current.question.level}`}>{current.question.level}</span>
-                <span className="cbt-points">{pointsOf(current.question)}点</span>
+                <span className="cbt-points">{hasSurvey ? current.question.viewpoint : `${pointsOf(current.question)}点`}</span>
                 <label className={`cbt-flag ${flagged[current.originalIndex] ? "on" : ""}`}>
                   <input
                     type="checkbox"
@@ -869,12 +907,25 @@ export function ExamView({
                 <button className="cbt-nav" onClick={() => goTo(index - 1)} disabled={index === 0}>
                   {"< 前の問題へ"}
                 </button>
-                <button className="cbt-nav" onClick={() => goTo(index + 1)} disabled={index >= total - 1}>
-                  {"次の問題へ >"}
+                <button className="cbt-nav" onClick={() => goTo(index + 1)} disabled={index >= total - 1 && !hasSurvey}>
+                  {hasSurvey && index === total - 1 ? "次へ：アンケート >" : "次の問題へ >"}
                 </button>
                 <button className="cbt-go ghost" onClick={() => setPhase("list")}>
                   解答一覧へ
                 </button>
+              </div>
+            </div>
+          )}
+
+          {phase === "survey" && hasSurvey && (
+            <div>
+              <DataSurveyPage value={dataSurvey} onChange={(next) => {
+                setDataSurvey(next);
+                persist(picked, flagged, deadline, undefined, next, "survey");
+              }} />
+              <div className="cbt-foot">
+                <button className="cbt-nav" onClick={() => goTo(total - 1)}>{`< 問${total}にもどる`}</button>
+                <button className="cbt-go" onClick={() => setPhase("list")}>解答一覧・提出へ &gt;</button>
               </div>
             </div>
           )}
@@ -909,6 +960,8 @@ export function ExamView({
                   );
                 })}
               </div>
+
+              {hasSurvey && <p className="cbt-note"><button className="cbt-nav" onClick={() => goTo(total)}>アンケート14項目へ</button>　{dataSurvey.viewed ? "確認済み" : "未確認"}（採点対象外・各項目は任意）</p>}
 
               <dl className="cbt-summary">
                 <div>
@@ -949,7 +1002,7 @@ export function ExamView({
                   <button className="cbt-nav" onClick={() => setPhase("running")}>
                     {"< 問題にもどる"}
                   </button>
-                  <button className="cbt-go danger" onClick={() => setConfirmSubmit(true)}>
+                  <button className="cbt-go danger" onClick={() => hasSurvey && !dataSurvey.viewed ? goTo(total) : setConfirmSubmit(true)}>
                     解答を提出する（{answered}/{total}問）
                   </button>
                 </div>
@@ -963,6 +1016,7 @@ export function ExamView({
               {timeUp && (
                 <div className="verdict ng">時間になりました。そこまでの解答で採点しています。未解答は0点です。</div>
               )}
+              {result.dataSurvey && <p className="cbt-note">アンケートは{result.dataSurvey.viewed ? "表示済み" : "未表示"}・入力済みの回答欄 {surveyResponseCount(result.dataSurvey)}件です。回答は採点対象外としてJSONの examDetails 内に保存されています。</p>}
               <div className="exam-score">
                 <div className="exam-score-main">
                   <span>
@@ -1086,7 +1140,7 @@ export function ExamView({
                           <span className="exam-no">{position + 1}</span>
                           <span className={`level level-${item.question.level}`}>{item.question.level}</span>
                           <span className={`result-tag ${ans.correct ? "first" : "miss"}`}>
-                            {ans.correct ? "正解（1点）" : ans.picked < 0 ? "未解答（0点）" : "不正解（0点）"}
+                            {ans.correct ? hasSurvey ? `正解（${formatExamPoints(pointsOf(item.question, set))}点相当）` : "正解（1点）" : ans.picked < 0 ? "未解答（0点）" : "不正解（0点）"}
                           </span>
                           {item.question.q}
                         </h3>
@@ -1131,7 +1185,7 @@ export function ExamView({
 
       {/* 全画面解除時の復帰UIは .cbt の外に置く。
           .cbt 自体を inert にしても、このボタンだけは操作できるようにする。 */}
-      {fullscreenLost && (phase === "running" || phase === "list") && (
+      {fullscreenLost && activeExam && (
         <div
           role="alertdialog"
           aria-modal="true"
