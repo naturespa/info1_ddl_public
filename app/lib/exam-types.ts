@@ -2,6 +2,7 @@
 // デジタル分野100問・100点、データ活用分野100問・100点。普段の学習の200点とは完全に別に扱う。
 
 import type { Area, QuestionLevel } from "./types";
+import type { DataSurvey } from "./data-survey";
 
 /** 観点。100問全体で 知識・技能60問／思考・判断・表現40問 になるように配分する */
 export type Viewpoint = "知識・技能" | "思考・判断・表現";
@@ -128,6 +129,8 @@ export type ExamResult = {
   finishedAt: string;
   /** 所要時間（秒） */
   elapsedSeconds: number;
+  /** データ活用95問新版のみ。採点対象外のアンケート。 */
+  dataSurvey?: DataSurvey;
 };
 
 /** 暗号化して配布する1ファイルぶんの中身 */
