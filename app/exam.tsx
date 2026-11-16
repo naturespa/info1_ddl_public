@@ -53,7 +53,7 @@ import {
 import { lessonById } from "./lib/lessons";
 import { TEACHER_SEATS, examClassOf, isDemoCode, isTeacherCode } from "./lib/roster";
 import { PasswordField } from "./lib/password-field";
-import { ExamSurveyForm, skippedSurvey } from "./lib/exam-survey";
+import { ExamSurveyForm } from "./lib/exam-survey";
 
 /** 静的書き出しのときの公開パス。GitHub Pages では /info1_ddl_public が前につく */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -99,9 +99,10 @@ type Phase = "password" | "guide" | "ready" | "running" | "list" | "survey" | "d
 
 /**
  * 提出のあとにアンケートを出すかどうか。
- * データ活用分野だけに出す。すでに答えた（または「回答しない」を選んだ）人には出さない。
+ * データ活用分野だけに出す。答え終わった人には出さない。
+ * 以前の形式（14問・回答なしで進めた版）の記録しかない人には、あらためて出す。
  */
-const wantsSurvey = (r: ExamResult) => r.area === "データ活用" && !r.survey;
+const wantsSurvey = (r: ExamResult) => r.area === "データ活用" && r.survey?.version !== 2;
 
 /* ============================================================
  * 画面上部のツールバー（白黒反転・背景色・文字色・表示倍率）
@@ -1006,7 +1007,17 @@ export function ExamView({
               {timeUp && (
                 <div className="verdict ng">時間になりました。そこまでの解答で採点しています。未解答は0点です。</div>
               )}
-              <ExamSurveyForm onSubmit={saveSurvey} onSkip={() => saveSurvey(skippedSurvey())} />
+              <ExamSurveyForm
+                onSubmit={saveSurvey}
+                onDemoSkip={
+                  ephemeral
+                    ? () => {
+                        setPhase("done");
+                        topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    : undefined
+                }
+              />
             </>
           )}
 
@@ -1048,10 +1059,9 @@ export function ExamView({
                     </div>
                   ))}
                 </dl>
-                {result.survey && (
+                {result.survey?.version === 2 && (
                   <p className="muted small survey-status">
-                    アンケート：{result.survey.skipped ? "回答していません" : "回答を受け取りました。ありがとうございました"}
-                    （点数・成績には関係ありません）
+                    アンケート：回答を受け取りました。ありがとうございました（点数・成績には関係ありません）
                   </p>
                 )}
                 <div className="exam-score-actions">

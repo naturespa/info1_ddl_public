@@ -8084,3 +8084,28 @@ body.exam-locked footer {
     padding-top: 0;
   }
 }
+
+/* アンケート：未回答の質問の印と、進み具合 */
+.survey-q.missing {
+  border: 3px solid #b3261e;
+}
+.survey-miss {
+  display: inline-block;
+  margin-left: 0.6rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.survey-missing-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.survey-progress {
+  font-weight: 700;
+  align-self: center;
+}

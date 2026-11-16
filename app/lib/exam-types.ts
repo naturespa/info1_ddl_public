@@ -105,39 +105,60 @@ export type ExamBreakdown = {
   rate: number;
 };
 
+/** アンケートの「分野について」5問ぶん（デジタル・データ活用で同じ形） */
+export type SurveyAreaAnswer = {
+  /** ① 理解度：1（ほとんど理解できなかった）〜5（よく理解できた） */
+  understand: number | null;
+  /** ② むずかしかった単元（単元ID、3つまで）。「特になかった」は ["none"] */
+  hard: string[];
+  /** ③ よく分かった・面白かった単元（単元ID、3つまで）。「特になかった」は ["none"] */
+  good: string[];
+  /** ④ テストの難しさ：1（とても易しかった）〜5（とても難しかった） */
+  difficulty: number | null;
+  /** ⑤ テストの時間：1（かなり余った）〜3（ちょうどよかった）〜5（まったく足りなかった） */
+  time: number | null;
+};
+
 /**
- * テストのあとのアンケート（データ活用分野）。得点・G・成績には一切使わない。
- * 集計するときは、未回答（null・空）と「判断できない／機会がなかった」（0）を0点として数えないこと。
+ * テストのあとのアンケート（データ活用分野の提出後に出す。全24問）。得点・G・成績には一切使わない。
+ * 選ぶ質問はすべて必須、自由に書く欄だけ任意。
+ * 集計するときは、「判断できない／機会がなかった」（0）を0点として数えないこと。
+ *
+ *   Q1〜Q5   digital        デジタル分野について
+ *   Q6〜Q10  data           データ活用分野について
+ *   Q11〜Q16 before / now   できるようになったこと（学ぶ前を振り返った自分／現在の自分）
+ *   Q17 interest　Q18 useData　Q19 recheck　Q20 pace　Q21 helpful　Q22 trouble（＋troubleNote）
+ *   Q23 found（＋foundBefore・foundNow）　Q24 topic（＋topicNote）
  */
 export type ExamSurvey = {
-  version: 1;
+  version: 2;
   /** 送った時刻（ISO） */
   answeredAt: string;
-  /** 「回答せずに結果を見る」を選んだとき true */
-  skipped: boolean;
-  /** Q1〜Q6「学ぶ前を振り返った自分」。1〜5、0＝判断できない、null＝未回答 */
+  digital: SurveyAreaAnswer;
+  data: SurveyAreaAnswer;
+  /** Q11〜Q16「学ぶ前を振り返った自分」。1〜5、0＝判断できない */
   before: (number | null)[];
-  /** Q1〜Q6「現在の自分」。値の意味は before と同じ */
+  /** Q11〜Q16「現在の自分」。値の意味は before と同じ */
   now: (number | null)[];
-  /** Q7・Q8：1（あてはまらない）〜5（あてはまる） */
-  q7: number | null;
-  q8: number | null;
-  /** Q9：1（一度もなかった）〜4（何度もあった）、0＝機会がなかった */
-  q9: number | null;
-  /** Q10：1〜5、0＝判断できない */
-  q10: number | null;
-  /** Q11：役立ったもの（3つまで） */
-  q11: string[];
-  /** Q12：困ったこと */
-  q12: string[];
-  q12Note: string;
-  /** Q13：「へぇ」と思ったこと */
-  q13: string[];
-  q13Before: string;
-  q13Now: string;
-  /** Q14：調べてみたい分野（1つ）と、その疑問 */
-  q14: string;
-  q14Note: string;
+  /** Q17・Q18：1（あてはまらない）〜5（あてはまる） */
+  interest: number | null;
+  useData: number | null;
+  /** Q19：1（一度もなかった）〜4（何度もあった）、0＝機会がなかった */
+  recheck: number | null;
+  /** Q20：1〜5、0＝判断できない */
+  pace: number | null;
+  /** Q21：役立ったもの（3つまで） */
+  helpful: string[];
+  /** Q22：困ったこと */
+  trouble: string[];
+  troubleNote: string;
+  /** Q23：「へぇ」と思ったこと */
+  found: string[];
+  foundBefore: string;
+  foundNow: string;
+  /** Q24：調べてみたい分野（1つ）と、その疑問 */
+  topic: string;
+  topicNote: string;
 };
 
 /** 受験結果。1回の受験につき1つ */
