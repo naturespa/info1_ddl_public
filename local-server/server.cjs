@@ -4,8 +4,91 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const { randomUUID } = require('node:crypto');
 const os = require('node:os');
+const reports = require('./reports.cjs');
+const { readState, applyState, changeState } = require('./admin-state.cjs');
 
 const FILE_RE = /^(\d{4})_(\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z)_([0-9a-f-]{36})\.json$/i;
+const DEFAULT_ROSTER_FILE = 'C:\\1nen\\ddl1\\meibo.scv';
+
+function csvRows(source) {
+  const rows = [];
+  let row = [], cell = '', quoted = false, afterQuote = false;
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+    if (quoted) {
+      if (ch === '"' && source[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') { quoted = false; afterQuote = true; }
+      else cell += ch;
+    } else if (ch === '"' && !cell && !afterQuote) quoted = true;
+    else if (ch === ',') { row.push(cell); cell = ''; afterQuote = false; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && source[i + 1] === '\n') i++;
+      row.push(cell);
+      if (row.some(value => value.trim())) rows.push(row);
+      row = []; cell = ''; afterQuote = false;
+    } else if (afterQuote && ch !== ' ' && ch !== '\t') throw new Error('Invalid quoted CSV');
+    else if (!afterQuote) cell += ch;
+  }
+  if (quoted) throw new Error('Unclosed quote in CSV');
+  row.push(cell);
+  if (row.some(value => value.trim())) rows.push(row);
+  return rows;
+}
+
+function parseRoster(buffer) {
+  let text;
+  try {
+    if (buffer[0] === 0xff && buffer[1] === 0xfe) text = new TextDecoder('utf-16le', { fatal: true }).decode(buffer.subarray(2));
+    else text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  } catch {
+    text = new TextDecoder('shift_jis', { fatal: true }).decode(buffer);
+  }
+  const rows = csvRows(text.replace(/^\ufeff/, ''));
+  const entries = new Map(), duplicates = new Set();
+  for (let index = 0; index < rows.length; index++) {
+    const [rawCode, rawName] = rows[index];
+    const code = (rawCode || '').trim();
+    const name = (rawName || '').trim().replace(/[\s\u3000]+/gu, ' ');
+    if (index === 0 && /^(?:4桁番号|受験番号|番号|studentCode)$/i.test(code)) continue;
+    if (!/^\d{4}$/.test(code) || !name) throw new Error(`名簿の${index + 1}行目を確認してください（A列は4桁、B列は氏名）。`);
+    if (entries.has(code)) duplicates.add(code);
+    else entries.set(code, name);
+  }
+  if (!entries.size) throw new Error('名簿に生徒の行がありません。');
+  return { entries, duplicates };
+}
+
+const compareName = value => value.normalize('NFKC').replace(/[\s\u3000]+/gu, '');
+
+async function readRoster(rosterFile) {
+  let actualFile = rosterFile;
+  try {
+    // 指定された .scv を優先し、拡張子を .csv に直して保存した場合も受け付ける。
+    try { await fs.access(actualFile); }
+    catch (error) {
+      if (error.code !== 'ENOENT' || !/\.scv$/i.test(rosterFile)) throw error;
+      actualFile = rosterFile.replace(/\.scv$/i, '.csv');
+    }
+    // ごく大きなファイルの読み込みや誤指定を防ぐ。
+    const stat = await fs.stat(actualFile);
+    if (stat.size > 2 * 1024 * 1024) throw new Error('名簿が2 MiBを超えています。');
+    const { entries, duplicates } = parseRoster(await fs.readFile(actualFile));
+    return { meta: { status: 'ready', path: actualFile, count: entries.size, duplicateCount: duplicates.size }, entries, duplicates };
+  } catch (error) {
+    const missing = error.code === 'ENOENT';
+    return { meta: { status: missing ? 'missing' : 'invalid', path: rosterFile, count: 0, duplicateCount: 0,
+      message: missing ? '名簿ファイルが見つかりません。' : `名簿を読み込めません: ${error.message}` }, entries: new Map(), duplicates: new Set() };
+  }
+}
+
+function matchRoster(record, roster) {
+  if (roster.meta.status !== 'ready') return { ...record, rosterStatus: 'unavailable', rosterName: '' };
+  if (roster.duplicates.has(record.studentCode)) return { ...record, rosterStatus: 'duplicate', rosterName: roster.entries.get(record.studentCode) || '' };
+  const name = roster.entries.get(record.studentCode);
+  if (!name) return { ...record, rosterStatus: 'number_missing', rosterName: '' };
+  if (!record.studentName) return { ...record, rosterStatus: 'name_missing', rosterName: name };
+  return { ...record, rosterStatus: compareName(record.studentName) === compareName(name) ? 'matched' : 'name_mismatch', rosterName: name };
+}
 
 async function listRecords(dataDir) {
   let names;
@@ -34,7 +117,8 @@ async function listRecords(dataDir) {
         knowledge: perspective.knowledge ?? null, thinking: perspective.thinking ?? null, attitude: perspective.attitude ?? null,
         completedLessons: summary.completedLessons ?? null, lessonCount: summary.lessonCount ?? null,
         examCount: Array.isArray(value.exams) ? value.exams.length : 0,
-        exams: Array.isArray(value.exams) ? value.exams.map(exam => ({ area: exam.area, kind: exam.kind, setId: exam.setId, score: exam.score, max: exam.max, rate: exam.rate, finishedAt: exam.finishedAt })) : []
+        exams: Array.isArray(value.exams) ? value.exams.map(exam => ({ area: exam.area, kind: exam.kind, setId: exam.setId, score: exam.score, max: exam.max, rate: exam.rate, finishedAt: exam.finishedAt })) : [],
+        report: reports.enrich(value)
       });
     } catch { skipped += 1; }
   }
@@ -51,15 +135,19 @@ function csvCell(value) {
 function csv(rows) { return '\ufeff' + rows.map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n'; }
 function summaryCsv(records) {
   return csv([
-    ['受験番号','名前','受信日時(UTC)','送信日時','受付番号','総合点','満点','デジタル得点','デジタル満点','データ活用得点','データ活用満点','知識・技能(%)','思考・判断・表現(%)','主体的態度(%)','完走単元','全単元','分野別テスト件数','保存ファイル'],
-    ...records.map(r => [r.studentCode,r.studentName,r.receivedAt,r.exportedAt,r.receiptId,r.totalScore,r.totalMax,r.digitalScore,r.digitalMax,r.dataScore,r.dataMax,r.knowledge,r.thinking,r.attitude,r.completedLessons,r.lessonCount,r.examCount,r.file])
+    ['受験番号','提出された名前','名簿の名前','名簿照合','受信日時(UTC)','送信日時','受付番号','総合点','満点','デジタル得点','デジタル満点','データ活用得点','データ活用満点','知識・技能(%)','思考・判断・表現(%)','主体的態度(%)','完走単元','全単元','分野別テスト件数','保存ファイル'],
+    ...records.map(r => [r.studentCode,r.studentName,r.rosterName,rosterLabel(r.rosterStatus),r.receivedAt,r.exportedAt,r.receiptId,r.totalScore,r.totalMax,r.digitalScore,r.digitalMax,r.dataScore,r.dataMax,r.knowledge,r.thinking,r.attitude,r.completedLessons,r.lessonCount,r.examCount,r.file])
   ]);
 }
 function examsCsv(records) {
   return csv([
-    ['受験番号','名前','受信日時(UTC)','受付番号','分野','種類','セットID','得点','満点','得点率','テスト終了日時','保存ファイル'],
-    ...records.flatMap(r => r.exams.map(e => [r.studentCode,r.studentName,r.receivedAt,r.receiptId,e.area,e.kind,e.setId,e.score,e.max,e.rate,e.finishedAt,r.file]))
+    ['受験番号','提出された名前','名簿の名前','名簿照合','受信日時(UTC)','受付番号','分野','種類','セットID','得点','満点','得点率','テスト終了日時','保存ファイル'],
+    ...records.flatMap(r => r.exams.map(e => [r.studentCode,r.studentName,r.rosterName,rosterLabel(r.rosterStatus),r.receivedAt,r.receiptId,e.area,e.kind,e.setId,e.score,e.max,e.rate,e.finishedAt,r.file]))
   ]);
+}
+
+function rosterLabel(status) {
+  return ({ matched: '一致', name_mismatch: '氏名不一致', number_missing: '番号が名簿にない', name_missing: '提出に名前なし', duplicate: '名簿で番号重複', unavailable: '照合不可' })[status] || '照合不可';
 }
 
 function lanAddresses(interfaces) {
@@ -82,8 +170,14 @@ function validRecord(record) {
     && typeof record.lastLesson === 'string' && Array.isArray(record.exams) && Array.isArray(record.examDetails);
 }
 
-function createServer({ dataDir = path.join(__dirname, 'data'), allowedOrigins = ['https://naturespa.github.io'] } = {}) {
+function createServer({ dataDir = path.join(__dirname, 'data'), rosterFile = DEFAULT_ROSTER_FILE, allowedOrigins = ['https://naturespa.github.io'] } = {}) {
   const origins = new Set(allowedOrigins);
+  const adminToken = randomUUID();
+  async function readManaged() {
+    const result = await listRecords(dataDir), state = await readState(dataDir), roster = await readRoster(rosterFile);
+    const all = applyState(result.records, state).map(r => matchRoster(r, roster));
+    return { ...result, records: all.filter(r => !r.archivedAt), archivedRecords: all.filter(r => r.archivedAt), roster: roster.meta };
+  }
   const server = http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -91,11 +185,50 @@ function createServer({ dataDir = path.join(__dirname, 'data'), allowedOrigins =
     const reply = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(body)); };
     const adminPath = req.url === '/admin' || req.url === '/admin/' || req.url?.startsWith('/admin/') || req.url?.startsWith('/api/admin/');
     if (adminPath) {
+      res.setHeader('X-Frame-Options', 'DENY');
       // IPだけを知る生徒端末には管理APIも管理画面も渡さない。
       const localPeer = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
       const localHost = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i.test(req.headers.host || '');
       if (!localPeer || !localHost) return reply(403, { ok: false, error: 'Administration is available on the server PC only' });
       if (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) return reply(403, { ok: false, error: 'Invalid origin' });
+      const mutation = /^\/api\/admin\/records\/(edit|archive|restore)$/.exec(req.url);
+      if (mutation && req.method === 'POST') {
+        if (req.headers.origin !== `http://${req.headers.host}` || req.headers['x-ddl-admin'] !== adminToken) return reply(403, { ok: false, error: '管理画面を開き直して操作してください。' });
+        if (!/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] || '')) return reply(415, { ok: false, error: 'application/json required' });
+        try {
+          const chunks = []; let length = 0;
+          for await (const chunk of req) { length += chunk.length; if (length > 128 * 1024) { req.resume(); return reply(413, { ok: false, error: '一度の操作件数を減らしてください。' }); } chunks.push(chunk); }
+          let input;
+          try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return reply(400, { ok: false, error: 'Invalid JSON' }); }
+          if (!isObject(input)) return reply(400, { ok: false, error: 'Invalid input' });
+          const action = mutation[1];
+          const result = await changeState(dataDir, async state => {
+            const source = await listRecords(dataDir), rows = applyState(source.records, state);
+            const fail = (message, status = 400) => { const error = new Error(message); error.status = status; throw error; };
+            let targets;
+            if (action === 'edit') {
+              if (typeof input.file !== 'string' || !FILE_RE.test(input.file)) fail('提出を選んでください。');
+              const selected = rows.find(r => r.file === input.file && !r.archivedAt);
+              if (!selected) fail('この提出は見つからないか、ごみ箱にあります。', 404);
+              if (input.revision !== selected.adminRevision) fail('別の操作で更新されています。一覧を更新してください。', 409);
+              if (typeof input.studentCode !== 'string' || !/^\d{4}$/.test(input.studentCode)) fail('出席番号は半角4桁で入力してください。');
+              const name = typeof input.studentName === 'string' ? input.studentName.trim().replace(/[\s\u3000]+/gu, ' ') : '';
+              if (!/^\S+ \S+$/.test(name) || name.length > 80) fail('名前は姓と名をスペース1文字で区切って入力してください。');
+              if (!['file', 'student'].includes(input.scope)) fail('修正範囲を選んでください。');
+              targets = input.scope === 'student' ? rows.filter(r => !r.archivedAt && r.studentCode === selected.studentCode) : [selected];
+              for (const r of targets) state.records[r.file] = { ...state.records[r.file], studentCode: input.studentCode, studentName: name, revision: r.adminRevision + 1, editedAt: new Date().toISOString() };
+            } else {
+              if (!Array.isArray(input.files) || !input.files.length || input.files.length > 1000 || input.files.some(f => typeof f !== 'string' || !FILE_RE.test(f))) fail('提出を1〜1000件選んでください。');
+              const files = new Set(input.files);
+              targets = rows.filter(r => files.has(r.file) && (action === 'restore' ? !!r.archivedAt : !r.archivedAt));
+              if (targets.length !== files.size) fail('一覧が変わっています。更新して選び直してください。', 409);
+              for (const r of targets) state.records[r.file] = { ...state.records[r.file], archivedAt: action === 'archive' ? new Date().toISOString() : null, revision: r.adminRevision + 1 };
+            }
+            return { count: targets.length };
+          });
+          return reply(200, { ok: true, ...result });
+        } catch (error) { console.error('Admin change failed:', error.code || error.status || error.name); return reply(error.status || 500, { ok: false, error: error.status ? error.message : '変更を保存できませんでした。元JSONは変更されていません。' }); }
+      }
       if (req.method !== 'GET') return reply(405, { ok: false, error: 'GET required' });
       try {
         const file = req.url.match(/^\/api\/admin\/files\/([^/?#]+)$/);
@@ -110,14 +243,23 @@ function createServer({ dataDir = path.join(__dirname, 'data'), allowedOrigins =
         }
         if (req.url === '/admin' || req.url === '/admin/') {
           const nonce = randomUUID();
-          const html = (await fs.readFile(path.join(__dirname, 'admin.html'), 'utf8')).replaceAll('__DDL_NONCE__', nonce);
-          res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'`);
+          const html = (await fs.readFile(path.join(__dirname, 'admin.html'), 'utf8')).replaceAll('__DDL_NONCE__', nonce).replaceAll('__DDL_ADMIN_TOKEN__', adminToken);
+          res.setHeader('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`);
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           return res.end(html);
         }
         if (req.url === '/api/admin/network') return reply(200, { ok: true, addresses: lanAddresses(), port: server.address()?.port ?? null });
+        const reportUrl = new URL(req.url, 'http://localhost');
+        if (['/api/admin/grades.xlsx', '/api/admin/surveys.xlsx'].includes(reportUrl.pathname)) {
+          const result = await readManaged();
+          const selected = reports.filterRecords(result.records, reportUrl.searchParams);
+          const isGrade = reportUrl.pathname.endsWith('grades.xlsx');
+          const body = isGrade ? reports.gradeWorkbook(selected, reportUrl.searchParams) : reports.surveyWorkbook(selected, reportUrl.searchParams);
+          res.writeHead(200, { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="ddl1-${isGrade ? 'grades' : 'surveys'}-${new Date().toISOString().slice(0, 10)}.xlsx"` });
+          return res.end(body);
+        }
         if (req.url === '/api/admin/submissions' || req.url === '/api/admin/summary.csv' || req.url === '/api/admin/exams.csv') {
-          const result = await listRecords(dataDir);
+          const result = await readManaged();
           if (req.url === '/api/admin/submissions') return reply(200, { ok: true, ...result });
           const body = req.url.endsWith('summary.csv') ? summaryCsv(result.records) : examsCsv(result.records);
           res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="ddl1-${req.url.endsWith('summary.csv') ? 'summary' : 'exams'}.csv"` });
@@ -175,8 +317,9 @@ if (require.main === module) {
   const port = Number(process.env.PORT || 3003);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be 1–65535');
   const dataDir = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data'));
+  const rosterFile = path.resolve(process.env.ROSTER_FILE || DEFAULT_ROSTER_FILE);
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://naturespa.github.io').split(',').map(s => s.trim()).filter(Boolean);
-  const server = createServer({ dataDir, allowedOrigins });
+  const server = createServer({ dataDir, rosterFile, allowedOrigins });
   server.requestTimeout = 30000;
   server.on('error', error => { console.error(`Server error: ${error.code}`); process.exitCode = 1; });
   server.listen(port, process.env.HOST || '0.0.0.0', () => {
@@ -189,6 +332,7 @@ if (require.main === module) {
     }
     if (!addresses.length) console.log('LANのIPv4アドレスが見つかりません。ネットワーク接続を確認してください。');
     console.log(`保存先 ${dataDir}\n終了 Ctrl+C`);
+    console.log(`名簿照合ファイル ${rosterFile}`);
   });
 }
 module.exports = { createServer, validRecord, lanAddresses };
